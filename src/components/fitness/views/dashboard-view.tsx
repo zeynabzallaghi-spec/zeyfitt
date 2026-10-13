@@ -18,6 +18,7 @@ import { Button } from "@/components/ui/button";
 import {
   NAV_ITEMS,
   DEV_STAGES,
+  CURRENT_STAGE,
   getNavItem,
   type NavItem,
   type ViewId,
@@ -146,7 +147,7 @@ function RoadmapCard() {
             key={stage.index}
             index={stage.index}
             title={stage.title}
-            current={stage.index === 1}
+            current={stage.index === CURRENT_STAGE}
           />
         ))}
       </ul>

@@ -103,13 +103,13 @@ export function DevStatusCard() {
           وضعیت توسعه
         </span>
         <span className="rounded-md border border-primary/30 bg-primary/10 px-2 py-0.5 text-[10px] font-bold text-primary">
-          مرحله ۱ از ۱۲
+          مرحله ۲ از ۱۳
         </span>
       </div>
-      <Progress value={12} className="mt-3 h-1.5" aria-label="پیشرفت کل مراحل توسعه" />
+      <Progress value={23} className="mt-3 h-1.5" aria-label="پیشرفت کل مراحل توسعه" />
       <p className="mt-2.5 text-[10px] leading-relaxed text-muted-foreground">
-        هویت بصری و طراحی کامل هشت بخش فعال است. پس از تأیید شما، مرحله ۲ (حساب کاربری و پروفایل)
-        آغاز می‌شود.
+        مربی سه‌بعدی تعاملی با مدل بدن، اجرای حرکات و هایلایت عضلات فعال است.
+        مرحله بعد پس از تأیید شما آغاز می‌شود.
       </p>
     </div>
   );
