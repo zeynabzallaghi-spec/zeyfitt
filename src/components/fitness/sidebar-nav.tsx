@@ -34,7 +34,10 @@ export function SidebarNav() {
   const setActiveView = useAppStore((s) => s.setActiveView);
 
   return (
-    <nav aria-label="ناوبری اصلی" className="flex flex-col gap-1.5">
+    <nav aria-label="ناوبری اصلی" className="flex flex-col gap-1">
+      <p className="px-3 pb-2 text-[10px] font-bold tracking-wide text-muted-foreground/60">
+        بخش‌های پنل
+      </p>
       {NAV_ITEMS.map((item) => {
         const Icon = item.icon;
         const active = activeView === item.id;
@@ -45,12 +48,22 @@ export function SidebarNav() {
             onClick={() => setActiveView(item.id)}
             aria-current={active ? "page" : undefined}
             className={cn(
-              "group relative flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-start transition-all duration-200 outline-none focus-visible:ring-2 focus-visible:ring-ring/60",
+              "group relative flex w-full items-center gap-3 rounded-xl ps-3 pe-3 py-2.5 text-start transition-all duration-200 outline-none focus-visible:ring-2 focus-visible:ring-ring/60 active:scale-[0.99]",
               active
-                ? "bg-sidebar-accent/80 text-sidebar-accent-foreground shadow-[inset_0_1px_0_0_oklch(1_0_0/0.04)]"
+                ? "bg-sidebar-accent/80 text-sidebar-accent-foreground"
                 : "text-muted-foreground hover:bg-secondary/50 hover:text-foreground"
             )}
           >
+            {/* نشانگر بخش فعال — لبه شروع (راست در RTL) */}
+            <span
+              className={cn(
+                "absolute inset-y-2.5 start-0 w-[3px] rounded-full transition-all duration-200",
+                active
+                  ? "bg-primary shadow-[0_0_12px_2px_oklch(0.89_0.22_128/0.5)]"
+                  : "bg-transparent"
+              )}
+              aria-hidden="true"
+            />
             <span
               className={cn(
                 "flex size-9 shrink-0 items-center justify-center rounded-lg border transition-all duration-200",
@@ -59,11 +72,11 @@ export function SidebarNav() {
                   : "border-border/50 bg-secondary/40 text-muted-foreground group-hover:border-border group-hover:text-foreground"
               )}
             >
-              <Icon className="size-4" strokeWidth={2.2} />
+              <Icon className="size-4" strokeWidth={2.2} aria-hidden="true" />
             </span>
             <span className="flex min-w-0 flex-col items-start gap-0">
               <span className="truncate text-sm font-semibold leading-6">{item.fa}</span>
-              <span dir="ltr" className="text-[10px] font-medium leading-3 opacity-70">
+              <span dir="ltr" className="truncate text-[10px] font-medium leading-3 opacity-70">
                 {item.en}
               </span>
             </span>
@@ -90,12 +103,13 @@ export function DevStatusCard() {
           وضعیت توسعه
         </span>
         <span className="rounded-md border border-primary/30 bg-primary/10 px-2 py-0.5 text-[10px] font-bold text-primary">
-          مرحله ۰ از ۱۲
+          مرحله ۱ از ۱۲
         </span>
       </div>
-      <Progress value={4} className="mt-3 h-1.5" aria-label="پیشرفت کل مراحل توسعه" />
+      <Progress value={12} className="mt-3 h-1.5" aria-label="پیشرفت کل مراحل توسعه" />
       <p className="mt-2.5 text-[10px] leading-relaxed text-muted-foreground">
-        پوسته پایه و داشبورد اولیه فعال است. پس از تأیید شما، مرحله ۱ (تکمیل هویت بصری) آغاز می‌شود.
+        هویت بصری و طراحی کامل هشت بخش فعال است. پس از تأیید شما، مرحله ۲ (حساب کاربری و پروفایل)
+        آغاز می‌شود.
       </p>
     </div>
   );

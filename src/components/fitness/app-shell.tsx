@@ -7,7 +7,13 @@ import { getNavItem } from "@/lib/nav";
 import { BrandMark, SidebarNav, DevStatusCard } from "./sidebar-nav";
 import { AppHeader } from "./header";
 import { DashboardView } from "./views/dashboard-view";
-import { ComingSoonView } from "./views/coming-soon-view";
+import { Coach3DView } from "./views/coach3d-view";
+import { LibraryView } from "./views/library-view";
+import { WorkoutView } from "./views/workout-view";
+import { NutritionView } from "./views/nutrition-view";
+import { ProgressView } from "./views/progress-view";
+import { AssistantView } from "./views/assistant-view";
+import { ProfileView } from "./views/profile-view";
 
 /** محتوای کامل نوار کناری — در دسکتاپ و منوی موبایل مشترک است */
 function SidebarContent() {
@@ -22,11 +28,35 @@ function SidebarContent() {
   );
 }
 
+/** نگاشت بخش فعال به نمای مربوطه */
+function ActiveView() {
+  const activeView = useAppStore((s) => s.activeView);
+  switch (activeView) {
+    case "dashboard":
+      return <DashboardView />;
+    case "coach3d":
+      return <Coach3DView />;
+    case "library":
+      return <LibraryView />;
+    case "workout":
+      return <WorkoutView />;
+    case "nutrition":
+      return <NutritionView />;
+    case "progress":
+      return <ProgressView />;
+    case "assistant":
+      return <AssistantView />;
+    case "profile":
+      return <ProfileView />;
+    default:
+      return <DashboardView />;
+  }
+}
+
 export function AppShell() {
   const activeView = useAppStore((s) => s.activeView);
   const mobileNavOpen = useAppStore((s) => s.mobileNavOpen);
   const setMobileNavOpen = useAppStore((s) => s.setMobileNavOpen);
-  const activeItem = getNavItem(activeView);
 
   return (
     <div className="flex min-h-screen w-full">
@@ -63,11 +93,7 @@ export function AppShell() {
                 exit={{ opacity: 0, y: -6 }}
                 transition={{ duration: 0.22, ease: "easeOut" }}
               >
-                {activeView === "dashboard" ? (
-                  <DashboardView />
-                ) : (
-                  <ComingSoonView item={activeItem} />
-                )}
+                <ActiveView />
               </motion.div>
             </AnimatePresence>
           </div>
