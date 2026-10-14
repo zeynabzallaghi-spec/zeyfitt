@@ -2,7 +2,7 @@
 
 import { FlaskConical, CircleCheck } from "lucide-react";
 import { cn } from "@/lib/utils";
-import type { Difficulty } from "@/lib/sample-data";
+import type { Difficulty } from "@/lib/exercises/types";
 
 /** نشان «واقعی» — داده‌ای که مستقیماً از پایگاه داده سرور آمده است */
 export function RealBadge({ className }: { className?: string }) {

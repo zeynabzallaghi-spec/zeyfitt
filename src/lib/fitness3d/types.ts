@@ -6,7 +6,7 @@
  * آنکه ساختار داده حرکات تغییر کند.
  */
 
-import type { Difficulty } from "@/lib/sample-data";
+import type { Difficulty } from "@/lib/exercises/types";
 
 /** شناسه گروه‌های عضلانی — قابل توسعه برای عضلات بیشتر */
 export type MuscleGroupId =
