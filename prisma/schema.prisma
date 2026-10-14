@@ -36,6 +36,7 @@ model user {
   fitnessProfile FitnessProfile?
   weightEntries weightEntry[]
   workoutPlans  WorkoutPlan[]
+  nutritionPlans NutritionPlan[]
 }
 
 model account {
@@ -203,4 +204,97 @@ model WorkoutPlanExercise {
   day              WorkoutPlanDay @relation(fields: [dayId], references: [id], onDelete: Cascade)
 
   @@index([dayId, order])
+}
+
+// ----------------------------------------
+// برنامه غذایی — شخصی و متعلق به یک کاربر
+// ----------------------------------------
+// همان الگوی WorkoutPlan: چند برنامه برای هر کاربر، حداکثر یک برنامه فعال.
+// تنظیمات (ورودی موتور) و snapshot کامل محاسبات برای شفافیت و بازتولید
+// ذخیره می‌شود؛ مواد داخل وعده‌ها snapshot حداقلی دارند تا تغییر آینده
+// بانک مواد غذایی برنامه‌های ذخیره‌شده را ناخواسته تغییر ندهد.
+//
+// نکته SQLite: فهرست‌ها به‌صورت رشته JSON ذخیره می‌شوند و در لایه سرویس
+// marshal/unmarshal می‌شوند (الگوی FitnessProfile و WorkoutPlan).
+
+model NutritionPlan {
+  id               String   @id @default(cuid())
+  userId           String
+  title            String
+  // ورودی‌های موتور (snapshot تنظیمات کاربر)
+  goal             String // weight_loss | muscle_gain | maintain
+  activityLevel    String // sedentary | light | moderate | active | very_active
+  dietPattern      String   @default("none") // none | vegetarian | vegan
+  mealsPerDay      Int // ۳ تا ۶
+  planLength       Int // ۱ یا ۷ (روز)
+  allergensJson    String   @default("[]") // آلرژن‌های حذف‌شده
+  dislikedFoodIdsJson String @default("[]") // مواد نامطلوب
+  budget           String   @default("any") // any | low
+  prep             String   @default("any") // any | simple
+  estimateJson     String   @default("null") // اطلاعات برآورد استفاده‌شده (سن/قد/وزن/جنسیت)
+  // snapshot محاسبات انرژی و درشت‌مغذی — BMR/TDEE/هدف/مکروها/هشدارها
+  calcJson         String
+  // یادداشت‌های عمومی تولیدشده موتور (محدودیت‌ها، راهنماهای صادقانه)
+  notesJson        String   @default("[]")
+  // وضعیت و ردیابی نسخه‌ها
+  caution          Boolean  @default(false) // حالت احتیاط (زیر ۱۸ یا بارداری) — بدون هدف کالری کاهشی
+  status           String   @default("active") // active | archived
+  engineVersion    String // نسخه موتور هنگام تولید
+  foodsVersion     String // نسخه بانک مواد هنگام تولید
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+  user             user     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  days             NutritionPlanDay[]
+
+  @@index([userId, status])
+  @@index([userId, createdAt])
+}
+
+// یک روز برنامه غذایی — ترتیب در برنامه (۱ تا ۷)
+model NutritionPlanDay {
+  id     String @id @default(cuid())
+  planId String
+  order  Int // ترتیب روز
+  plan   NutritionPlan @relation(fields: [planId], references: [id], onDelete: Cascade)
+  meals  NutritionMeal[]
+
+  @@index([planId, order])
+}
+
+// وعده داخل روز — مجموع‌ها از اجزای واقعی محاسبه و هم‌زمان ذخیره می‌شوند
+model NutritionMeal {
+  id      String @id @default(cuid())
+  dayId   String
+  order   Int // ترتیب وعده در روز
+  type    String // breakfast | snack_am | lunch | snack_pm | dinner | snack_ev
+  title   String
+  kcal    Int
+  protein Float
+  carb    Float
+  fat     Float
+  day     NutritionPlanDay @relation(fields: [dayId], references: [id], onDelete: Cascade)
+  items   NutritionMealItem[]
+
+  @@index([dayId, order])
+}
+
+// ماده غذایی داخل وعده — شناسه پایدار بانک + مقدار گرم + snapshot ارزش
+// تخمینی همان مقدار؛ بازسازی نمایش کاملاً از همین snapshot ممکن است.
+model NutritionMealItem {
+  id      String @id @default(cuid())
+  mealId  String
+  order   Int // ترتیب نمایش
+  foodId  String // شناسه پایدار در بانک مواد
+  faName  String
+  enName  String
+  group   String
+  grams   Int
+  kcal    Int
+  protein Float
+  carb    Float
+  fat     Float
+  servingHint String // برچسب سهم متداول بانک هنگام تولید
+  meal    NutritionMeal @relation(fields: [mealId], references: [id], onDelete: Cascade)
+
+  @@index([mealId, order])
 }
