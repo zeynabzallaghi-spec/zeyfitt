@@ -34,12 +34,14 @@ import { faDigits, labelOf, GOAL_OPTIONS, EXPERIENCE_OPTIONS } from "@/lib/profi
 import { jalaliFullLabel, latestWeightEntry } from "@/lib/weight";
 import { useWeightEntries, type UseWeightEntriesResult } from "@/hooks/use-weight-entries";
 import { useWorkoutPlans } from "@/hooks/use-workout-plans";
+import { useNutritionPlans } from "@/hooks/use-nutrition-plans";
 import { usePlanDetail } from "@/hooks/use-plan-detail";
 import { cn } from "@/lib/utils";
 import { EmptyState } from "../shared/empty-state";
 import { RealBadge, StageBadge } from "../shared/badges";
 import { WeightLogCard } from "../shared/weight-log-card";
 import { TodaySessionCard } from "../shared/today-session-card";
+import { NutritionSummaryCard } from "../shared/nutrition-summary-card";
 
 const container: Variants = {
   hidden: {},
@@ -350,6 +352,10 @@ export function DashboardView() {
   const activePlanSummary = plans.find((p) => p.status === "active") ?? null;
   const activePlan = usePlanDetail(activePlanSummary?.id ?? null).plan;
 
+  // برنامه غذایی فعال — خلاصه برای کارت تغذیه داشبورد
+  const { plans: nutritionPlans, loading: nutritionLoading } = useNutritionPlans();
+  const activeNutritionPlan = nutritionPlans.find((p) => p.status === "active") ?? null;
+
   const displayName = fitnessProfile?.displayName ?? user?.name ?? "";
   const goalLabel = fitnessProfile?.goal ? labelOf(GOAL_OPTIONS, fitnessProfile.goal) : null;
   const experienceLabel = fitnessProfile?.experience
@@ -531,6 +537,11 @@ export function DashboardView() {
         {/* روند وزن — فقط از اندازه‌گیری‌های واقعی کاربر */}
         <motion.section variants={fadeUp} aria-label="روند وزن شما" className="lg:col-span-2">
           <WeightLogCard variant="dashboard" data={weightData} />
+        </motion.section>
+
+        {/* برنامه غذایی فعال — خلاصه واقعی؛ بدون کالری مصرف‌شده جعلی */}
+        <motion.section variants={fadeUp} aria-label="برنامه غذایی" className="lg:col-span-1">
+          <NutritionSummaryCard plan={activeNutritionPlan} loading={nutritionLoading} />
         </motion.section>
 
         {/* دسترسی سریع */}

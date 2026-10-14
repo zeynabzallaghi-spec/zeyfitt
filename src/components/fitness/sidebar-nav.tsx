@@ -98,6 +98,7 @@ export function DevStatusCard() {
   const stageStatus: Record<number, string> = {
     3: "حساب کاربری، ورود امن و ذخیره‌سازی دائمی پروفایل با پایگاه داده واقعی فعال است.",
     4: "داشبورد شخصی به داده واقعی حساب شما متصل شد؛ روند وزن با ثبت اندازه‌گیری فعال است.",
+    7: "سیستم تغذیه فعال شد: برآورد انرژی، برنامه وعده‌ها با جایگزینی و فهرست خرید.",
   };
   return (
     <div className="rounded-xl border border-border/60 bg-card/70 p-3.5">

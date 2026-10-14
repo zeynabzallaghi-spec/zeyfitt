@@ -446,9 +446,11 @@ export function generateNutritionPlan(
   }
 
   const lengthLabel = settings.planLength === 7 ? "هفتگی" : "یک‌روزه";
+  // در حالت احتیاط هدف مؤثر «حفظ وزن» است — عنوان و هدف برنامه هم صادقانه همان باشد
+  const effectiveGoal = calc.caution ? "maintain" : settings.goal;
   return {
-    title: `برنامه غذایی ${lengthLabel} — ${NUTRITION_GOAL_LABELS[settings.goal]}`,
-    goal: settings.goal,
+    title: `برنامه غذایی ${lengthLabel} — ${NUTRITION_GOAL_LABELS[effectiveGoal]}`,
+    goal: effectiveGoal,
     dietPattern: settings.dietPattern,
     mealsPerDay: settings.mealsPerDay,
     planLength: settings.planLength,
