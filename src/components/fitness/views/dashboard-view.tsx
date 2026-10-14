@@ -10,11 +10,14 @@ import {
   Box,
   Dumbbell,
   UtensilsCrossed,
-  UserRoundPlus,
+  UserRoundCog,
   Sparkles,
   ClipboardPen,
+  CircleCheck,
+  CloudCheck,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Progress } from "@/components/ui/progress";
 import {
   NAV_ITEMS,
   DEV_STAGES,
@@ -24,6 +27,8 @@ import {
   type ViewId,
 } from "@/lib/nav";
 import { useAppStore } from "@/store/app-store";
+import { useSessionData } from "../session-context";
+import { faDigits } from "@/lib/profile";
 import { cn } from "@/lib/utils";
 import { EmptyState } from "../shared/empty-state";
 import { DemoBadge, StageBadge } from "../shared/badges";
@@ -46,16 +51,25 @@ interface StatCardProps {
   note: string;
   icon: typeof Timer;
   stage: number;
+  /** داده واقعی از حساب کاربر — به‌جای نشان مرحله، نشان «واقعی» می‌گیرد */
+  live?: boolean;
 }
 
-function StatCard({ label, value, note, icon: Icon, stage }: StatCardProps) {
+function StatCard({ label, value, note, icon: Icon, stage, live = false }: StatCardProps) {
   return (
     <div className="group relative overflow-hidden rounded-2xl border border-border/60 bg-card p-5 transition-colors duration-200 hover:border-primary/25">
       <div className="flex items-start justify-between gap-2">
         <span className="flex size-10 items-center justify-center rounded-xl border border-border/50 bg-secondary/50 text-muted-foreground transition-colors group-hover:border-primary/30 group-hover:text-primary">
           <Icon className="size-4.5" strokeWidth={2} aria-hidden="true" />
         </span>
-        <StageBadge stage={stage} />
+        {live ? (
+          <span className="inline-flex items-center gap-1 rounded-md border border-primary/30 bg-primary/10 px-2 py-0.5 text-[10px] font-bold text-primary">
+            <CircleCheck className="size-3" aria-hidden="true" />
+            واقعی
+          </span>
+        ) : (
+          <StageBadge stage={stage} />
+        )}
       </div>
       <p className="mt-4 text-xs font-medium text-muted-foreground">{label}</p>
       <p className="mt-1 text-xl font-extrabold tracking-tight text-foreground/90">{value}</p>
@@ -161,6 +175,8 @@ export function DashboardView() {
   const setActiveView = useAppStore((s) => s.setActiveView);
   const profile = getNavItem("profile");
   const coach3d = getNavItem("coach3d");
+  const { user, profile: fitnessProfile } = useSessionData();
+  const displayName = fitnessProfile?.displayName ?? user?.name ?? "";
 
   return (
     <motion.div variants={container} initial="hidden" animate="show" className="flex flex-col gap-6">
@@ -178,20 +194,21 @@ export function DashboardView() {
               مربی شخصی هوشمند بدنسازی
             </span>
             <h2 id="welcome-heading" className="mt-4 text-2xl font-extrabold leading-snug md:text-3xl">
-              به <span className="text-primary text-glow">مربی هوشمند</span> تناسب اندام خوش آمدید
+              سلام <span className="text-primary text-glow">{displayName || "ورزشکار"}؛</span>
+              {" "}خوش برگشتی
             </h2>
             <p className="mt-3 text-sm leading-7 text-muted-foreground">
-              پروفایل بدنی خود را تکمیل کنید؛ مربی، برنامه تمرینی و غذایی اختصاصی شما را می‌سازد،
-              حرکات را با مربی سه‌بعدی آموزش می‌دهد، عضلات درگیر را به‌صورت بصری مشخص می‌کند و
-              پیشرفت شما را در طول مسیر دنبال می‌کند.
+              پروفایل بدنی شما روی سرور ذخیره شده است. در مراحل بعدی، برنامه تمرینی و غذایی
+              اختصاصی بر اساس همین داده‌ها ساخته می‌شود، حرکات با مربی سه‌بعدی آموزش داده می‌شود
+              و پیشرفت شما در طول مسیر دنبال خواهد شد.
             </p>
             <div className="mt-6 flex flex-wrap items-center gap-3">
               <Button
                 onClick={() => setActiveView(profile.id)}
                 className="font-bold text-primary-foreground glow-lime-sm"
               >
-                <UserRoundPlus className="size-4" aria-hidden="true" />
-                شروع مسیر تناسب اندام
+                <UserRoundCog className="size-4" aria-hidden="true" />
+                مشاهده و ویرایش پروفایل
               </Button>
               <Button
                 variant="outline"
@@ -234,10 +251,19 @@ export function DashboardView() {
           />
           <StatCard
             label="پیشرفت وزن"
-            value="—"
-            note="با ثبت اولین وزن، روند تغییرات فعال می‌شود"
+            value={
+              fitnessProfile?.weightKg
+                ? `${faDigits(fitnessProfile.weightKg)} کیلوگرم`
+                : "—"
+            }
+            note={
+              fitnessProfile?.weightKg
+                ? "وزن ثبت‌شده در پروفایل شما؛ روند تغییرات پس از ثبت وزن‌های دوره‌ای فعال می‌شود"
+                : "با ثبت اولین وزن، روند تغییرات فعال می‌شود"
+            }
             icon={Scale}
-            stage={3}
+            stage={4}
+            live={Boolean(fitnessProfile?.weightKg)}
           />
           <StatCard
             label="وضعیت برنامه"
@@ -281,25 +307,70 @@ export function DashboardView() {
           />
         </motion.section>
 
-        {/* کارت برجسته شروع مسیر */}
-        <motion.section variants={fadeUp} aria-label="شروع مسیر تناسب اندام" className="lg:col-span-1">
+        {/* کارت وضعیت مسیر — بر اساس داده واقعی حساب */}
+        <motion.section variants={fadeUp} aria-label="وضعیت مسیر شما" className="lg:col-span-1">
           <div className="h-full rounded-2xl bg-gradient-to-b from-primary/40 via-primary/15 to-primary/5 p-px">
             <div className="flex h-full flex-col rounded-2xl bg-card p-5 md:p-6">
               <div className="flex items-center gap-2.5">
                 <span className="flex size-9 items-center justify-center rounded-lg border border-primary/35 bg-primary/15 text-primary glow-lime-sm">
                   <Sparkles className="size-4" aria-hidden="true" />
                 </span>
-                <h3 className="text-sm font-bold">مسیر خود را آغاز کنید</h3>
+                <h3 className="text-sm font-bold">وضعیت مسیر شما</h3>
+              </div>
+              <div className="mt-5 flex flex-col gap-1.5">
+                <div className="flex items-center justify-between text-[11px] font-bold">
+                  <span className="text-foreground">تکمیل پروفایل</span>
+                  <span className="text-primary">
+                    {faDigits(fitnessProfile?.completionPercent ?? 0)}٪
+                  </span>
+                </div>
+                <Progress
+                  value={fitnessProfile?.completionPercent ?? 0}
+                  className="h-1.5"
+                  aria-label="درصد تکمیل پروفایل"
+                />
               </div>
               <ol className="mt-5 flex flex-col gap-4">
+                <li className="flex items-start gap-3">
+                  <CircleCheck className="mt-0.5 size-6 shrink-0 text-primary" aria-hidden="true" />
+                  <span className="flex-1 text-xs leading-6 text-foreground/90">
+                    ساخت حساب کاربری و ورود امن
+                    <span className="mt-0.5 block text-[10px] text-muted-foreground/70">
+                      نشست قابل ابطال با کوکی امن
+                    </span>
+                  </span>
+                  <span className="shrink-0 rounded-md border border-primary/30 bg-primary/10 px-2 py-0.5 text-[10px] font-bold text-primary">
+                    انجام شد
+                  </span>
+                </li>
+                <li className="flex items-start gap-3">
+                  <span
+                    className={cn(
+                      "flex size-6 shrink-0 items-center justify-center rounded-full border text-[11px] font-extrabold",
+                      fitnessProfile?.complete
+                        ? "border-primary/35 bg-primary/10 text-primary"
+                        : "border-border/50 bg-secondary/40 text-muted-foreground"
+                    )}
+                    aria-hidden="true"
+                  >
+                    {faDigits(2)}
+                  </span>
+                  <span className="flex-1 text-xs leading-6 text-foreground/90">
+                    تکمیل و به‌روزرسانی پروفایل بدنی
+                  </span>
+                  {fitnessProfile?.complete && (
+                    <span className="shrink-0 rounded-md border border-primary/30 bg-primary/10 px-2 py-0.5 text-[10px] font-bold text-primary">
+                      کامل
+                    </span>
+                  )}
+                </li>
                 {[
-                  { text: "ساخت حساب کاربری و تکمیل پروفایل بدنی", stage: 2 },
                   { text: "دریافت برنامه تمرینی و غذایی اختصاصی", stage: 7 },
-                  { text: "تمرین با مربی سه‌بعدی و پیگیری پیشرفت", stage: 4 },
+                  { text: "ثبت جلسات و پیگیری پیشرفت واقعی", stage: 4 },
                 ].map((step, i) => (
                   <li key={i} className="flex items-start gap-3">
-                    <span className="flex size-6 shrink-0 items-center justify-center rounded-full border border-primary/35 bg-primary/10 text-[11px] font-extrabold text-primary">
-                      {(i + 1).toLocaleString("fa-IR")}
+                    <span className="flex size-6 shrink-0 items-center justify-center rounded-full border border-border/50 bg-secondary/40 text-[11px] font-extrabold text-muted-foreground">
+                      {faDigits(i + 3)}
                     </span>
                     <span className="flex-1 text-xs leading-6 text-foreground/90">{step.text}</span>
                     <StageBadge stage={step.stage} />
@@ -310,11 +381,12 @@ export function DashboardView() {
                 onClick={() => setActiveView(profile.id)}
                 className="mt-6 w-full font-bold text-primary-foreground glow-lime-sm"
               >
-                شروع کنید
+                <CloudCheck className="size-4" aria-hidden="true" />
+                ویرایش پروفایل روی سرور
                 <ChevronLeft className="size-4" aria-hidden="true" />
               </Button>
               <p className="mt-3 text-center text-[10px] leading-5 text-muted-foreground/70">
-                ساخت حساب کاربری در مرحله ۲ فعال می‌شود
+                اطلاعات شما به‌صورت دائمی در پایگاه داده سرور ذخیره می‌شود
               </p>
             </div>
           </div>

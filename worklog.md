@@ -84,3 +84,37 @@ Stage Summary:
 - معماری داده/رندر جداست: افزودن حرکت جدید فقط با یک آبجکت ExerciseDef انجام می‌شود و جایگزینی با GLB ساختار را نمی‌شکند
 - صادقfulness حفظ شد: مدل پروسیجرال (نه GLB)، هایلایت = نمایش گرافیکی هدف (نه EMG)، زوایای شنا/لانج تقریبی — همه در خود صفحه درج شده
 - وضعیت: مرحله دوم کامل شد — در انتظار تأیید کاربر برای مرحله سوم
+
+---
+Task ID: 3
+Agent: Super Z (main agent)
+Task: مرحله سوم — حساب کاربری، احراز هویت و پایگاه داده واقعی (ثبت‌نام/ورود/خروج، پروفایل دائمی، onboarding، امنیت)
+
+Work Log:
+- بررسی معماری: LocalBackend/Api.req در پروژه وجود نداشت (داده پروفایل فقط پیش‌نویس درون‌نشست zustand بود)؛ PostgreSQL/MySQL در سندباکس در دسترس نبودند (psql/mysqld یافت نشد)
+- انتخاب stack: Prisma + SQLite فایل سرور (db/custom.db) + better-auth@1.7.8 + bcryptjs@3.0.3 (next-auth v4 موجود به‌دلیل ناسازگاری Next 16 و نشست JWT غیرقابل‌ابطال کنار گذاشته شد)
+- prisma/schema.prisma: جدول‌های قراردادی better-auth (user/account/session/verification) + FitnessProfile یک‌به‌یک با Cascade؛ حذف مدل‌های بلااستفاده User/Post قالب اولیه؛ آرایه‌ها به‌صورت JSON (محدودیت SQLite) با mapper ایمن در src/lib/profile.ts
+- .env: تولید BETTER_AUTH_SECRET با openssl (فقط سمت سرور)؛ db:push موفق + تولید Prisma Client
+- src/lib/auth.ts: bcrypt cost 12 (hash/verify سفارشی)، نشست دیتابیسی ۷روزه با updateAge روزانه، محدودسازی نرخ (ورود/ثبت‌نام ۵ در دقیقه، customRules)، نرمال‌سازی ایمیل + سیاست رمز (حرف+رقم) با hook، cookiePrefix=fitcoach، trustedOrigins پویا از هدر Host برای دامنه پیش‌نمایش
+- مسیرها: /api/auth/[...all] (toNextJsHandler)، /api/profile (GET/PUT با Zod سمت سرور، userId فقط از نشست)، /api/account (DELETE با Cascade)؛ خطاها بدون stack trace؛ console.error فقط نام Exception
+- src/lib/profile.ts مشترک کلاینت/سرور: کدهای گزینه + برچسب فارسی، profilePayloadSchema (Zod، پیام فارسی، پذیرش ارقام فارسی/عربی و ٫)، computeProfileStatus، toClientProfile، normalizeDigits/faDigits/normalizeEmail
+- src/lib/db.ts: لاگ کوئری به error محدود شد (حریم خصوصی اطلاعات سلامت)
+- page.tsx: dynamic + بررسی نشست/پروفایل در سرور؛ AppRoot سه‌حالته (auth-view / onboarding-view / AppShell) با SessionProvider (الگوی sync props در رندر، بدون effect)
+- auth-view: دو ستونه دسکتاپ + کارت تک‌ستونه موبایل، تب ورود/ثبت‌نام، خطای غیرافشاگر فارسی، نمایش رمز، پذیرش شرایط با Dialog محتوای واقعی، شفافیت «تأیید ایمیل/بازیابی رمز فعلاً نیست»
+- onboarding-view: ۴ گام (معرفی/مشخصات بدنی/هدف و سطح/تجهیزات و محدودیت‌ها) با نوار پیشرفت، اعتبارسنجی گام‌به‌گام، ذخیره PUT و ورود به داشبورد
+- profile-view: اتصال واقعی (GET اولیه + PUT ذخیره + بازگرداندن به نسخه سرور)، بخش جدید «حساب کاربری و امنیت» (ایمیل readonly، تاریخ عضویت شمسی، خروج، حذف کامل حساب با AlertDialog)، Select های کنترل‌شده (رفع هشدار uncontrolled→controlled)
+- header: UserChip با DropdownMenu RTL (نام/ایمیل، پروفایل، خروج destructive)؛ dashboard: خوشامگویی شخصی «سلام {نام}»، وزن واقعی با نشان «واقعی»، کارت «وضعیت مسیر» با درصد تکمیل و گام انجام‌شده
+- nav.ts: CURRENT_STAGE=3؛ کارت وضعیت نوار کناری «مرحله ۳ از ۱۳»؛ حذف ProfileDraft از fitness-store (فقط چت ماند)؛ ری‌استارت خروج/حذف‌حساب به نمای داشبورد
+- رفع خطاها: customRules (نه specialRules) در نسخه 1.7.8، امضای trustedOrigins با Request اختیاری، set-state-in-effect (الگوی رسمی React)، JSX در try/catch (useSyncExternalStore برای تاریخ شمسی)
+- تست‌های curl: ثبت‌نام/نرمال‌سازی ایمیل، ایمیل تکراری 422، رمز ضعیف 400 (PASSWORD_POLICY/PASSWORD_TOO_SHORT)، ایمیل نامعتبر 400، ورود نادرست 401 غیرافشاگر، کوکی HttpOnly با انقضای ۷ روزه، GET/PUT پروفایل با ارقام فارسی، ویرایش ماندگار، اعتبارسنجی سرور 400 با پیام فارسی، 401 بدون نشست، جعل userId توسط کاربر B نادیده گرفته شد، ابطال نشست پس از خروج (کوکی قدیمی → 401)، محدودیت نرخ (۵ تلاش → 429)، حذف حساب + رد ورود بعدی
+- دیتابیس مستقیم: ۳ کاربر/۳ پروفایل/۳ نشست/۳ account، هش $2b$12$ (بدون متن ساده)، حذف آبشاری بدون ردیف یتیم (bun scripts/db-check.ts)
+- SSR: مهمان فقط auth-view؛ کاربر واردشده داشبورد شخصی — بدون نشت داده خصوصی
+- agent-browser: ثبت‌نام کامل → onboarding ۴ گام با ارقام فارسی و Radix Select → داشبورد شخصی‌سازی‌شده، ویرایش وزن ۶۲٫۵→۶۳٫۵ + توست موفق + ماندگاری پس از reload، خروج/ورود مجدد، مربی سه‌بعدی سالم (پخش/شمارنده/هایلایت)، موبایل ۳۹۰px بدون سرریز، منوی کاربر، کنسول صفر خطا در نشست تازه (خطای هیدراتیشن مشاهده‌شده فقط آرتیفکت HMR ویرایش زنده بود)، dev.log پاک
+- اصلاح UX یافته در تست: پس از خروج، نمای فعال به داشبورد بازنشانی می‌شود
+
+Stage Summary:
+- حساب کاربری واقعی و امن فعال است: ثبت‌نام (bcrypt 12)، ورود با خطای غیرافشاگر، نشست دیتابیسی قابل ابطال ۷ روزه با کوکی HttpOnly/SameSite(+Secure روی HTTPS)، محدودسازی نرخ ۵/دقیقه، نرمال‌سازی ایمیل، اعتبارسنجی دوطرفه با پیام فارسی
+- پروفایل در SQLite ذخیره و پس از reload بازیابی می‌شود؛ ایزولاسیون کامل کاربران (userId فقط از نشست)؛ حذف حساب آبشاری
+- onboarding ۴ گام فارسی + داشبورد شخصی‌سازی‌شده با وضعیت تکمیل پروفایل و وزن واقعی (نشان «واقعی»)
+- PostgreSQL در سندباکس نبود → SQLite مستند شد؛ مسیر مهاجرت در docs/database-setup.md؛ تأیید ایمیل/بازیابی رمز شفافاً اعلام نشده باقی مانده و جدول verification آماده است
+- وضعیت: مرحله سوم کامل شد — در انتظار تأیید کاربر برای مرحله چهارم

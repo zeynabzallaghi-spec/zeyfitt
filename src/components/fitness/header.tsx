@@ -1,9 +1,18 @@
 "use client";
 
 import { useSyncExternalStore } from "react";
-import { Menu, Box, Bot } from "lucide-react";
+import { Menu, Box, Bot, LogOut, UserRoundCog } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { useAppStore } from "@/store/app-store";
+import { useSessionData } from "./session-context";
 import { getNavItem } from "@/lib/nav";
 
 const jalaliFormatter = new Intl.DateTimeFormat("fa-IR", { dateStyle: "full" });
@@ -70,6 +79,55 @@ function HeaderQuickButton({
   );
 }
 
+/** چیپ کاربر واردشده — نام + منوی پروفایل و خروج */
+function UserChip() {
+  const { user, signOut } = useSessionData();
+  const setActiveView = useAppStore((s) => s.setActiveView);
+
+  if (!user) return null;
+  const initial = user.name.trim().charAt(0) || "؟";
+
+  return (
+    <DropdownMenu dir="rtl">
+      <DropdownMenuTrigger asChild>
+        <button
+          type="button"
+          aria-label="منوی حساب کاربری"
+          className="flex items-center gap-2 rounded-full border border-border/60 bg-secondary/40 py-1 ps-1 pe-2.5 transition-colors outline-none focus-visible:ring-2 focus-visible:ring-ring/60 hover:border-primary/40"
+        >
+          <span
+            aria-hidden="true"
+            className="flex size-7 items-center justify-center rounded-full bg-gradient-to-br from-primary to-[oklch(0.78_0.2_145)] text-[11px] font-extrabold text-primary-foreground"
+          >
+            {initial}
+          </span>
+          <span className="hidden max-w-28 truncate text-xs font-bold text-foreground sm:block">
+            {user.name}
+          </span>
+        </button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end" className="w-56">
+        <DropdownMenuLabel className="flex flex-col">
+          <span className="truncate font-bold">{user.name}</span>
+          <span dir="ltr" className="truncate text-[10px] font-normal text-muted-foreground">
+            {user.email}
+          </span>
+        </DropdownMenuLabel>
+        <DropdownMenuSeparator />
+        <DropdownMenuItem onClick={() => setActiveView("profile")}>
+          <UserRoundCog className="size-4" aria-hidden="true" />
+          پروفایل و تنظیمات
+        </DropdownMenuItem>
+        <DropdownMenuSeparator />
+        <DropdownMenuItem variant="destructive" onClick={() => void signOut()}>
+          <LogOut className="size-4" aria-hidden="true" />
+          خروج از حساب
+        </DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+}
+
 export function AppHeader() {
   const setMobileNavOpen = useAppStore((s) => s.setMobileNavOpen);
   const activeView = useAppStore((s) => s.activeView);
@@ -110,6 +168,8 @@ export function AppHeader() {
         <span className="mx-1 hidden h-5 w-px bg-border/60 md:block" aria-hidden="true" />
         <HeaderQuickButton viewId="coach3d" label="مربی سه‌بعدی" icon={Box} />
         <HeaderQuickButton viewId="assistant" label="دستیار هوشمند" icon={Bot} />
+        <span className="mx-1 hidden h-5 w-px bg-border/60 md:block" aria-hidden="true" />
+        <UserChip />
       </div>
     </header>
   );

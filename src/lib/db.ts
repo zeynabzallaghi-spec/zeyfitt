@@ -7,7 +7,9 @@ const globalForPrisma = globalThis as unknown as {
 export const db =
   globalForPrisma.prisma ??
   new PrismaClient({
-    log: ['query'],
+    // حریم خصوصی: کوئری‌ها مقادیر پارامترها (اطلاعات سلامت و پروفایل) را در
+    // برمی‌دارند؛ فقط خطاها لاگ می‌شوند.
+    log: ['error'],
   })
 
 if (process.env.NODE_ENV !== 'production') globalForPrisma.prisma = db

@@ -1,8 +1,14 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
-// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+// AI Fitness Coach — اسکیمای پایگاه داده (Prisma + SQLite)
+//
+// ساختار جدول‌های احراز هویت (user / account / session / verification) مطابق
+// قرارداد کتابخانه better-auth است؛ hash رمز عبور در جدول account (providerId = "credential")
+// نگهداری می‌شود و هیچ‌گاه متن ساده نیست (bcrypt با cost ۱۲).
+//
+// جدول FitnessProfile با رابطه یک‌به‌یک و حذف آبشاری به user متصل است.
+//
+// نکته SQLite: Prisma روی SQLite «لیست اسکالر» ندارد؛ فهرست‌ها (تجهیزات،
+// محدودیت‌ها، آلرژی‌ها) به‌صورت رشته JSON ذخیره می‌شوند و در لایه سرویس
+// تبدیل (marshal/unmarshal) می‌شوند.
 
 generator client {
   provider = "prisma-client-js"
@@ -13,20 +19,93 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-model User {
-  id        String   @id @default(cuid())
-  email     String   @unique
-  name      String?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+// ----------------------------------------
+// جدول‌های احراز هویت — قرارداد better-auth
+// ----------------------------------------
+
+model user {
+  id            String    @id
+  name          String
+  email         String    @unique
+  emailVerified Boolean   @default(false)
+  image         String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  sessions      session[]
+  accounts      account[]
+  fitnessProfile FitnessProfile?
 }
 
-model Post {
-  id        String   @id @default(cuid())
-  title     String
-  content   String?
-  published Boolean  @default(false)
-  authorId  String
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+model account {
+  id                    String    @id
+  userId                String
+  accountId             String
+  providerId            String
+  accessToken           String?
+  refreshToken          String?
+  idToken               String?
+  accessTokenExpiresAt  DateTime?
+  refreshTokenExpiresAt DateTime?
+  scope                 String?
+  password              String?
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+  user                  user      @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model session {
+  id             String    @id
+  userId         String
+  token          String    @unique
+  expiresAt      DateTime
+  ipAddress      String?
+  userAgent      String?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+  impersonatedBy String?
+  user           user      @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model verification {
+  id         String   @id
+  identifier String
+  value      String
+  expiresAt  DateTime
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+}
+
+// ----------------------------------------
+// پروفایل تناسب اندام — یک‌به‌یک با user
+// ----------------------------------------
+
+model FitnessProfile {
+  id                  String   @id @default(cuid())
+  userId              String   @unique
+  // هویت نمایشی
+  displayName         String
+  // مشخصات بدنی
+  age                 Int?
+  gender              String? // male | female | undisclosed (اختیاری — برای فرمول‌های آینده)
+  heightCm            Float?
+  weightKg            Float?
+  bodyFat             Float? // اختیاری — در صورت اطلاع کاربر
+  // هدف و سطح
+  goal                String? // fat_loss | muscle_gain | strength | maintain | fitness
+  experience          String? // beginner | intermediate | advanced
+  trainingDaysPerWeek Int? // ۱ تا ۷
+  sessionMinutes      Int? // مدت هر جلسه (اختیاری)
+  // تجهیزات و محدودیت‌ها (محرمانه — فقط برای همین کاربر)
+  equipmentJson       String   @default("[]") // آرایه JSON از کدهای تجهیزات
+  limitationsJson     String   @default("[]") // آرایه JSON از کدهای محدودیت
+  limitationNotes     String? // توضیح آزاد کاربر (اختیاری)
+  // ترجیحات غذایی (برای مرحله تغذیه)
+  diet                String?
+  allergiesJson       String   @default("[]") // آرایه JSON از کدهای آلرژی
+  // واحد اندازه‌گیری
+  units               String   @default("metric") // metric | imperial
+  // زمان‌ها
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+  user                user     @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
