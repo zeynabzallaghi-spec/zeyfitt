@@ -1,6 +1,6 @@
 "use client";
 
-import { NAV_ITEMS } from "@/lib/nav";
+import { CURRENT_STAGE, NAV_ITEMS } from "@/lib/nav";
 import { useAppStore } from "@/store/app-store";
 import { cn } from "@/lib/utils";
 import { Progress } from "@/components/ui/progress";
@@ -95,6 +95,10 @@ export function SidebarNav() {
 
 /** کارت وضعیت توسعه — شفافیت درباره مرحله جاری محصول */
 export function DevStatusCard() {
+  const stageStatus: Record<number, string> = {
+    3: "حساب کاربری، ورود امن و ذخیره‌سازی دائمی پروفایل با پایگاه داده واقعی فعال است.",
+    4: "داشبورد شخصی به داده واقعی حساب شما متصل شد؛ روند وزن با ثبت اندازه‌گیری فعال است.",
+  };
   return (
     <div className="rounded-xl border border-border/60 bg-card/70 p-3.5">
       <div className="flex items-center justify-between gap-2">
@@ -103,13 +107,17 @@ export function DevStatusCard() {
           وضعیت توسعه
         </span>
         <span className="rounded-md border border-primary/30 bg-primary/10 px-2 py-0.5 text-[10px] font-bold text-primary">
-          مرحله ۳ از ۱۳
+          مرحله {CURRENT_STAGE.toLocaleString("fa-IR")} از ۱۳
         </span>
       </div>
-      <Progress value={23} className="mt-3 h-1.5" aria-label="پیشرفت کل مراحل توسعه" />
+      <Progress
+        value={Math.round((CURRENT_STAGE / 13) * 100)}
+        className="mt-3 h-1.5"
+        aria-label="پیشرفت کل مراحل توسعه"
+      />
       <p className="mt-2.5 text-[10px] leading-relaxed text-muted-foreground">
-        حساب کاربری، ورود امن و ذخیره‌سازی دائمی پروفایل با پایگاه داده واقعی فعال است.
-        مرحله بعد پس از تأیید شما آغاز می‌شود.
+        {stageStatus[CURRENT_STAGE] ?? "محصول در حال توسعه است."} مرحله بعد پس از تأیید شما
+        آغاز می‌شود.
       </p>
     </div>
   );

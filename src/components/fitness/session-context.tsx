@@ -4,6 +4,7 @@ import { createContext, useCallback, useContext, useState } from "react";
 import { useRouter } from "next/navigation";
 import { authClient } from "@/lib/auth-client";
 import { useAppStore } from "@/store/app-store";
+import { useJourneyStore } from "@/store/journey-store";
 import type { SessionUser } from "@/lib/auth";
 import type { FitnessProfileClient } from "@/lib/profile";
 
@@ -68,8 +69,9 @@ export function SessionProvider({
     } catch {
       // حتی در صورت خطای شبکه، نشست محلی پاک می‌شود
     }
-    // بازگشت به نمای پیش‌فرض برای شروع تمیز نشست بعدی
+    // پاک‌سازی داده خصوصی رابط (از جمله وضعیت مسیر شخصی کاربر)
     useAppStore.getState().setActiveView("dashboard");
+    useJourneyStore.getState().resetJourney();
     setUser(null);
     setProfileState(null);
     router.refresh();
@@ -85,6 +87,7 @@ export function SessionProvider({
     }
     if (ok) {
       useAppStore.getState().setActiveView("dashboard");
+      useJourneyStore.getState().resetJourney();
       setUser(null);
       setProfileState(null);
       router.refresh();

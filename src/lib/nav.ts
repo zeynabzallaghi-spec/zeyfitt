@@ -38,7 +38,7 @@ export const NAV_ITEMS: NavItem[] = [
     id: "dashboard",
     fa: "داشبورد",
     en: "Dashboard",
-    description: "نمای کلی وضعیت بدنی، تمرین امروز و اهداف روزانه شما",
+    description: "مرکز مدیریت مسیر تناسب اندام شما با داده واقعی حساب کاربری",
     icon: LayoutDashboard,
     stage: 0,
     features: [],
@@ -148,7 +148,7 @@ export function getNavItem(id: ViewId): NavItem {
 }
 
 /** مرحله جاری توسعه — مرجع واحد برای داشبورد و کارت وضعیت */
-export const CURRENT_STAGE = 3;
+export const CURRENT_STAGE = 4;
 
 /** نقشه راه ۱۳ مرحله‌ای توسعه محصول — برای نمایش وضعیت شفاف در داشبورد */
 export interface DevStage {

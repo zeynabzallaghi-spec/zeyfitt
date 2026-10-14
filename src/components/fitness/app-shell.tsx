@@ -1,9 +1,12 @@
 "use client";
 
 import { AnimatePresence, motion } from "framer-motion";
+import { useEffect } from "react";
 import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
 import { useAppStore } from "@/store/app-store";
+import { useJourneyStore, type JourneyVisitKey } from "@/store/journey-store";
 import { getNavItem } from "@/lib/nav";
+import { useSessionData } from "./session-context";
 import { BrandMark, SidebarNav, DevStatusCard } from "./sidebar-nav";
 import { AppHeader } from "./header";
 import { DashboardView } from "./views/dashboard-view";
@@ -26,6 +29,25 @@ function SidebarContent() {
       <DevStatusCard />
     </div>
   );
+}
+
+/**
+ * ثبت واقعی بازدید بخش‌ها برای گام‌های مسیر شروع — بازدیدهای
+ * coach3d/library/workout برای کاربر واردشده علامت می‌خورند.
+ */
+function JourneyTracker() {
+  const activeView = useAppStore((s) => s.activeView);
+  const { user } = useSessionData();
+  const markVisited = useJourneyStore((s) => s.markVisited);
+
+  useEffect(() => {
+    const journeyViews: JourneyVisitKey[] = ["coach3d", "library", "workout"];
+    if (user && journeyViews.includes(activeView as JourneyVisitKey)) {
+      markVisited(user.id, activeView as JourneyVisitKey);
+    }
+  }, [activeView, user, markVisited]);
+
+  return null;
 }
 
 /** نگاشت بخش فعال به نمای مربوطه */
@@ -81,6 +103,7 @@ export function AppShell() {
 
       {/* ستون اصلی محتوا */}
       <div className="flex min-w-0 flex-1 flex-col">
+        <JourneyTracker />
         <AppHeader />
 
         <main className="flex-1 px-4 py-6 md:px-8 md:py-8">

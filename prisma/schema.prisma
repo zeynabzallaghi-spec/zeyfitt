@@ -34,6 +34,7 @@ model user {
   sessions      session[]
   accounts      account[]
   fitnessProfile FitnessProfile?
+  weightEntries weightEntry[]
 }
 
 model account {
@@ -108,4 +109,21 @@ model FitnessProfile {
   createdAt           DateTime @default(now())
   updatedAt           DateTime @updatedAt
   user                user     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+// ----------------------------------------
+// اندازه‌گیری وزن — تاریخچه شخصی هر کاربر
+// ----------------------------------------
+// روند تغییر وزن فقط با اندازه‌گیری‌های تاریخ‌دار معنا دارد؛ وزن لحظه‌ای
+// پروفایل جدا نگه داشته می‌شود و با این تاریخچه اشتباه گرفته نمی‌شود.
+
+model weightEntry {
+  id         String   @id @default(cuid())
+  userId     String
+  weightKg   Float
+  recordedAt DateTime // تاریخ ثبت اندازه‌گیری (نیمه‌روزها به ابتدای روز)
+  createdAt  DateTime @default(now())
+  user       user     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, recordedAt])
 }

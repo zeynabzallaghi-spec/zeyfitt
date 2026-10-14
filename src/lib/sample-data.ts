@@ -182,18 +182,3 @@ export const SAMPLE_EXERCISES: SampleExercise[] = [
   },
 ];
 
-/** داده نمونه نمایشی نمودار پیشرفت هفتگی (دقیقه فعالیت تمرینی) */
-export interface WeeklyPoint {
-  day: string;
-  minutes: number;
-}
-
-export const WEEKLY_SAMPLE_DATA: WeeklyPoint[] = [
-  { day: "شنبه", minutes: 45 },
-  { day: "یکشنبه", minutes: 0 },
-  { day: "دوشنبه", minutes: 60 },
-  { day: "سه‌شنبه", minutes: 40 },
-  { day: "چهارشنبه", minutes: 0 },
-  { day: "پنجشنبه", minutes: 30 },
-  { day: "جمعه", minutes: 75 },
-];

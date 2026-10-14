@@ -1,8 +1,23 @@
 "use client";
 
-import { FlaskConical } from "lucide-react";
+import { FlaskConical, CircleCheck } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { Difficulty } from "@/lib/sample-data";
+
+/** نشان «واقعی» — داده‌ای که مستقیماً از پایگاه داده سرور آمده است */
+export function RealBadge({ className }: { className?: string }) {
+  return (
+    <span
+      className={cn(
+        "inline-flex items-center gap-1 rounded-md border border-primary/30 bg-primary/10 px-2 py-0.5 text-[10px] font-bold text-primary",
+        className
+      )}
+    >
+      <CircleCheck className="size-3" aria-hidden="true" />
+      واقعی
+    </span>
+  );
+}
 
 /** نشان «نمونه نمایشی» — رنگ کهربایی متمایز از رنگ تأکیدی محصول */
 export function DemoBadge({
