@@ -16,10 +16,10 @@ fi
 
 echo "[push] Pushing branch '$BRANCH' to origin..."
 if git push -u origin "$BRANCH"; then
-  echo "[push] ✔ Pushed successfully to https://github.com/zeynabzallaghi-spec/ai-fitness-coach"
+  echo "[push] ✔ Pushed successfully to https://github.com/zeynabzallaghi-spec/zeyfitt"
 else
-  echo "[push] ✖ Push failed — most likely the repo does not exist yet."
-  echo "[push]   Create it at: https://github.com/new  (name: ai-fitness-coach, owner: zeynabzallaghi-spec)"
+  echo "[push] ✖ Push failed — check token permissions (needs Contents: Read and write)."
+  echo "[push]   Repo: https://github.com/zeynabzallaghi-spec/zeyfitt"
   echo "[push]   Then re-run:  bash scripts/push-to-github.sh"
   exit 1
 fi
