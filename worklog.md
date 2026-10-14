@@ -192,3 +192,20 @@ Stage Summary:
 - BLOCKER: repo zeynabzallaghi-spec/ai-fitness-coach does not exist and token cannot create it
 - Unblock options: (a) user creates repo manually at github.com/new then we re-push, or (b) new PAT with Administration->Read and write
 - From now on every change is pushed via: bash scripts/push-to-github.sh "message"
+
+---
+Task ID: push-2
+Agent: main
+Task: Push to GitHub with corrected token (contents=write)
+
+Work Log:
+- User delivered 3rd fine-grained PAT; verified user zeynabzallaghi-spec
+- Permission test: metadata read OK, contents write OK (API PUT .write-test succeeded)
+- Repo zeynabzallaghi-spec/zeyfitt created manually by user (public, default branch main)
+- Pointed origin at zeyfitt with new token; remote had 1 test commit -> force-pushed main (b349455)
+- Verified: remote HEAD == local HEAD, .write-test removed (404), repo live
+
+Stage Summary:
+- https://github.com/zeynabzallaghi-spec/zeyfitt now hosts full project history (main)
+- From now on: every change -> bash scripts/push-to-github.sh "message"
+- NOTE: repo is PUBLIC; .env contains only local SQLite path (no secrets) - safe, but flag to user
