@@ -12,7 +12,7 @@ import { AppHeader } from "./header";
 import { DashboardView } from "./views/dashboard-view";
 import { Coach3DView } from "./views/coach3d-view";
 import { LibraryView } from "./views/library-view";
-import { WorkoutView } from "./views/workout-view";
+import { WorkoutView } from "./views/workout/workout-view";
 import { NutritionView } from "./views/nutrition-view";
 import { ProgressView } from "./views/progress-view";
 import { AssistantView } from "./views/assistant-view";

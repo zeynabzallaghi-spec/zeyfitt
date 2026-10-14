@@ -1,12 +1,12 @@
 /**
- * پاک‌سازی کاربران موقت تست API مرحله ۴ — فقط حساب‌های dbg/p4 حذف می‌شوند.
+ * پاک‌سازی کاربران موقت تست API/مرورگر — فقط حساب‌های dbg/p4/p6 حذف می‌شوند؛ حساب‌های واقعی و نمایشی دست‌نخورده می‌مانند.
  * اجرا: bun scripts/cleanup-test-users.ts
  */
 import { PrismaClient } from "@prisma/client";
 
 const db = new PrismaClient();
 
-const PREFIXES = ["p4-user-", "dbg", "dbg2-", "dbg3-"];
+const PREFIXES = ["p4-user-", "p6-user-", "p6-browser-", "p6-so-", "p6-dbg-", "dbg", "dbg2-", "dbg3-"];
 
 async function main() {
   const users = await db.user.findMany({ select: { id: true, email: true } });

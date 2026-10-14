@@ -33,10 +33,13 @@ import { useSessionData } from "../session-context";
 import { faDigits, labelOf, GOAL_OPTIONS, EXPERIENCE_OPTIONS } from "@/lib/profile";
 import { jalaliFullLabel, latestWeightEntry } from "@/lib/weight";
 import { useWeightEntries, type UseWeightEntriesResult } from "@/hooks/use-weight-entries";
+import { useWorkoutPlans } from "@/hooks/use-workout-plans";
+import { usePlanDetail } from "@/hooks/use-plan-detail";
 import { cn } from "@/lib/utils";
 import { EmptyState } from "../shared/empty-state";
 import { RealBadge, StageBadge } from "../shared/badges";
 import { WeightLogCard } from "../shared/weight-log-card";
+import { TodaySessionCard } from "../shared/today-session-card";
 
 const container: Variants = {
   hidden: {},
@@ -184,7 +187,7 @@ function JourneyStepRow({ step, index }: { step: JourneyStep; index: number }) {
   );
 }
 
-function JourneyCard() {
+function JourneyCard({ hasActivePlan }: { hasActivePlan: boolean }) {
   const { user, profile } = useSessionData();
   const visited = useJourneyStore((s) => s.visited);
 
@@ -215,9 +218,9 @@ function JourneyCard() {
     },
     {
       icon: CalendarCheck2,
-      title: "رفتن به بخش برنامه تمرینی",
-      description: "برنامه‌ساز در مرحله ۶ فعال می‌شود؛ بازدید شما ثبت می‌ماند",
-      done: Boolean(visited.workout),
+      title: "ساخت برنامه تمرینی شخصی",
+      description: "برنامه‌ساز فعال است؛ برنامه مبتنی بر هدف، سطح و تجهیزات شما می‌سازد و ذخیره می‌کند",
+      done: Boolean(visited.workout) || hasActivePlan,
       target: "workout",
     },
   ];
@@ -257,7 +260,7 @@ function JourneyCard() {
         {doneCount === steps.length ? (
           <p className="mt-auto flex items-start gap-1.5 pt-4 text-[10px] leading-5 text-primary">
             <CircleCheck className="mt-0.5 size-3.5 shrink-0" aria-hidden="true" />
-            همه گام‌های آغازین کامل شد — منتظر برنامه‌ساز تمرینی در مرحله ۶ باشید.
+            همه گام‌های آغازین کامل شد — برای شروع، جلسه اول برنامه فعال را اجرا کنید.
           </p>
         ) : (
           <p className="mt-auto pt-4 text-[10px] leading-5 text-muted-foreground/70">
@@ -341,6 +344,11 @@ export function DashboardView() {
   // داده وزن یک‌بار در داشبورد خوانده می‌شود و به کارت روند وزن پاس داده می‌شود
   const weightData: UseWeightEntriesResult = useWeightEntries();
   const latestWeight = latestWeightEntry(weightData.entries);
+
+  // برنامه فعال کاربر — برای «برنامه امروز» و گام ۴ مسیر شروع
+  const { plans, loading: plansLoading } = useWorkoutPlans();
+  const activePlanSummary = plans.find((p) => p.status === "active") ?? null;
+  const activePlan = usePlanDetail(activePlanSummary?.id ?? null).plan;
 
   const displayName = fitnessProfile?.displayName ?? user?.name ?? "";
   const goalLabel = fitnessProfile?.goal ? labelOf(GOAL_OPTIONS, fitnessProfile.goal) : null;
@@ -481,52 +489,43 @@ export function DashboardView() {
             icon={Target}
             badge={goalLabel ? <LiveBadge /> : <NotRecordedBadge />}
           />
-          {/* جلسات ثبت‌شده — بدون تاریخچه واقعی هیچ عددی نمایش داده نمی‌شود */}
+          {/* جلسات ثبت‌شده — بدون تاریخچه واقعی هیچ عددی نمایش داده نمی‌شود؛
+              ثبت و تحلیل جلسات انجام‌شده مرحله‌ای جداگانه است */}
           <StatCard
             label="جلسات تمرینی ثبت‌شده"
             value="—"
-            note="با فعال شدن برنامه‌ساز تمرینی، تعداد جلسات واقعی شما اینجا شمرده می‌شود"
+            note="ثبت و شمارش جلسات انجام‌شده هنوز پیاده‌سازی نشده؛ برنامه فعال شما در بخش برنامه تمرینی قابل مشاهده است"
             icon={CalendarCheck2}
-            badge={<StageBadge stage={6} />}
+            badge={<NotRecordedBadge />}
           />
         </div>
       </motion.section>
 
       {/* شبکه اصلی */}
       <div className="grid gap-4 lg:grid-cols-3">
-        {/* برنامه امروز — فقط برنامه واقعی؛ در نبود آن حالت خالی صادقانه */}
+        {/* برنامه امروز — فقط برنامه واقعی ذخیره‌شده کاربر */}
         <motion.section
           variants={fadeUp}
           aria-label="برنامه امروز"
           className="rounded-2xl border border-border/60 bg-card p-5 md:p-6 lg:col-span-2"
         >
-          <div className="mb-2 flex items-center gap-2.5">
+          <div className="mb-4 flex items-center gap-2.5">
             <span className="flex size-9 items-center justify-center rounded-lg border border-border/50 bg-secondary/40 text-muted-foreground">
               <CalendarCheck2 className="size-4" aria-hidden="true" />
             </span>
             <h3 className="text-sm font-bold">برنامه امروز</h3>
-            <StageBadge stage={6} className="ms-auto" />
+            {activePlan && <RealBadge className="ms-auto" />}
           </div>
-          <EmptyState
-            icon={ClipboardList}
-            title="هنوز برنامه تمرینی در پایگاه داده ندارید"
-            description="برنامه‌ساز تمرینی در مرحله ۶ فعال می‌شود؛ آن‌گاه برنامه‌ای که واقعاً بر اساس هدف، سطح و تجهیزات شما ساخته شود، اینجا نمایش داده خواهد شد. فعلاً هیچ برنامه‌ای بدون داده واقعی ساخته نمی‌شود."
-            action={
-              <Button
-                variant="outline"
-                onClick={() => setActiveView("workout")}
-                className="border-border/70 font-semibold hover:border-primary/40 hover:text-primary"
-              >
-                رفتن به بخش برنامه تمرینی
-                <ChevronLeft className="size-4" aria-hidden="true" />
-              </Button>
-            }
-          />
+          {plansLoading ? (
+            <div className="h-32 animate-pulse rounded-xl bg-secondary/20" />
+          ) : (
+            <TodaySessionCard plan={activePlan} />
+          )}
         </motion.section>
 
         {/* شروع مسیر تناسب اندام — ۴ گام با وضعیت واقعی */}
         <motion.section variants={fadeUp} aria-label="شروع مسیر تناسب اندام" className="lg:col-span-1">
-          <JourneyCard />
+          <JourneyCard hasActivePlan={Boolean(activePlan)} />
         </motion.section>
 
         {/* روند وزن — فقط از اندازه‌گیری‌های واقعی کاربر */}

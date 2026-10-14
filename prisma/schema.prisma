@@ -35,6 +35,7 @@ model user {
   accounts      account[]
   fitnessProfile FitnessProfile?
   weightEntries weightEntry[]
+  workoutPlans  WorkoutPlan[]
 }
 
 model account {
@@ -126,4 +127,80 @@ model weightEntry {
   user       user     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId, recordedAt])
+}
+
+// ----------------------------------------
+// برنامه تمرینی — شخصی و متعلق به یک کاربر
+// ----------------------------------------
+// هر کاربر می‌تواند چند برنامه داشته باشد؛ در هر لحظه حداکثر یک برنامه
+// «فعال» (status = "active") و بقیه «بایگانی» (status = "archived").
+// تنظیمات برنامه (ورودی موتور برنامه‌سازی) برای شفافیت و بازتولید آینده
+// در خود برنامه ذخیره می‌شود.
+//
+// نکته SQLite: فهرست‌ها به‌صورت رشته JSON ذخیره می‌شوند (همان الگوی
+// FitnessProfile) و در لایه سرویس marshal/unmarshal می‌شوند.
+
+model WorkoutPlan {
+  id              String   @id @default(cuid())
+  userId          String
+  title           String
+  // ورودی‌های موتور برنامه‌سازی (snapshot تنظیمات کاربر)
+  goal            String // fat_loss | muscle_gain | strength | maintain | fitness
+  experience      String // beginner | intermediate | advanced
+  daysPerWeek     Int // ۲ تا ۶
+  sessionMinutes  Int // ۳۰ | ۴۵ | ۶۰ | ۹۰
+  equipmentJson   String   @default("[]") // آرایه شناسه تجهیزات (واژگان بانک حرکات)
+  focus           String   @default("all") // all | upper | lower | شناسه دسته
+  preferredDaysJson String @default("[]") // آرایه ۰ تا ۶ (شنبه=۰) — اختیاری
+  excludedCategoriesJson String @default("[]") // دسته‌های حذف‌شده
+  excludedExerciseIdsJson String @default("[]") // حرکات حذف‌شده
+  limitationNotes String? // توضیح احتیاطی کاربر (snapshot اختیاری)
+  notesJson       String   @default("[]") // راهنماهای عمومی تولیدشده موتور (گرم‌کردن، پیشرفت، …)
+  // وضعیت و ردیابی
+  status          String   @default("active") // active | archived
+  libraryVersion  String // نسخه بانک حرکات هنگام تولید
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  user            user     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  days            WorkoutPlanDay[]
+
+  @@index([userId, status])
+  @@index([userId, createdAt])
+}
+
+// روز یا جلسه تمرینی برنامه — ترتیب در هفته
+model WorkoutPlanDay {
+  id         String @id @default(cuid())
+  planId     String
+  order      Int // ترتیب جلسه در هفته (۱ تا N)
+  weekday    Int? // ۰ تا ۶ (شنبه=۰) — فقط اگر کاربر روز ترجیحی داشته باشد
+  title      String // عنوان جلسه مثل «پوش — سینه و پشت بازو»
+  focusLabel String // برچسب تمرکز مثل «بالاتنه»
+  estMinutes Int // زمان تقریبی جلسه شامل گرم‌کردن
+  plan       WorkoutPlan @relation(fields: [planId], references: [id], onDelete: Cascade)
+  exercises  WorkoutPlanExercise[]
+
+  @@index([planId, order])
+}
+
+// حرکت داخل جلسه — شناسه پایدار بانک + snapshot حداقلی برای مقاومت در برابر
+// تغییر آینده بانک؛ جزئیات کامل اجرا در نمایش از بانک زنده خوانده می‌شود.
+model WorkoutPlanExercise {
+  id               String @id @default(cuid())
+  dayId            String
+  order            Int // ترتیب اجرا در جلسه
+  exerciseId       String // شناسه پایدار در بانک حرکات
+  faName           String // snapshot نام فارسی
+  enName           String // snapshot نام انگلیسی
+  category         String // snapshot دسته
+  coach3dId        String? // snapshot — null یعنی واقعاً بدون انیمیشن (صادقانه)
+  sets             Int
+  repsMin          Int
+  repsMax          Int
+  restSeconds      Int
+  estimatedMinutes Int
+  note             String? // یادداشت کوتاه اجرا (snapshot معرفی حرکت)
+  day              WorkoutPlanDay @relation(fields: [dayId], references: [id], onDelete: Cascade)
+
+  @@index([dayId, order])
 }

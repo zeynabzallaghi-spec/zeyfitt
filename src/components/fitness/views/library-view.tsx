@@ -51,6 +51,7 @@ import {
   EQUIPMENT_TYPES,
   EXERCISE_COUNT,
   EXERCISE_CATEGORIES,
+  getExerciseById,
   findSimilarExercises,
   filterExercises,
   hasActiveFilters,
@@ -505,6 +506,7 @@ export function LibraryView() {
   const item = getNavItem("library");
   const setActiveView = useAppStore((s) => s.setActiveView);
   const setExercise = useCoach3DStore((s) => s.setExercise);
+  const openLibraryExercise = useAppStore((s) => s.openLibraryExercise);
 
   const [query, setQuery] = useState("");
   const [category, setCategory] = useState<ExerciseCategoryId | "all">("all");
@@ -514,8 +516,12 @@ export function LibraryView() {
   const [pattern, setPattern] = useState<MovementPatternId | "all">("all");
   const [only3d, setOnly3d] = useState(false);
 
-  const [selected, setSelected] = useState<LibraryExercise | null>(null);
-  const [dialogOpen, setDialogOpen] = useState(false);
+  // انتخاب دیالوگ از store مرکزی است تا از بخش‌های دیگر برنامه هم قابل
+  // باز شدن باشد (deep-link)؛ بستن دیالوگ همان پاک‌کردن store است.
+  const librarySelectedId = useAppStore((s) => s.librarySelectedId);
+  const closeLibraryExercise = useAppStore((s) => s.closeLibraryExercise);
+  const selected = librarySelectedId ? getExerciseById(librarySelectedId) ?? null : null;
+  const dialogOpen = selected !== null;
 
   const filterState = useMemo(
     () => ({ query, category, muscles, equipment, difficulty, pattern, only3d }),
@@ -538,10 +544,12 @@ export function LibraryView() {
     setOnly3d(false);
   }, []);
 
-  const openDetails = useCallback((ex: LibraryExercise) => {
-    setSelected(ex);
-    setDialogOpen(true);
-  }, []);
+  const openDetails = useCallback(
+    (ex: LibraryExercise) => {
+      openLibraryExercise(ex.id);
+    },
+    [openLibraryExercise]
+  );
 
   /** انتقال واقعی به مربی سه‌بعدی — فقط برای حرکات دارای انیمیشن اختصاصی */
   const openIn3d = useCallback(
@@ -738,7 +746,9 @@ export function LibraryView() {
       <ExerciseDetailsDialog
         exercise={selected}
         open={dialogOpen}
-        onOpenChange={setDialogOpen}
+        onOpenChange={(open) => {
+          if (!open) closeLibraryExercise();
+        }}
         onOpen3d={openIn3d}
         onDetails={openDetails}
       />
