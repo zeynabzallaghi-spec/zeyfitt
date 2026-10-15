@@ -39,6 +39,7 @@ model user {
   nutritionPlans NutritionPlan[]
   workoutSessions WorkoutSession[]
   assistantConversations AssistantConversation[]
+  foodLogEntries FoodLogEntry[]
 }
 
 model account {
@@ -248,6 +249,7 @@ model NutritionPlan {
   updatedAt        DateTime @updatedAt
   user             user     @relation(fields: [userId], references: [id], onDelete: Cascade)
   days             NutritionPlanDay[]
+  foodLogEntries   FoodLogEntry[]
 
   @@index([userId, status])
   @@index([userId, createdAt])
@@ -277,6 +279,7 @@ model NutritionMeal {
   fat     Float
   day     NutritionPlanDay @relation(fields: [dayId], references: [id], onDelete: Cascade)
   items   NutritionMealItem[]
+  foodLogEntries FoodLogEntry[]
 
   @@index([dayId, order])
 }
@@ -298,6 +301,7 @@ model NutritionMealItem {
   fat     Float
   servingHint String // برچسب سهم متداول بانک هنگام تولید
   meal    NutritionMeal @relation(fields: [mealId], references: [id], onDelete: Cascade)
+  foodLogEntries FoodLogEntry[]
 
   @@index([mealId, order])
 }
@@ -425,4 +429,73 @@ model AssistantMessage {
 
   @@index([conversationId, createdAt])
   @@index([userId, role, createdAt])
+}
+
+// ----------------------------------------
+// ثبت مصرف واقعی غذا — آنچه کاربر واقعاً خورده، نه برنامه
+// ----------------------------------------
+// هر ثبت فقط با اقدام صریح کاربر ساخته می‌شود؛ بازدید از صفحه هرگز ثبت
+// نمی‌سازد. ثبت از برنامه مستقل است: حذف یا تغییر برنامه، تاریخچه مصرف را
+// حذف یا بازنویسی نمی‌کند (ارجاع‌های اختیاری با onDelete: SetNull فقط
+// خودشان null می‌شوند و همه اطلاعات نمایشی از snapshot خود رکورد بازسازی
+// می‌شود — مقاوم به تغییر بانک غذا و برنامه).
+//
+// مقادیر انرژی و درشت‌مغذی همیشه سمت سرور و بر پایه داده معتبر بانک یا
+// snapshot معتبر قلم برنامه محاسبه می‌شوند؛ هیچ مقدار تغذیه‌ای از مرورگر
+// پذیرفته نمی‌شود.
+//
+// روز محلی (localDay) با همان قرارداد آمار تمرین است: زمان رسمی ایران
+// (UTC+3:30 ثابت، بدون ساعت تابستانی) — مرز روز با تغییر منطقه زمانی
+// مرورگر جابه‌جا نمی‌شود.
+//
+// جلوگیری از ثبت تکراری در retry/دوبار کلیک: clientRequestId اختیاری و
+// یکتا به‌ازای هر کاربر؛ ارسال مجدد همان درخواست، همان ثبت را برمی‌گرداند
+// نه رکورد جدید (SQLite: NULLها در ایندکس یکتا متمایزند — ثبت‌های بدون
+// کلید محدودیتی ندارند).
+
+model FoodLogEntry {
+  id          String   @id @default(cuid())
+  userId      String
+  // زمان واقعی مصرف — لحظه UTC؛ نمایش محلی از همین مقدار
+  consumedAt  DateTime
+  // روز محلی YYYY-MM-DD با زمان رسمی ایران — کلید تجمیع روزانه
+  localDay    String
+  // نوع وعده — همان enum وعده‌های برنامه غذایی برای سازگاری کامل
+  mealType    String   // breakfast | snack_am | lunch | snack_pm | dinner | snack_ev
+  // منبع ثبت: بانک غذا یا قلم برنامه — هر دو foodId پایدار دارند
+  source      String   // bank | plan_item
+  foodId      String   // شناسه پایدار بانک مواد
+  // snapshot نمایشی و تغذیه‌ای — تاریخچه مستقل از تغییر آینده بانک
+  faName      String
+  enName      String
+  group       String
+  // مقدار ثبت‌شده در واحد انتخابی کاربر + ضریب تبدیل سهم (اگر سهم)
+  unit        String   // g | serving
+  amount      Float
+  servingGramsUsed Float? // snapshot ضریب تبدیل برای unit=serving
+  // مقدار نهایی گرم — پس از تبدیل واحد سمت سرور
+  grams       Float
+  // مقادیر تخمینی همان مقدار — محاسبه سمت سرور (kcal صحیح، مکرو یک اعشار)
+  kcal        Int
+  protein     Float
+  carb        Float
+  fat         Float
+  // ارجاع اختیاری به برنامه — حذف برنامه تاریخچه را دستکاری نمی‌کند
+  planId      String?
+  planMealId  String?
+  planItemId  String?
+  // مقدار پیشنهادی برنامه هنگام ثبت — فقط برای مقایسه شفاف واقعی/پیشنهادی
+  planItemGrams Int?
+  // کلید ایدمپوتنسی سمت کلاینت — یکتا به‌ازای هر کاربر (null مجاز)
+  clientRequestId String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  user        user              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  plan        NutritionPlan?    @relation(fields: [planId], references: [id], onDelete: SetNull)
+  planMeal    NutritionMeal?    @relation(fields: [planMealId], references: [id], onDelete: SetNull)
+  planItem    NutritionMealItem? @relation(fields: [planItemId], references: [id], onDelete: SetNull)
+
+  @@unique([userId, clientRequestId])
+  @@index([userId, localDay])
+  @@index([userId, consumedAt])
 }

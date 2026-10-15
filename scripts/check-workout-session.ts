@@ -10,9 +10,8 @@ import {
   startOfIranWeek,
   iranWeekdayIndex,
   TEHRAN_OFFSET_MS,
-  type SessionSummaryClient,
 } from "../src/lib/workout-session/stats";
-import type { SetLogClient } from "../src/lib/workout-session/types";
+import type { SessionSummaryClient, SetLogClient } from "../src/lib/workout-session/types";
 
 let pass = 0;
 let fail = 0;

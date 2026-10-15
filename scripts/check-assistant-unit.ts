@@ -11,6 +11,7 @@
 import { detectMessageLang, resolveResponseLang } from "../src/lib/assistant/language";
 import { buildSystemPrompt } from "../src/lib/assistant/system-prompt";
 import { buildUserContextBlock } from "../src/lib/assistant/context";
+import { getProviderStatus } from "../src/lib/assistant/provider";
 import { db } from "../src/lib/db";
 import type { PrismaClient } from "@prisma/client";
 
@@ -89,9 +90,8 @@ check("حالت خودکار با متن مبهم → null", null, resolveRespon
 }
 
 function getProviderStatusSafe() {
-  // import دیرهنگام برای خواندن env پس از تغییر
-  const mod = require("../src/lib/assistant/provider");
-  return mod.getProviderStatus();
+  // getProviderStatus هر بار process.env را در لحظه فراخوانی می‌خواند
+  return getProviderStatus();
 }
 
 /* ------------------------------ ۳) پرامپت سیستمی ------------------------------ */

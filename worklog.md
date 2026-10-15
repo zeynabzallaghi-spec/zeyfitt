@@ -332,3 +332,18 @@ Stage Summary:
 - پیامد برای کاربران: نشست‌های قدیمی با secret پیش‌فرض dev امضا شده بودند؛ با secret جدید همه باید دوباره وارد شوند — داده‌ها سالم
 - برای توسعه آینده: حالت dev فقط موقت؛ خطر OOM — بعد از کار dev حتماً build و prod
 - اسکریپت دیمون: python3 scripts/daemon-start.py prod | dev
+
+---
+Task ID: ops-fix-2
+Agent: main
+Task: بررسی لینک publish (r1dpd8r3xpk1-d.space-z.ai) و تفاوت آن با preview
+
+Work Log:
+- لینک publish روی زیرساخت جدا (Function Compute، هدر X-Fc-Request-Id) اجرا می‌شود — همان اپ با پایگاه داده مستقل
+- تست واقعی: صفحه مهمان ۲۰۰ تمیز، ثبت‌نام ۲۰۰، صفحه احرازشده ۲۰۰ تمیز، خطای کارت دیده نشد
+- تشخیص پایگاه داده publish: snapshot گیت در آخرین push (ایمیل testa@example.com → USER_ALREADY_EXISTS؛ کاربر publish-probe در دیتابیس محلی یافت نشد)
+- خطای قبلی کاربر روی publish: از وضعیت خراب قبل از فیکس / کش مرورگر بود
+
+Stage Summary:
+- هر دو لینک سالم‌اند؛ پیش‌نمایش = نمونه زنده توسعه با دیتابیس زنده؛ publish = نسخه منتشرشده با snapshot دیتابیس در لحظه push
+- داده‌های جدید در publish با sandbox همگام نمی‌شود و در publish بعدی با snapshot گیت بازنویسی می‌شود (شفاف برای کاربر اعلام شد)

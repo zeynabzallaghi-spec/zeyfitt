@@ -16,6 +16,7 @@ import {
   Pencil,
   Repeat2,
   ShoppingBasket,
+  Utensils,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -32,6 +33,11 @@ import { NUTRITION_GOAL_LABELS } from "@/lib/nutrition-engine/types";
 import type { NutritionMealItemClient, NutritionPlanClient } from "@/lib/nutrition-storage";
 import { ReplaceItemDialog } from "./replace-dialog";
 import { ShoppingListDialog } from "./shopping-dialog";
+import { FoodLogDialog, type PlanItemPrefill } from "./food-log-dialog";
+import { useFoodLogUiLang } from "@/lib/foodlog/use-ui-lang";
+import { foodLogStrings } from "@/lib/foodlog/i18n";
+import { useFoodLogSync } from "@/store/foodlog-store";
+import { tehranLocalDay } from "@/lib/foodlog/calc";
 
 interface Props {
   plan: NutritionPlanClient;
@@ -58,6 +64,12 @@ export function NutritionPlanDetail({ plan, onChanged }: Props) {
   const [replaceTarget, setReplaceTarget] = useState<PatchTarget | null>(null);
   const [shoppingOpen, setShoppingOpen] = useState(false);
   const [patching, setPatching] = useState(false);
+  // ثبت مصرف واقعی از قلم برنامه — پیش‌پر با مقدار برنامه، ثبت فقط با تأیید
+  const logLang = useFoodLogUiLang();
+  const logStrings = foodLogStrings(logLang);
+  const bumpFoodLogSync = useFoodLogSync((state) => state.bump);
+  const [logPrefill, setLogPrefill] = useState<PlanItemPrefill | null>(null);
+  const [logOpen, setLogOpen] = useState(false);
 
   // پیش‌نمایش زنده تغییر مقدار — از snapshot خود ماده (همان منطق سرور)
   const gramsPreview = (() => {
@@ -269,6 +281,28 @@ export function NutritionPlanDetail({ plan, onChanged }: Props) {
                               <Button
                                 size="sm"
                                 variant="outline"
+                                onClick={() => {
+                                  setLogPrefill({
+                                    planItemId: item.id,
+                                    planMealId: meal.id,
+                                    faName: item.faName,
+                                    enName: item.enName,
+                                    plannedGrams: item.grams,
+                                    mealType: meal.type,
+                                  });
+                                  setLogOpen(true);
+                                }}
+                                className="h-7 border-primary/40 bg-primary/10 px-2 text-[10px] font-bold text-primary hover:bg-primary/20"
+                                aria-label={logLang === "en" ? "Log intake" : "ثبت مصرف"}
+                              >
+                                <Utensils className="size-3" aria-hidden="true" />
+                                <span className="hidden sm:inline">
+                                  {logLang === "en" ? "Log" : "ثبت مصرف"}
+                                </span>
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="outline"
                                 disabled={patching}
                                 onClick={() => {
                                   setPatchTarget({ dayOrder: day.order, mealOrder: meal.order, itemOrder: item.order, item });
@@ -404,6 +438,29 @@ export function NutritionPlanDetail({ plan, onChanged }: Props) {
 
       {/* فهرست خرید */}
       <ShoppingListDialog open={shoppingOpen} onOpenChange={setShoppingOpen} plan={plan} />
+
+      {/* دیالوگ ثبت مصرف واقعی از قلم برنامه — مقدار برنامه پیش‌فرض است، نه ثبت خودکار */}
+      <FoodLogDialog
+        open={logOpen}
+        onOpenChange={setLogOpen}
+        lang={logLang}
+        strings={logStrings}
+        selectedDay={tehranLocalDay(Date.now())}
+        activePlan={plan}
+        prefill={logPrefill}
+        editTarget={null}
+        onChanged={() => {
+          // بخش مصرف واقعی با سیگنال سبک همگام می‌شود؛ خود برنامه تغییری نمی‌کند
+          bumpFoodLogSync();
+        }}
+        onAuthError={() => {
+          toast.error(
+            logLang === "en"
+              ? "Your session has expired; please sign in again."
+              : "نشست شما منقضی شده است؛ دوباره وارد شوید."
+          );
+        }}
+      />
     </div>
   );
 }

@@ -58,6 +58,7 @@ import type { NutritionPlanSummaryClient } from "@/lib/nutrition-storage";
 import { NutritionSettingsForm } from "./nutrition/settings-form";
 import { NutritionPlanPreview } from "./nutrition/plan-preview";
 import { NutritionPlanDetail } from "./nutrition/plan-detail";
+import { FoodLogSection } from "./nutrition/food-log-section";
 
 type Mode = "list" | "form" | "preview";
 
@@ -286,6 +287,13 @@ export function NutritionView() {
 
       {!loading && !error && mode === "list" && (
         <>
+          {/* ثبت مصرف واقعی غذا — مستقل از برنامه، با مقایسه در صورت وجود برنامه فعال */}
+          <FoodLogSection
+            activePlan={
+              activePlanSummary && activeDetail.plan ? activeDetail.plan : null
+            }
+          />
+
           {activePlanSummary && activeDetail.plan && (
             <section aria-label="برنامه غذایی فعال" className="flex flex-col gap-3">
               <div className="flex flex-wrap items-center gap-2">

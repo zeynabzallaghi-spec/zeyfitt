@@ -1,0 +1,640 @@
+     1→"use client";
+     2→
+     3→import { motion, type Variants } from "framer-motion";
+     4→import {
+     5→  CalendarCheck2,
+     6→  ChevronLeft,
+     7→  Box,
+     8→  Dumbbell,
+     9→  UserRoundCog,
+    10→  Sparkles,
+    11→  CloudCheck,
+    12→  CircleCheck,
+    13→  Play,
+    14→  Scale,
+    15→  Ruler,
+    16→  Target,
+    17→  ClipboardList,
+    18→  UserRound,
+    19→  BookOpenText,
+    20→  Compass,
+    21→} from "lucide-react";
+    22→import { toast } from "sonner";
+    23→import { useCallback } from "react";
+    24→import { Button } from "@/components/ui/button";
+    25→import { Progress } from "@/components/ui/progress";
+    26→import {
+    27→  DEV_STAGES,
+    28→  CURRENT_STAGE,
+    29→  getNavItem,
+    30→  type NavItem,
+    31→  type ViewId,
+    32→} from "@/lib/nav";
+    33→import { useAppStore } from "@/store/app-store";
+    34→import { useJourneyStore } from "@/store/journey-store";
+    35→import { useSessionData } from "../session-context";
+    36→import { faDigits, labelOf, GOAL_OPTIONS, EXPERIENCE_OPTIONS } from "@/lib/profile";
+    37→import { jalaliFullLabel, latestWeightEntry } from "@/lib/weight";
+    38→import { useWeightEntries, type UseWeightEntriesResult } from "@/hooks/use-weight-entries";
+    39→import { useWorkoutPlans } from "@/hooks/use-workout-plans";
+    40→import { useNutritionPlans } from "@/hooks/use-nutrition-plans";
+    41→import { usePlanDetail } from "@/hooks/use-plan-detail";
+    42→import { useActiveSession, useWorkoutStats } from "@/hooks/use-workout-sessions";
+    43→import { cn } from "@/lib/utils";
+    44→import { EmptyState } from "../shared/empty-state";
+    45→import { RealBadge, StageBadge } from "../shared/badges";
+    46→import { WeightLogCard } from "../shared/weight-log-card";
+    47→import { TodaySessionCard } from "../shared/today-session-card";
+    48→import { NutritionSummaryCard } from "../shared/nutrition-summary-card";
+    49→
+    50→const container: Variants = {
+    51→  hidden: {},
+    52→  show: { transition: { staggerChildren: 0.06 } },
+    53→};
+    54→const fadeUp: Variants = {
+    55→  hidden: { opacity: 0, y: 14 },
+    56→  show: { opacity: 1, y: 0, transition: { duration: 0.35, ease: "easeOut" } },
+    57→};
+    58→
+    59→/* ---------------------------------- کارت آماری ---------------------------------- */
+    60→
+    61→interface StatCardProps {
+    62→  label: string;
+    63→  value: string;
+    64→  note: string;
+    65→  icon: typeof Scale;
+    66→  /** نشان سمت چپ کارت — بر اساس منبع واقعی داده انتخاب می‌شود */
+    67→  badge: React.ReactNode;
+    68→}
+    69→
+    70→function StatCard({ label, value, note, icon: Icon, badge }: StatCardProps) {
+    71→  return (
+    72→    <div className="group relative overflow-hidden rounded-2xl border border-border/60 bg-card p-5 transition-colors duration-200 hover:border-primary/25">
+    73→      <div className="flex items-start justify-between gap-2">
+    74→        <span className="flex size-10 items-center justify-center rounded-xl border border-border/50 bg-secondary/50 text-muted-foreground transition-colors group-hover:border-primary/30 group-hover:text-primary">
+    75→          <Icon className="size-4.5" strokeWidth={2} aria-hidden="true" />
+    76→        </span>
+    77→        {badge}
+    78→      </div>
+    79→      <p className="mt-4 text-xs font-medium text-muted-foreground">{label}</p>
+    80→      <p className="mt-1 text-xl font-extrabold tracking-tight text-foreground/90">{value}</p>
+    81→      <p className="mt-2 text-[11px] leading-relaxed text-muted-foreground/80">{note}</p>
+    82→    </div>
+    83→  );
+    84→}
+    85→
+    86→/** نشان «واقعی» برای کارت‌هایی که داده واقعی دارند */
+    87→function LiveBadge() {
+    88→  return <RealBadge />;
+    89→}
+    90→
+    91→/** نشان «ثبت نشده» — داده کاربر هنوز وارد نشده (نه قابلیت ساخته‌نشده) */
+    92→function NotRecordedBadge() {
+    93→  return (
+    94→    <span className="inline-flex items-center rounded-md border border-border/50 bg-secondary/40 px-2 py-0.5 text-[10px] font-medium text-muted-foreground">
+    95→      ثبت نشده
+    96→    </span>
+    97→  );
+    98→}
+    99→
+   100→/* ------------------------------- دسترسی سریع (ردیفی) ------------------------------- */
+   101→
+   102→const QUICK_LINKS: ViewId[] = ["coach3d", "library", "workout", "nutrition"];
+   103→
+   104→function QuickLinkRow({ item }: { item: NavItem }) {
+   105→  const setActiveView = useAppStore((s) => s.setActiveView);
+   106→  const Icon = item.icon;
+   107→  return (
+   108→    <button
+   109→      type="button"
+   110→      onClick={() => setActiveView(item.id)}
+   111→      className="group flex w-full items-center gap-3 rounded-xl border border-transparent px-3 py-2.5 text-start transition-all duration-200 hover:border-border/60 hover:bg-secondary/40 outline-none focus-visible:ring-2 focus-visible:ring-ring/60"
+   112→    >
+   113→      <span className="flex size-9 shrink-0 items-center justify-center rounded-lg border border-border/50 bg-secondary/40 text-muted-foreground transition-all group-hover:border-primary/35 group-hover:bg-primary/10 group-hover:text-primary">
+   114→        <Icon className="size-4" strokeWidth={2.1} aria-hidden="true" />
+   115→      </span>
+   116→      <span className="min-w-0 flex-1">
+   117→        <span className="block truncate text-[13px] font-bold text-foreground">{item.fa}</span>
+   118→        <span dir="ltr" className="block text-[10px] text-muted-foreground/70">
+   119→          {item.en}
+   120→        </span>
+   121→      </span>
+   122→      <ChevronLeft
+   123→        className="size-4 shrink-0 text-muted-foreground/40 transition-all group-hover:-translate-x-0.5 group-hover:text-primary"
+   124→        aria-hidden="true"
+   125→      />
+   126→    </button>
+   127→  );
+   128→}
+   129→
+   130→/* ------------------------------ شروع مسیر تناسب اندام ------------------------------ */
+   131→
+   132→interface JourneyStep {
+   133→  icon: typeof UserRound;
+   134→  title: string;
+   135→  description: string;
+   136→  done: boolean;
+   137→  target: ViewId | null;
+   138→}
+   139→
+   140→function JourneyStepRow({ step, index }: { step: JourneyStep; index: number }) {
+   141→  const setActiveView = useAppStore((s) => s.setActiveView);
+   142→  const Icon = step.icon;
+   143→
+   144→  return (
+   145→    <li
+   146→      className={cn(
+   147→        "flex items-start gap-3 rounded-xl border p-3 transition-colors",
+   148→        step.done
+   149→          ? "border-primary/25 bg-primary/5"
+   150→          : "border-border/50 bg-secondary/20"
+   151→      )}
+   152→    >
+   153→      <span
+   154→        className={cn(
+   155→          "flex size-8 shrink-0 items-center justify-center rounded-full border text-xs font-extrabold",
+   156→          step.done
+   157→            ? "border-primary/40 bg-primary/15 text-primary"
+   158→            : "border-border/50 bg-secondary/40 text-muted-foreground"
+   159→        )}
+   160→        aria-hidden="true"
+   161→      >
+   162→        {step.done ? <CircleCheck className="size-4" /> : faDigits(index + 1)}
+   163→      </span>
+   164→      <div className="min-w-0 flex-1">
+   165→        <p className={cn("text-xs font-bold leading-6", step.done ? "text-primary" : "text-foreground")}>
+   166→          {step.title}
+   167→        </p>
+   168→        <p className="mt-0.5 text-[10px] leading-5 text-muted-foreground/80">{step.description}</p>
+   169→        {!step.done && step.target && (
+   170→          <Button
+   171→            variant="outline"
+   172→            size="sm"
+   173→            onClick={() => setActiveView(step.target as ViewId)}
+   174→            className="mt-2 h-7 border-border/70 px-2.5 text-[11px] font-semibold hover:border-primary/40 hover:text-primary"
+   175→          >
+   176→            <Icon className="size-3.5" aria-hidden="true" />
+   177→            انجام این گام
+   178→            <ChevronLeft className="size-3.5" aria-hidden="true" />
+   179→          </Button>
+   180→        )}
+   181→      </div>
+   182→      <span
+   183→        className={cn(
+   184→          "shrink-0 rounded-md px-2 py-0.5 text-[10px] font-bold",
+   185→          step.done
+   186→            ? "border border-primary/30 bg-primary/10 text-primary"
+   187→            : "border border-border/50 bg-secondary/40 text-muted-foreground"
+   188→        )}
+   189→      >
+   190→        {step.done ? "انجام شد" : "در انتظار"}
+   191→      </span>
+   192→    </li>
+   193→  );
+   194→}
+   195→
+   196→function JourneyCard({ hasActivePlan }: { hasActivePlan: boolean }) {
+   197→  const { user, profile } = useSessionData();
+   198→  const visited = useJourneyStore((s) => s.visited);
+   199→
+   200→  if (!user) return null;
+   201→
+   202→  const goalSet = Boolean(profile?.goal);
+   203→  const steps: JourneyStep[] = [
+   204→    {
+   205→      icon: UserRound,
+   206→      title: "تکمیل پروفایل بدنی",
+   207→      description: "قد، وزن، سن و مشخصات اصلی در پایگاه داده سرور",
+   208→      done: Boolean(profile?.complete),
+   209→      target: "profile",
+   210→    },
+   211→    {
+   212→      icon: Target,
+   213→      title: "تعیین هدف تناسب اندام",
+   214→      description: "هدف ثبت‌شده مبنای برنامه‌ها و پیشنهادها خواهد بود",
+   215→      done: goalSet,
+   216→      target: "profile",
+   217→    },
+   218→    {
+   219→      icon: Box,
+   220→      title: "آشنایی با کتابخانه حرکات و مربی سه‌بعدی",
+   221→      description: "بازدید واقعی هر دو بخش روی همین دستگاه ثبت می‌شود",
+   222→      done: Boolean(visited.library && visited.coach3d),
+   223→      target: !visited.coach3d ? "coach3d" : "library",
+   224→    },
+   225→    {
+   226→      icon: CalendarCheck2,
+   227→      title: "ساخت برنامه تمرینی شخصی",
+   228→      description: "برنامه‌ساز فعال است؛ برنامه مبتنی بر هدف، سطح و تجهیزات شما می‌سازد و ذخیره می‌کند",
+   229→      done: Boolean(visited.workout) || hasActivePlan,
+   230→      target: "workout",
+   231→    },
+   232→  ];
+   233→
+   234→  const doneCount = steps.filter((step) => step.done).length;
+   235→  const percent = Math.round((doneCount / steps.length) * 100);
+   236→
+   237→  return (
+   238→    <div className="h-full rounded-2xl bg-gradient-to-b from-primary/40 via-primary/15 to-primary/5 p-px">
+   239→      <div className="flex h-full flex-col rounded-2xl bg-card p-5 md:p-6">
+   240→        <div className="flex items-center gap-2.5">
+   241→          <span className="flex size-9 items-center justify-center rounded-lg border border-primary/35 bg-primary/15 text-primary glow-lime-sm">
+   242→            <Compass className="size-4" aria-hidden="true" />
+   243→          </span>
+   244→          <div className="flex flex-col">
+   245→            <h3 className="text-sm font-bold">شروع مسیر تناسب اندام</h3>
+   246→            <p className="text-[11px] text-muted-foreground">
+   247→              وضعیت گام‌ها فقط بر اساس اطلاعات واقعی شماست
+   248→            </p>
+   249→          </div>
+   250→        </div>
+   251→
+   252→        <div className="mt-4 flex items-center justify-between text-[11px] font-bold">
+   253→          <span className="text-foreground">
+   254→            {faDigits(doneCount)} از {faDigits(steps.length)} گام کامل شد
+   255→          </span>
+   256→          <span className="text-primary">{faDigits(percent)}٪</span>
+   257→        </div>
+   258→        <Progress value={percent} className="mt-1.5 h-1.5" aria-label="پیشرفت مسیر شروع" />
+   259→
+   260→        <ol className="mt-4 flex flex-col gap-2.5">
+   261→          {steps.map((step, index) => (
+   262→            <JourneyStepRow key={step.title} step={step} index={index} />
+   263→          ))}
+   264→        </ol>
+   265→
+   266→        {doneCount === steps.length ? (
+   267→          <p className="mt-auto flex items-start gap-1.5 pt-4 text-[10px] leading-5 text-primary">
+   268→            <CircleCheck className="mt-0.5 size-3.5 shrink-0" aria-hidden="true" />
+   269→            همه گام‌های آغازین کامل شد — برای شروع، جلسه اول برنامه فعال را اجرا کنید.
+   270→          </p>
+   271→        ) : (
+   272→          <p className="mt-auto pt-4 text-[10px] leading-5 text-muted-foreground/70">
+   273→            گام‌های ۱ و ۲ از پایگاه داده سرور خوانده می‌شوند؛ گام‌های ۳ و ۴ بر اساس بازدید
+   274→            واقعی شما روی همین دستگاه ثبت می‌شوند.
+   275→          </p>
+   276→        )}
+   277→      </div>
+   278→    </div>
+   279→  );
+   280→}
+   281→
+   282→/* --------------------------------- نقشه راه --------------------------------- */
+   283→
+   284→function StageRow({ index, title, current }: { index: number; title: string; current: boolean }) {
+   285→  return (
+   286→    <li className="flex items-center gap-3 py-1">
+   287→      {current ? (
+   288→        <span className="relative flex size-2.5 shrink-0" aria-hidden="true">
+   289→          <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-primary/60" />
+   290→          <span className="relative inline-flex size-2.5 rounded-full bg-primary" />
+   291→        </span>
+   292→      ) : (
+   293→        <span className="size-1.5 shrink-0 rounded-full bg-muted-foreground/30" aria-hidden="true" />
+   294→      )}
+   295→      <span
+   296→        className={cn(
+   297→          "text-xs leading-6",
+   298→          current ? "font-bold text-foreground" : "text-muted-foreground"
+   299→        )}
+   300→      >
+   301→        <span className="me-2 inline-block min-w-5 text-[10px] font-bold text-primary/70">
+   302→          {index.toLocaleString("fa-IR")}
+   303→        </span>
+   304→        {title}
+   305→      </span>
+   306→      {current && (
+   307→        <span className="ms-auto shrink-0 rounded-md border border-primary/30 bg-primary/10 px-2 py-0.5 text-[10px] font-bold text-primary">
+   308→          جاری
+   309→        </span>
+   310→      )}
+   311→    </li>
+   312→  );
+   313→}
+   314→
+   315→function RoadmapCard() {
+   316→  return (
+   317→    <div className="rounded-2xl border border-border/60 bg-card p-5 md:p-6">
+   318→      <div className="flex items-center gap-2.5">
+   319→        <span className="flex size-9 items-center justify-center rounded-lg border border-primary/25 bg-primary/10 text-primary">
+   320→          <Sparkles className="size-4" aria-hidden="true" />
+   321→        </span>
+   322→        <div className="flex flex-col">
+   323→          <h3 className="text-sm font-bold">نقشه راه توسعه محصول</h3>
+   324→          <p className="text-[11px] text-muted-foreground">
+   325→            هر مرحله پس از تأیید شما آغاز می‌شود؛ این کارت در نسخه نهایی حذف خواهد شد
+   326→          </p>
+   327→        </div>
+   328→      </div>
+   329→      <ul className="mt-4 grid gap-x-8 sm:grid-cols-2">
+   330→        {DEV_STAGES.map((stage) => (
+   331→          <StageRow
+   332→            key={stage.index}
+   333→            index={stage.index}
+   334→            title={stage.title}
+   335→            current={stage.index === CURRENT_STAGE}
+   336→          />
+   337→        ))}
+   338→      </ul>
+   339→    </div>
+   340→  );
+   341→}
+   342→
+   343→/* ---------------------------------- داشبورد ---------------------------------- */
+   344→
+   345→export function DashboardView() {
+   346→  const setActiveView = useAppStore((s) => s.setActiveView);
+   347→  const profileNavItem = getNavItem("profile");
+   348→  const { user, profile: fitnessProfile } = useSessionData();
+   349→
+   350→  // داده وزن یک‌بار در داشبورد خوانده می‌شود و به کارت روند وزن پاس داده می‌شود
+   351→  const weightData: UseWeightEntriesResult = useWeightEntries();
+   352→  const latestWeight = latestWeightEntry(weightData.entries);
+   353→
+   354→  // برنامه فعال کاربر — برای «برنامه امروز» و گام ۴ مسیر شروع
+   355→  const { plans, loading: plansLoading } = useWorkoutPlans();
+   356→  const activePlanSummary = plans.find((p) => p.status === "active") ?? null;
+   357→  const activePlan = usePlanDetail(activePlanSummary?.id ?? null).plan;
+   358→
+   359→  // برنامه غذایی فعال — خلاصه برای کارت تغذیه داشبورد
+   360→  const { plans: nutritionPlans, loading: nutritionLoading } = useNutritionPlans();
+   361→  const activeNutritionPlan = nutritionPlans.find((p) => p.status === "active") ?? null;
+   362→
+   363→  // جلسه واقعی در حال انجام — بنر ادامه جلسه + قفل شروع دومی
+   364→  const sessionCtrl = useActiveSession();
+   365→  const activeWorkout = sessionCtrl.session;
+   366→  const hasActiveSession = activeWorkout?.status === "in_progress";
+   367→
+   368→  // آمار واقعی جلسات تکمیل‌شده — شمار هفته جاری فقط از جلسات بسته‌شده
+   369→  const { stats: workoutStats, loading: statsLoading } = useWorkoutStats();
+   370→
+   371→  const startDayFromDashboard = useCallback(
+   372→    async (dayId: string) => {
+   373→      const result = await sessionCtrl.startSession({ planDayId: dayId });
+   374→      if (result.ok) {
+   375→        if (result.data.existing) {
+   376→          toast.info("جلسه دیگری در حال انجام است؛ همان ادامه یافت");
+   377→        } else {
+   378→          toast.success("جلسه تمرین شروع شد — رکوردر در بخش برنامه تمرینی آماده است");
+   379→        }
+   380→      } else {
+   381→        toast.error(result.message);
+   382→      }
+   383→    },
+   384→    [sessionCtrl]
+   385→  );
+   386→
+   387→  const displayName = fitnessProfile?.displayName ?? user?.name ?? "";
+   388→  const goalLabel = fitnessProfile?.goal ? labelOf(GOAL_OPTIONS, fitnessProfile.goal) : null;
+   389→  const experienceLabel = fitnessProfile?.experience
+   390→    ? labelOf(EXPERIENCE_OPTIONS, fitnessProfile.experience)
+   391→    : null;
+   392→
+   393→  return (
+   394→    <motion.div variants={container} initial="hidden" animate="show" className="flex flex-col gap-6">
+   395→      {/* بخش خوشامدگویی شخصی — از حساب واقعی کاربر */}
+   396→      <motion.section
+   397→        variants={fadeUp}
+   398→        aria-labelledby="welcome-heading"
+   399→        className="relative overflow-hidden rounded-2xl border border-border/60 bg-card bg-aura-lime"
+   400→      >
+   401→        <div className="absolute inset-0 bg-grid-fade" aria-hidden="true" />
+   402→        <div className="relative flex flex-col gap-6 p-6 md:flex-row md:items-center md:justify-between md:p-8">
+   403→          <div className="max-w-xl">
+   404→            <span className="inline-flex items-center gap-1.5 rounded-full border border-primary/25 bg-primary/10 px-3 py-1 text-[11px] font-bold text-primary">
+   405→              <Sparkles className="size-3" aria-hidden="true" />
+   406→              مرکز مسیر تناسب اندام شما
+   407→            </span>
+   408→            <h2 id="welcome-heading" className="mt-4 text-2xl font-extrabold leading-snug md:text-3xl">
+   409→              سلام <span className="text-primary text-glow">{displayName || "ورزشکار"}؛</span>
+   410→              {" "}خوش برگشتی
+   411→            </h2>
+   412→            <p className="mt-3 text-sm leading-7 text-muted-foreground">
+   413→              این داشبورد به حساب واقعی شما متصل است؛ همه اطلاعات از پایگاه داده سرور خوانده
+   414→              می‌شود و پس از هر تغییر در پروفایل، بلافاصله به‌روز می‌شود.
+   415→            </p>
+   416→
+   417→            {/* مشخصات واقعی پروفایل — فقط مقادیر ثبت‌شده نمایش داده می‌شوند */}
+   418→            <div className="mt-5 flex flex-wrap items-center gap-2">
+   419→              <span className="inline-flex items-center gap-1.5 rounded-full border border-border/60 bg-secondary/40 px-3 py-1.5 text-[11px] font-bold text-foreground/90">
+   420→                <Target className="size-3.5 text-primary" aria-hidden="true" />
+   421→                هدف:
+   422→                {goalLabel ? (
+   423→                  <span className="text-primary">{goalLabel}</span>
+   424→                ) : (
+   425→                  <span className="font-medium text-muted-foreground">ثبت نشده</span>
+   426→                )}
+   427→              </span>
+   428→              <span className="inline-flex items-center gap-1.5 rounded-full border border-border/60 bg-secondary/40 px-3 py-1.5 text-[11px] font-bold text-foreground/90">
+   429→                <Dumbbell className="size-3.5 text-primary" aria-hidden="true" />
+   430→                سطح تجربه:
+   431→                {experienceLabel ? (
+   432→                  <span className="text-primary">{experienceLabel}</span>
+   433→                ) : (
+   434→                  <span className="font-medium text-muted-foreground">ثبت نشده</span>
+   435→                )}
+   436→              </span>
+   437→              <span className="inline-flex items-center gap-1.5 rounded-full border border-border/60 bg-secondary/40 px-3 py-1.5 text-[11px] font-bold text-foreground/90">
+   438→                <CircleCheck className="size-3.5 text-primary" aria-hidden="true" />
+   439→                تکمیل پروفایل:
+   440→                <span className="text-primary">
+   441→                  {faDigits(fitnessProfile?.completionPercent ?? 0)}٪
+   442→                </span>
+   443→              </span>
+   444→            </div>
+   445→
+   446→            <div className="mt-6 flex flex-wrap items-center gap-3">
+   447→              <Button
+   448→                onClick={() => setActiveView(profileNavItem.id)}
+   449→                className="font-bold text-primary-foreground glow-lime-sm"
+   450→              >
+   451→                <UserRoundCog className="size-4" aria-hidden="true" />
+   452→                {fitnessProfile?.complete ? "ویرایش پروفایل" : "تکمیل پروفایل"}
+   453→              </Button>
+   454→              <Button
+   455→                variant="outline"
+   456→                onClick={() => setActiveView("coach3d")}
+   457→                className="border-border/70 font-semibold hover:border-primary/40 hover:text-primary"
+   458→              >
+   459→                آشنایی با مربی سه‌بعدی
+   460→              </Button>
+   461→            </div>
+   462→          </div>
+   463→          {/* عنصر تزئینی — با هویت «داده واقعی» */}
+   464→          <div className="hidden shrink-0 md:block" aria-hidden="true">
+   465→            <div className="relative flex size-36 items-center justify-center rounded-3xl border border-primary/20 bg-primary/5">
+   466→              <div className="absolute inset-3 rounded-2xl border border-dashed border-primary/15" />
+   467→              <Dumbbell className="size-14 text-primary/70" strokeWidth={1.4} />
+   468→              <span className="absolute -bottom-3 rounded-full border border-primary/30 bg-background px-3 py-1 text-[10px] font-bold text-primary">
+   469→                متصل به پایگاه داده سرور
+   470→              </span>
+   471→            </div>
+   472→          </div>
+   473→        </div>
+   474→      </motion.section>
+   475→
+   476→      {/* کارت‌های آماری — فقط داده واقعی؛ برای داده ثبت‌نشده مقدار جعلی نمایش داده نمی‌شود */}
+   477→      <motion.section variants={fadeUp} aria-label="خلاصه آمار شما">
+   478→        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+   479→          {/* وزن فعلی — وزن اعلامی پروفایل کاربر (ویرایش پروفایل بلافاصله منعکس می‌شود)؛
+   480→              روند تغییرات فقط از اندازه‌گیری‌های تاریخ‌دار در کارت «روند وزن» */}
+   481→          <StatCard
+   482→            label="وزن فعلی"
+   483→            value={
+   484→              fitnessProfile?.weightKg
+   485→                ? `${faDigits(fitnessProfile.weightKg)} کیلوگرم`
+   486→                : latestWeight
+   487→                  ? `${faDigits(latestWeight.weightKg)} کیلوگرم`
+   488→                  : "—"
+   489→            }
+   490→            note={
+   491→              fitnessProfile?.weightKg
+   492→                ? latestWeight
+   493→                  ? `وزن پروفایل شما؛ آخرین اندازه‌گیری ثبت‌شده: ${faDigits(latestWeight.weightKg)} در ${jalaliFullLabel(latestWeight.recordedAt)}`
+   494→                  : "وزن ثبت‌شده در پروفایل شما؛ برای روند تغییرات، وزن دوره‌ای ثبت کنید"
+   495→                : latestWeight
+   496→                  ? `آخرین اندازه‌گیری: ${jalaliFullLabel(latestWeight.recordedAt)}`
+   497→                  : "وزن شما هنوز ثبت نشده است؛ از پروفایل یا کارت روند وزن ثبت کنید"
+   498→            }
+   499→            icon={Scale}
+   500→            badge={fitnessProfile?.weightKg || latestWeight ? <LiveBadge /> : <NotRecordedBadge />}
+   501→          />
+   502→          {/* قد */}
+   503→          <StatCard
+   504→            label="قد"
+   505→            value={fitnessProfile?.heightCm ? `${faDigits(fitnessProfile.heightCm)} سانتی‌متر` : "—"}
+   506→            note={
+   507→              fitnessProfile?.heightCm
+   508→                ? "قد ثبت‌شده در پروفایل شما"
+   509→                : "قد شما هنوز در پروفایل ثبت نشده است"
+   510→            }
+   511→            icon={Ruler}
+   512→            badge={fitnessProfile?.heightCm ? <LiveBadge /> : <NotRecordedBadge />}
+   513→          />
+   514→          {/* هدف فعلی */}
+   515→          <StatCard
+   516→            label="هدف تمرینی"
+   517→            value={goalLabel ?? "—"}
+   518→            note={
+   519→              goalLabel
+   520→                ? "هدف انتخابی شما مبنای برنامه‌های مراحل بعد خواهد بود"
+   521→                : "هدف تمرینی هنوز انتخاب نشده؛ از پروفایل قابل تنظیم است"
+   522→            }
+   523→            icon={Target}
+   524→            badge={goalLabel ? <LiveBadge /> : <NotRecordedBadge />}
+   525→          />
+   526→          {/* جلسات تکمیل‌شده این هفته — فقط جلسات واقعی پایان‌یافته؛ بدون جلسه صفر صادقانه */}
+   527→          <StatCard
+   528→            label="جلسات تکمیل‌شده این هفته"
+   529→            value={statsLoading ? "…" : faDigits(workoutStats?.thisWeek.completedSessions ?? 0)}
+   530→            note={
+   531→              statsLoading
+   532→                ? "در حال خواندن آمار واقعی…"
+   533→                : (workoutStats?.thisWeek.completedSessions ?? 0) === 0
+   534→                  ? "این هفته هنوز جلسه تکمیل‌شده‌ای ندارید؛ جلسه فقط با «پایان تمرین» صریح تکمیل می‌شود"
+   535→                  : `مجموع ${faDigits(workoutStats!.thisWeek.setsCompleted)} ست و ${faDigits(workoutStats!.thisWeek.repsTotal)} تکرار ثبت‌شده واقعی`
+   536→            }
+   537→            icon={CalendarCheck2}
+   538→            badge={<LiveBadge />}
+   539→          />
+   540→        </div>
+   541→      </motion.section>
+   542→
+   543→      {/* شبکه اصلی */}
+   544→      <div className="grid gap-4 lg:grid-cols-3">
+   545→        {/* بنر جلسه در حال انجام — دسترسی سریع به رکوردر */}
+   546→        {hasActiveSession && activeWorkout && (
+   547→          <motion.section
+   548→            variants={fadeUp}
+   549→            aria-label="جلسه در حال انجام"
+   550→            className="rounded-2xl border border-primary/30 bg-primary/5 p-5 md:p-6 lg:col-span-3"
+   551→          >
+   552→            <div className="flex flex-wrap items-center gap-3">
+   553→              <span className="relative flex size-2.5 shrink-0" aria-hidden="true">
+   554→                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-primary/60" />
+   555→                <span className="relative inline-flex size-2.5 rounded-full bg-primary" />
+   556→              </span>
+   557→              <div className="min-w-0 flex-1">
+   558→                <h3 className="text-sm font-bold">جلسه در حال انجام: {activeWorkout.title}</h3>
+   559→                <p className="mt-0.5 text-[10px] leading-5 text-muted-foreground">
+   560→                  در پایگاه داده سرور ثبت شده و پس از رفرش هم بازیابی می‌شود — ست‌ها را در
+   561→                  رکوردر ثبت کنید.
+   562→                </p>
+   563→              </div>
+   564→              <Button
+   565→                onClick={() => setActiveView("workout")}
+   566→                className="font-bold text-primary-foreground glow-lime-sm"
+   567→              >
+   568→                <Play className="size-4" aria-hidden="true" />
+   569→                ادامه جلسه
+   570→              </Button>
+   571→            </div>
+   572→          </motion.section>
+   573→        )}
+   574→
+   575→        {/* برنامه امروز — فقط برنامه واقعی ذخیره‌شده کاربر */}
+   576→        <motion.section
+   577→          variants={fadeUp}
+   578→          aria-label="برنامه امروز"
+   579→          className="rounded-2xl border border-border/60 bg-card p-5 md:p-6 lg:col-span-2"
+   580→        >
+   581→          <div className="mb-4 flex items-center gap-2.5">
+   582→            <span className="flex size-9 items-center justify-center rounded-lg border border-border/50 bg-secondary/40 text-muted-foreground">
+   583→              <CalendarCheck2 className="size-4" aria-hidden="true" />
+   584→            </span>
+   585→            <h3 className="text-sm font-bold">برنامه امروز</h3>
+   586→            {activePlan && <RealBadge className="ms-auto" />}
+   587→          </div>
+   588→          {plansLoading ? (
+   589→            <div className="h-32 animate-pulse rounded-xl bg-secondary/20" />
+   590→          ) : (
+   591→            <TodaySessionCard
+   592→              plan={activePlan}
+   593→              sessionActive={hasActiveSession}
+   594→              onStartDay={(dayId) => void startDayFromDashboard(dayId)}
+   595→            />
+   596→          )}
+   597→        </motion.section>
+   598→
+   599→        {/* شروع مسیر تناسب اندام — ۴ گام با وضعیت واقعی */}
+   600→        <motion.section variants={fadeUp} aria-label="شروع مسیر تناسب اندام" className="lg:col-span-1">
+   601→          <JourneyCard hasActivePlan={Boolean(activePlan)} />
+   602→        </motion.section>
+   603→
+   604→        {/* روند وزن — فقط از اندازه‌گیری‌های واقعی کاربر */}
+   605→        <motion.section variants={fadeUp} aria-label="روند وزن شما" className="lg:col-span-2">
+   606→          <WeightLogCard variant="dashboard" data={weightData} />
+   607→        </motion.section>
+   608→
+   609→        {/* برنامه غذایی فعال — خلاصه واقعی؛ بدون کالری مصرف‌شده جعلی */}
+   610→        <motion.section variants={fadeUp} aria-label="برنامه غذایی" className="lg:col-span-1">
+   611→          <NutritionSummaryCard plan={activeNutritionPlan} loading={nutritionLoading} />
+   612→        </motion.section>
+   613→
+   614→        {/* دسترسی سریع */}
+   615→        <motion.section
+   616→          variants={fadeUp}
+   617→          aria-label="دسترسی سریع"
+   618→          className="rounded-2xl border border-border/60 bg-card p-5 md:p-6 lg:col-span-1"
+   619→        >
+   620→          <h3 className="mb-3 text-sm font-bold">دسترسی سریع</h3>
+   621→          <div className="flex flex-col gap-1">
+   622→            {QUICK_LINKS.map((id) => {
+   623→              const item = getNavItem(id);
+   624→              return <QuickLinkRow key={id} item={item} />;
+   625→            })}
+   626→          </div>
+   627→          <p className="mt-3 border-t border-border/50 pt-3 text-[10px] leading-5 text-muted-foreground/70">
+   628→            دسترسی به همه هشت بخش از طریق نوار کناری در دسترس است.
+   629→          </p>
+   630→        </motion.section>
+   631→      </div>
+   632→
+   633→      {/* نقشه راه توسعه */}
+   634→      <motion.section variants={fadeUp} aria-label="نقشه راه توسعه">
+   635→        <RoadmapCard />
+   636→      </motion.section>
+   637→    </motion.div>
+   638→  );
+   639→}
+   640→
