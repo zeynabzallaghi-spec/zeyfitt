@@ -1,0 +1,37 @@
+{
+  "ts": "1792098124",
+  "email": "p11-persist-1792098124@test.local",
+  "password": "test1234",
+  "ids": {
+    "weightEntry": "cmva0ybes000golumstlzpc14",
+    "workoutSession": "cmva0ybfw000iolumshagsvf5",
+    "sessionExercise": "cmva0ybfw000jolumd4gyauuv",
+    "workoutSetLog": "cmva0ybjk000lolumuoolguj8",
+    "workoutSetWeightKg": "20",
+    "foodLogEntry": "cmva0ybmk000nolumov5wnqd5",
+    "foodLogKcal": "186",
+    "localDay": "2026-10-16",
+    "profileMarker": "P11 Persistence Probe"
+  },
+  "tableCountsBefore": {
+    "AssistantConversation": 1,
+    "AssistantMessage": 8,
+    "FitnessProfile": 5,
+    "FoodLogEntry": 2,
+    "NutritionMeal": 0,
+    "NutritionMealItem": 0,
+    "NutritionPlan": 0,
+    "NutritionPlanDay": 0,
+    "WorkoutPlan": 0,
+    "WorkoutPlanDay": 0,
+    "WorkoutPlanExercise": 0,
+    "WorkoutSession": 2,
+    "WorkoutSessionExercise": 2,
+    "WorkoutSetLog": 4,
+    "account": 7,
+    "session": 8,
+    "user": 7,
+    "verification": 0,
+    "weightEntry": 2
+  }
+}
