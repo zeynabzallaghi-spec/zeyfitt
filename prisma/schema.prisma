@@ -37,6 +37,7 @@ model user {
   weightEntries weightEntry[]
   workoutPlans  WorkoutPlan[]
   nutritionPlans NutritionPlan[]
+  workoutSessions WorkoutSession[]
 }
 
 model account {
@@ -164,6 +165,7 @@ model WorkoutPlan {
   updatedAt       DateTime @updatedAt
   user            user     @relation(fields: [userId], references: [id], onDelete: Cascade)
   days            WorkoutPlanDay[]
+  sessions        WorkoutSession[]
 
   @@index([userId, status])
   @@index([userId, createdAt])
@@ -297,4 +299,87 @@ model NutritionMealItem {
   meal    NutritionMeal @relation(fields: [mealId], references: [id], onDelete: Cascade)
 
   @@index([mealId, order])
+}
+
+// ----------------------------------------
+// جلسه تمرینی واقعی — ثبت انجام‌شده‌ها، نه برنامه
+// ----------------------------------------
+// جلسه فقط با اقدام صریح کاربر («شروع تمرین») ساخته می‌شود و با «پایان تمرین»
+// یا «رهاکردن» بسته می‌شود. بازدید از صفحه هرگز جلسه نمی‌سازد.
+//
+// هر کاربر در هر لحظه حداکثر یک جلسه «در حال انجام» (status = "in_progress")
+// دارد؛ این قید با ایندکس یکتای جزئی در سطح SQLite تضمین می‌شود (پس از db push
+// از اسکریپت scripts/create-session-indexes.sql اعمال می‌شود) تا کلیک دوباره
+// یا ارسال هم‌زمان درخواست، جلسه تکراری نسازد.
+//
+// ارجاع به برنامه اختیاری است (تمرین آزاد بدون برنامه) و با حذف برنامه با
+// onDelete: SetNull حفظ می‌شود تا تاریخچه کاربر با حذف برنامه خراب نشود.
+// همه اطلاعات نمایشی حرکت در WorkoutSessionExercise snapshot شده است.
+
+model WorkoutSession {
+  id          String   @id @default(cuid())
+  userId      String
+  // ارجاع اختیاری به برنامه و روز برنامه — حذف برنامه تاریخچه را حذف نمی‌کند
+  planId      String?
+  planDayId   String?
+  title       String
+  // وضعیت: in_progress | completed | abandoned — رهاشده با تکمیل‌شده یکی نیست
+  status      String   @default("in_progress")
+  startedAt   DateTime @default(now()) // زمان واقعی شروع — هنگام ساخت رکورد
+  endedAt     DateTime? // زمان ثبت پایان — فقط پس از اقدام صریح کاربر
+  notes       String? // یادداشت اختیاری کاربر در پایان جلسه
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  user        user         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  plan        WorkoutPlan? @relation(fields: [planId], references: [id], onDelete: SetNull)
+  exercises   WorkoutSessionExercise[]
+
+  @@index([userId, status])
+  @@index([userId, startedAt])
+}
+
+// حرکت ثبت‌شده در جلسه — snapshot حداقلی از بانک/برنامه؛ تاریخچه حتی پس از
+// تغییر آینده بانک حرکات یا حذف برنامه از همین snapshot بازسازی می‌شود.
+model WorkoutSessionExercise {
+  id         String @id @default(cuid())
+  sessionId  String
+  order      Int // ترتیب اجرا در جلسه
+  exerciseId String // شناسه پایدار بانک حرکات (مرجع زنده برای جزئیات کامل)
+  // snapshot حداقلی نمایش — مقاوم به تغییر بانک
+  faName     String
+  enName     String
+  category   String
+  coach3dId  String? // snapshot — null یعنی واقعاً بدون انیمیشن سه‌بعدی
+  primaryMusclesJson String @default("[]") // آرایه شناسه عضلات اصلی (snapshot)
+  note       String? // یادداشت اجرا از برنامه (در صورت وجود)
+  // تجویز برنامه — برای تمرین آزاد null است (هیچ مقدار ساختگی جایگزین نمی‌شود)
+  targetSets     Int?
+  targetRepsMin  Int?
+  targetRepsMax  Int?
+  restSeconds    Int?
+  // وضعیت اجرا: pending | done | skipped — ردکردن حرکت صادقانه ثبت می‌شود
+  status     String @default("pending")
+  session    WorkoutSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  sets       WorkoutSetLog[]
+
+  @@index([sessionId, order])
+}
+
+// یک ست ثبت‌شده — وجود رکورد به معنی انجام‌شدن واقعی آن ست است؛ ست‌های
+// انجام‌نشده هیچ رکوردی ندارند (هیچ مقدار هدفی جای واقعی را پر نمی‌کند).
+// برای حرکات وزن بدن weightKg به‌صورت null ذخیره می‌شود (بدون بار خارجی) و
+// وزنه صفر هم مجاز است؛ هرگز وزن بدن با وزنه تمرینی جمع نمی‌شود.
+model WorkoutSetLog {
+  id                String  @id @default(cuid())
+  sessionExerciseId String
+  setNumber         Int // شماره ست — از ۱؛ انتخاب نهایی با کاربر است
+  reps              Int // تعداد تکرار واقعی انجام‌شده
+  weightKg          Float? // بار خارجی به کیلوگرم — null یعنی بدون بار خارجی
+  note              String? // یادداشت اختیاری ست
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+  exercise WorkoutSessionExercise @relation(fields: [sessionExerciseId], references: [id], onDelete: Cascade)
+
+  @@unique([sessionExerciseId, setNumber])
+  @@index([sessionExerciseId, setNumber])
 }
