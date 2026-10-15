@@ -69,7 +69,7 @@ check "حالت خالی صادقانه روز" "YES" "$EMPTY"
 
 echo "== 3) ثبت از بانک غذا =="
 ab "(() => { const btn = Array.from(document.querySelectorAll('button')).find(b => b.textContent.trim() === 'ثبت غذا'); if (btn) { btn.click(); return 'ok'; } return 'NOT FOUND'; })()"
-waitfor "document.body.innerText.includes('جست‌وجو در بانک مواد غذایی') ? 'YES' : 'NO'" 15 DIALOG
+waitfor "document.querySelector('[role=dialog]') ? 'YES' : 'NO'" 15 DIALOG
 check "دیالوگ ثبت باز شد" "YES" "$DIALOG"
 ab "
 (() => {
@@ -151,26 +151,29 @@ waitfor "document.body.innerText.includes('از برنامه') ? 'YES' : 'NO'" 2
 check "ثبت برنامه‌ای با نشان «از برنامه»" "YES" "$PLANLOG"
 waitfor "document.body.innerText.includes('مقایسه با برنامه غذایی') ? 'YES' : 'NO'" 15 COMP
 check "بخش مقایسه با برنامه ظاهر شد" "YES" "$COMP"
-HINT=$(agent-browser eval "document.body.innerText.includes('به معنی نخوردن آن نیست') ? 'YES' : 'NO'" 2>/dev/null | tr -d '"')
+HINT=$(agent-browser eval "document.body.innerText.includes('به معنی نخوردن آن غذا نیست') ? 'YES' : 'NO'" 2>/dev/null | tr -d '"')
 check "یادداشت صادقانه «ثبت‌نشدن ≠ نخوردن»" "YES" "$HINT"
 
 echo "== 7) حذف با تأیید =="
-BEFORE=$(agent-browser eval "document.body.innerText.match(/ثبت/g) ? 'yes' : 'no'" 2>/dev/null | tr -d '"')
+DELCOUNT=$(agent-browser eval "document.querySelectorAll('button[aria-label=حذف]').length" 2>/dev/null | tr -d '"')
 ab "(() => { const btn = Array.from(document.querySelectorAll('button')).find(b => b.getAttribute('aria-label') === 'حذف'); if (btn) { btn.click(); return 'ok'; } return 'NO'; })()"
 waitfor "document.body.innerText.includes('حذف این ثبت؟') ? 'YES' : 'NO'" 15 DELDLG
 check "دیالوگ تأیید حذف باز شد" "YES" "$DELDLG"
 ab "(() => { const b = Array.from(document.querySelectorAll('button')).find(x => x.textContent.trim() === 'حذف ثبت'); if (b) { b.click(); return 'ok'; } return 'NO'; })()"
-waitfor "document.body.innerText.includes('ثبت حذف شد') || document.body.innerText.includes('جمع روز') ? 'YES' : 'NO'" 20 DELETED
-check "حذف انجام شد" "YES" "$DELETED"
+waitfor "document.querySelectorAll('button[aria-label=حذف]').length < $DELCOUNT ? 'YES' : 'NO'" 20 DELETED
+check "حذف انجام شد (فهرست کم شد)" "YES" "$DELETED"
 
 echo "== 8) دوزبانگی — English با LTR =="
 ab "localStorage.setItem('fitcoach.assistant.lang', 'en'); 'ok'"
 agent-browser reload >/dev/null 2>&1
-waitfor "document.body.innerText.includes('Real food intake') ? 'YES' : 'NO'" 25 EN
+# پس از reload اپ روی داشبورد می‌افتد — ابتدا به بخش تغذیه برو
+waitfor "Array.from(document.querySelectorAll('button')).find(b => b.textContent.includes('برنامه غذایی')) ? 'YES' : 'NO'" 25 NAVEN
+ab "(() => { const b = Array.from(document.querySelectorAll('button')).find(x => x.textContent.includes('برنامه غذایی')); if (b) { b.click(); return 'ok'; } return 'NO'; })()"
+waitfor "document.querySelector('section[aria-label=\\\"Real food intake\\\"]') ? 'YES' : 'NO'" 25 EN
 check "رابط انگلیسی بخش مصرف رندر شد" "YES" "$EN"
-DIRC=$(agent-browser eval "(() => { const el = Array.from(document.querySelectorAll('section')).find(s => s.innerText.includes('Real food intake')); return el ? el.getAttribute('dir') : 'NONE'; })()" 2>/dev/null | tr -d '"')
+DIRC=$(agent-browser eval "(() => { const el = document.querySelector('section[aria-label=\\\"Real food intake\\\"]'); return el ? (el.getAttribute('dir') || 'NULL') : 'NONE'; })()" 2>/dev/null | tr -d '"')
 check "جهت بخش انگلیسی ltr" "ltr" "$DIRC"
-LANGATTR=$(agent-browser eval "(() => { const el = Array.from(document.querySelectorAll('section')).find(s => s.innerText.includes('Real food intake')); return el ? el.getAttribute('lang') : 'NONE'; })()" 2>/dev/null | tr -d '"')
+LANGATTR=$(agent-browser eval "(() => { const el = document.querySelector('section[aria-label=\\\"Real food intake\\\"]'); return el ? (el.getAttribute('lang') || 'NULL') : 'NONE'; })()" 2>/dev/null | tr -d '"')
 check "lang=en روی بخش" "en" "$LANGATTR"
 ENEMPTY=$(agent-browser eval "document.body.innerText.includes('No entries for this day') || document.body.innerText.includes('Foods logged on this day') ? 'YES' : 'NO'" 2>/dev/null | tr -d '"')
 check "حالت‌های انگلیسی طبیعی (بدون فارسی باقی‌مانده)" "YES" "$ENEMPTY"
@@ -182,10 +185,13 @@ OVF_EN=$(agent-browser eval "(document.documentElement.scrollWidth <= 391) ? 'YE
 check "390px انگلیسی: بدون سرریز افقی" "YES" "$OVF_EN"
 ab "localStorage.setItem('fitcoach.assistant.lang', 'fa'); 'ok'"
 agent-browser reload >/dev/null 2>&1
-waitfor "document.body.innerText.includes('مصرف واقعی غذا') ? 'YES' : 'NO'" 25 FA
+# پس از reload اپ روی داشبورد است — ابتدا به بخش تغذیه برو
+waitfor "Array.from(document.querySelectorAll('button')).find(b => b.textContent.includes('برنامه غذایی')) ? 'YES' : 'NO'" 25 NAVFA
+ab "(() => { const b = Array.from(document.querySelectorAll('button')).find(x => x.textContent.includes('برنامه غذایی')); if (b) { b.click(); return 'ok'; } return 'NO'; })()"
+waitfor "document.querySelector('section[aria-label=\\\"مصرف واقعی غذا\\\"]') ? 'YES' : 'NO'" 25 FA
 OVF_FA=$(agent-browser eval "(document.documentElement.scrollWidth <= 391) ? 'YES' : 'NO'" 2>/dev/null | tr -d '"')
 check "390px فارسی: بدون سرریز افقی" "YES" "$OVF_FA"
-DIRFA=$(agent-browser eval "(() => { const el = Array.from(document.querySelectorAll('section')).find(s => s.innerText.includes('مصرف واقعی غذا')); return el ? el.getAttribute('dir') : 'NONE'; })()" 2>/dev/null | tr -d '"')
+DIRFA=$(agent-browser eval "(() => { const el = document.querySelector('section[aria-label=\\\"مصرف واقعی غذا\\\"]'); return el ? (el.getAttribute('dir') || 'NULL') : 'NONE'; })()" 2>/dev/null | tr -d '"')
 check "جهت بخش فارسی rtl" "rtl" "$DIRFA"
 
 echo "== 10) داشبورد — خلاصه مصرف واقعی امروز =="

@@ -8,9 +8,28 @@ which has preserved it across calls in earlier phases.
 import os
 import sys
 import time
+import secrets
 
 PROJECT = "/home/z/my-project"
 LOG = os.path.join(PROJECT, "dev.log")
+
+
+def ensure_auth_secret(env: dict) -> None:
+    """Self-healing: the sandbox reset may wipe .env (untracked) down to a
+    template. In production better-auth throws BetterAuthError without
+    BETTER_AUTH_SECRET and every SSR/API returns 500, so generate a strong
+    secret on the fly and persist it back to .env. Trade-off: sessions
+    signed with a lost secret become invalid (users re-login) — acceptable;
+    a dead site is not."""
+    if env.get("BETTER_AUTH_SECRET"):
+        return
+    value = secrets.token_urlsafe(48)
+    env["BETTER_AUTH_SECRET"] = value
+    try:
+        with open(os.path.join(PROJECT, ".env"), "a", encoding="utf-8") as fh:
+            fh.write(f"BETTER_AUTH_SECRET={value}\n")
+    except OSError:
+        pass
 
 
 def daemonize_and_run(mode: str) -> None:
@@ -46,6 +65,7 @@ def daemonize_and_run(mode: str) -> None:
     except FileNotFoundError:
         pass
     env.setdefault("DATABASE_URL", "file:/home/z/my-project/db/custom.db")
+    ensure_auth_secret(env)
     if mode == "prod":
         env["NODE_ENV"] = "production"
         env.setdefault("PORT", "3000")
