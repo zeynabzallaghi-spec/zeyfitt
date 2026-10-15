@@ -19,6 +19,7 @@ import {
   ChevronDown,
   Clock3,
   Flame,
+  Play,
   Repeat2,
   Timer,
   TriangleAlert,
@@ -138,8 +139,20 @@ function ExerciseRow({ ex }: { ex: PlannedExercise & { id?: string } }) {
 
 /* ------------------------------ کارت روز ------------------------------ */
 
-function DayCard({ day }: { day: PlannedDayClient }) {
+function DayCard({
+  day,
+  onStartDay,
+  startDisabled,
+  startingThisDay,
+}: {
+  day: PlannedDayClient;
+  onStartDay?: (dayId: string) => void;
+  /** با جلسه فعال، شروع جلسه جدید ممکن نیست (سرور هم اجازه نمی‌دهد) */
+  startDisabled?: boolean;
+  startingThisDay?: boolean;
+}) {
   const [open, setOpen] = useState(day.order === 1);
+  const canStart = Boolean(onStartDay) && day.exercises.length > 0;
   return (
     <Collapsible open={open} onOpenChange={setOpen}>
       <div className="overflow-hidden rounded-2xl border border-border/60 bg-card">
@@ -171,11 +184,30 @@ function DayCard({ day }: { day: PlannedDayClient }) {
           />
         </CollapsibleTrigger>
         <CollapsibleContent>
-          <ul className="flex flex-col gap-2 px-4 pb-4">
+          <ul className="flex flex-col gap-2 px-4 pb-2">
             {day.exercises.map((ex) => (
               <ExerciseRow key={ex.id ?? ex.exerciseId} ex={ex} />
             ))}
           </ul>
+          {canStart && (
+            <div className="px-4 pb-4">
+              <Button
+                onClick={() => onStartDay?.(day.id)}
+                disabled={startDisabled || startingThisDay}
+                className="h-9 w-full font-bold text-primary-foreground glow-lime-sm sm:w-auto"
+              >
+                <Play className="size-4" aria-hidden="true" />
+                {startDisabled
+                  ? "جلسه دیگری در حال انجام است"
+                  : startingThisDay
+                    ? "در حال شروع…"
+                    : "شروع تمرین این جلسه"}
+              </Button>
+              <p className="mt-2 text-[9px] leading-5 text-muted-foreground/70">
+                شروع تمرین یک جلسه واقعی در سرور می‌سازد؛ بازدید از برنامه هرگز جلسه حساب نمی‌شود.
+              </p>
+            </div>
+          )}
         </CollapsibleContent>
       </div>
     </Collapsible>
@@ -187,10 +219,18 @@ function DayCard({ day }: { day: PlannedDayClient }) {
 export function PlanDetail({
   plan,
   variant = "full",
+  /** شروع جلسه واقعی از یک روز برنامه — فقط در حالت کامل */
+  onStartDay,
+  startDisabled = false,
+  startingDayId = null,
 }: {
   plan: WorkoutPlanClient;
   /** full: با همه راهنماها | compact: برای داشبورد */
   variant?: "full" | "compact";
+  onStartDay?: (dayId: string) => void;
+  /** جلسه فعال موجود است — شروع دومی ممکن نیست */
+  startDisabled?: boolean;
+  startingDayId?: string | null;
 }) {
   const equipmentLabels = plan.equipment.map((e) => equipmentFa(e));
 
@@ -227,7 +267,13 @@ export function PlanDetail({
       {/* روزهای تمرین */}
       <div className="flex flex-col gap-3">
         {plan.days.map((day) => (
-          <DayCard key={day.id} day={day} />
+          <DayCard
+            key={day.id}
+            day={day}
+            onStartDay={variant === "full" ? onStartDay : undefined}
+            startDisabled={startDisabled}
+            startingThisDay={startingDayId === day.id}
+          />
         ))}
       </div>
 

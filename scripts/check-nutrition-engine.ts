@@ -26,6 +26,13 @@ import {
   parseShoppingDaysParam,
   nutritionPatchSchema,
 } from "../src/lib/nutrition-engine/index";
+import type { CalcSnapshot, TargetsResult } from "../src/lib/nutrition-engine/types";
+
+/** استخراج snapshot از خروجی targets — با اطمینان از وضعیت ok */
+function wrap(r: TargetsResult): CalcSnapshot {
+  if (r.status !== "ok") throw new Error("داده ناقص");
+  return r.snapshot;
+}
 import type { NutritionSettings, PlannedFoodItem } from "../src/lib/nutrition-engine/types";
 
 let passed = 0;
@@ -134,7 +141,7 @@ check("۲۰۰ گرم برنج = ۲ برابر ۱۰۰ گرم", (() => {
 check("۵۰ گرم برنج = نصف", Math.round(rice.kcal100 / 2) === 65);
 
 section("۶) تولید برنامه با داده واقعی بانک");
-const plan = generateNutritionPlan(baseSettings, (targetsOk as { status: "ok"; snapshot: never }).snapshot);
+const plan = generateNutritionPlan(baseSettings, (targetsOk as { status: "ok"; snapshot: CalcSnapshot }).snapshot);
 check("عنوان فارسی برنامه", plan.title.includes("کاهش وزن") && plan.title.includes("هفتگی"));
 check("۷ روز تولید شده", plan.days.length === 7);
 check("۴ وعده در هر روز", plan.days.every((d) => d.meals.length === 4));
@@ -154,7 +161,7 @@ check("یادداشت صادقانه تخمینی بودن", plan.notes.some((n)
 check("یادداشت «نه رژیم درمانی»", plan.notes.some((n) => n.includes("رژیم درمانی")));
 
 section("۷) تکرارپذیری موتور (بدون تصادف)");
-const planAgain = generateNutritionPlan(baseSettings, (targetsOk as { status: "ok"; snapshot: never }).snapshot);
+const planAgain = generateNutritionPlan(baseSettings, (targetsOk as { status: "ok"; snapshot: CalcSnapshot }).snapshot);
 check("خروجی دوم با اول یکسان", JSON.stringify(plan) === JSON.stringify(planAgain));
 
 section("۸) تنوع بین روزها");
@@ -170,19 +177,19 @@ check("در یک وعده ماده تکراری نیست", plan.days.every((d) =
 section("۹) آلرژی‌ها و مواد نامطلوب");
 const dairyAllergy = generateNutritionPlan(
   { ...baseSettings, allergens: ["dairy"] },
-  (computeNutritionTargets(maleEstimate, "weight_loss", "moderate", false) as { status: "ok"; snapshot: never })
+  wrap(computeNutritionTargets(maleEstimate, "weight_loss", "moderate", false) as { status: "ok"; snapshot: CalcSnapshot })
 );
 const allItemsDairy: PlannedFoodItem[] = dairyAllergy.days.flatMap((d) => d.meals.flatMap((m) => m.items));
 check("هیچ ماده لبنی در برنامه نیست", allItemsDairy.every((i) => !findFood(i.foodId)!.allergens.includes("dairy")));
 const nutSeaAllergy = generateNutritionPlan(
   { ...baseSettings, allergens: ["nuts", "seafood"] },
-  (computeNutritionTargets(maleEstimate, "weight_loss", "moderate", false) as { status: "ok"; snapshot: never })
+  wrap(computeNutritionTargets(maleEstimate, "weight_loss", "moderate", false) as { status: "ok"; snapshot: CalcSnapshot })
 );
 const allItemsNS: PlannedFoodItem[] = nutSeaAllergy.days.flatMap((d) => d.meals.flatMap((m) => m.items));
 check("آجیل و دریایی حذف شده‌اند", allItemsNS.every((i) => !findFood(i.foodId)!.allergens.some((a) => a === "nuts" || a === "seafood")));
 const noRice = generateNutritionPlan(
   { ...baseSettings, dislikedFoodIds: ["white_rice", "brown_rice"] },
-  (computeNutritionTargets(maleEstimate, "weight_loss", "moderate", false) as { status: "ok"; snapshot: never })
+  wrap(computeNutritionTargets(maleEstimate, "weight_loss", "moderate", false) as { status: "ok"; snapshot: CalcSnapshot })
 );
 const allItemsNR: PlannedFoodItem[] = noRice.days.flatMap((d) => d.meals.flatMap((m) => m.items));
 check("مواد نامطلوب حذف شده‌اند", allItemsNR.every((i) => i.foodId !== "white_rice" && i.foodId !== "brown_rice"));
@@ -190,13 +197,13 @@ check("مواد نامطلوب حذف شده‌اند", allItemsNR.every((i) => 
 section("۱۰) الگوهای گیاهی");
 const veganPlan = generateNutritionPlan(
   { ...baseSettings, dietPattern: "vegan" },
-  (computeNutritionTargets(maleEstimate, "maintain", "moderate", false) as { status: "ok"; snapshot: never })
+  wrap(computeNutritionTargets(maleEstimate, "maintain", "moderate", false) as { status: "ok"; snapshot: CalcSnapshot })
 );
 const veganItems: PlannedFoodItem[] = veganPlan.days.flatMap((d) => d.meals.flatMap((m) => m.items));
 check("وگان: همه مواد برچسب وگان دارند", veganItems.every((i) => findFood(i.foodId)!.diet.includes("vegan")));
 const vegPlan = generateNutritionPlan(
   { ...baseSettings, dietPattern: "vegetarian", mealsPerDay: 3 },
-  (computeNutritionTargets(maleEstimate, "maintain", "moderate", false) as { status: "ok"; snapshot: never })
+  wrap(computeNutritionTargets(maleEstimate, "maintain", "moderate", false) as { status: "ok"; snapshot: CalcSnapshot })
 );
 const vegItems: PlannedFoodItem[] = vegPlan.days.flatMap((d) => d.meals.flatMap((m) => m.items));
 check("گیاهخواری: بدون گوشت/ماهی", vegItems.every((i) => !["chicken_breast", "lean_ground_beef", "salmon", "canned_tuna"].includes(i.foodId)));
@@ -204,7 +211,7 @@ check("کمبود شدید وگان+حذف حبوبات → خطای صادقا�
   try {
     generateNutritionPlan(
       { ...baseSettings, dietPattern: "vegan", allergens: ["soy"], dislikedFoodIds: ["lentils_cooked", "chickpeas_cooked", "kidney_beans_cooked"] },
-      (computeNutritionTargets(maleEstimate, "maintain", "moderate", false) as { status: "ok"; snapshot: never })
+      wrap(computeNutritionTargets(maleEstimate, "maintain", "moderate", false) as { status: "ok"; snapshot: CalcSnapshot })
     );
     return false;
   } catch (e) {
@@ -215,7 +222,7 @@ check("کمبود شدید وگان+حذف حبوبات → خطای صادقا�
 section("۱۱) بودجه و آماده‌سازی ساده");
 const budgetPlan = generateNutritionPlan(
   { ...baseSettings, budget: "low" },
-  (computeNutritionTargets(maleEstimate, "maintain", "moderate", false) as { status: "ok"; snapshot: never })
+  wrap(computeNutritionTargets(maleEstimate, "maintain", "moderate", false) as { status: "ok"; snapshot: CalcSnapshot })
 );
 const budgetItems: PlannedFoodItem[] = budgetPlan.days.flatMap((d) => d.meals.flatMap((m) => m.items));
 check("اقتصادی: بدون مواد premium", budgetItems.every((i) => findFood(i.foodId)!.budget !== "premium"));

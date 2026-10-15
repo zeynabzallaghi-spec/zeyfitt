@@ -2,14 +2,15 @@
 
 /**
  * کارت «برنامه امروز» داشبورد — خلاصه واقعی برنامه فعال:
- *  - اگر امروز جلسه تمرین باشد: عنوان جلسه، تعداد حرکت، زمان تقریبی و
- *    چند حرکت نخست + لینک به بخش برنامه تمرینی
+ *  - اگر امروز جلسه تمرین باشد: عنوان جلسه، تعداد حرکت، زمان تقریبی،
+ *    حرکات نخست + دکمه «شروع تمرین» (اقدام صریح کاربر = جلسه واقعی)
  *  - اگر امروز جلسه نباشد: پیام صادقانه + نزدیک‌ترین جلسه بعدی (فقط وقتی
  *    روزهای ترجیحی در برنامه ثبت شده باشد؛ هیچ روزی حدس زده نمی‌شود)
+ *  - جلسه در حال انجام: دکمه «ادامه جلسه» به رکوردر
  *  - بدون برنامه فعال: مسیر ساخت برنامه
  */
 
-import { ChevronLeft, CalendarCheck2, Clock3, ListChecks } from "lucide-react";
+import { ChevronLeft, CalendarCheck2, Clock3, ListChecks, Play } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAppStore } from "@/store/app-store";
 import { faDigits } from "@/lib/profile";
@@ -22,7 +23,16 @@ export function iranWeekdayIndex(date: Date = new Date()): number {
   return (date.getDay() + 1) % 7;
 }
 
-export function TodaySessionCard({ plan }: { plan: WorkoutPlanClient | null }) {
+export function TodaySessionCard({
+  plan,
+  sessionActive = false,
+  onStartDay,
+}: {
+  plan: WorkoutPlanClient | null;
+  /** جلسه در حال انجام وجود دارد — شروع دومی ممکن نیست */
+  sessionActive?: boolean;
+  onStartDay?: (dayId: string) => void;
+}) {
   const setActiveView = useAppStore((s) => s.setActiveView);
 
   if (!plan) {
@@ -83,14 +93,40 @@ export function TodaySessionCard({ plan }: { plan: WorkoutPlanClient | null }) {
             </li>
           )}
         </ul>
-        <Button
-          variant="outline"
-          onClick={() => setActiveView("workout")}
-          className="w-fit border-border/70 font-semibold hover:border-primary/40 hover:text-primary"
-        >
-          مشاهده برنامه کامل
-          <ChevronLeft className="size-4" aria-hidden="true" />
-        </Button>
+        <div className="flex flex-wrap items-center gap-2">
+          {sessionActive ? (
+            <Button
+              onClick={() => setActiveView("workout")}
+              className="font-bold text-primary-foreground glow-lime-sm"
+            >
+              <Play className="size-4" aria-hidden="true" />
+              ادامه جلسه در حال انجام
+            </Button>
+          ) : (
+            onStartDay && (
+              <Button
+                onClick={() => onStartDay(todaySession.id)}
+                className="font-bold text-primary-foreground glow-lime-sm"
+              >
+                <Play className="size-4" aria-hidden="true" />
+                شروع تمرین امروز
+              </Button>
+            )
+          )}
+          <Button
+            variant="outline"
+            onClick={() => setActiveView("workout")}
+            className="border-border/70 font-semibold hover:border-primary/40 hover:text-primary"
+          >
+            مشاهده برنامه کامل
+            <ChevronLeft className="size-4" aria-hidden="true" />
+          </Button>
+        </div>
+        {onStartDay && !sessionActive && (
+          <p className="text-[9px] leading-5 text-muted-foreground/70">
+            شروع تمرین یک جلسه واقعی در سرور می‌سازد؛ ست‌های انجام‌شده را در رکوردر ثبت می‌کنید.
+          </p>
+        )}
       </div>
     );
   }
@@ -119,14 +155,25 @@ export function TodaySessionCard({ plan }: { plan: WorkoutPlanClient | null }) {
           ? ` جلسه بعدی ${upcoming.label} است: ${upcoming.title}.`
           : " روزهای جلسات در این برنامه تاریخ مشخصی ندارند؛ ترتیب جلسات در صفحه برنامه تمرینی آمده است."}
       </p>
-      <Button
-        variant="outline"
-        onClick={() => setActiveView("workout")}
-        className="w-fit border-border/70 font-semibold hover:border-primary/40 hover:text-primary"
-      >
-        مشاهده برنامه تمرینی
-        <ChevronLeft className="size-4" aria-hidden="true" />
-      </Button>
+      <div className="flex flex-wrap items-center gap-2">
+        {sessionActive && (
+          <Button
+            onClick={() => setActiveView("workout")}
+            className="font-bold text-primary-foreground glow-lime-sm"
+          >
+            <Play className="size-4" aria-hidden="true" />
+            ادامه جلسه در حال انجام
+          </Button>
+        )}
+        <Button
+          variant="outline"
+          onClick={() => setActiveView("workout")}
+          className="border-border/70 font-semibold hover:border-primary/40 hover:text-primary"
+        >
+          مشاهده برنامه تمرینی
+          <ChevronLeft className="size-4" aria-hidden="true" />
+        </Button>
+      </div>
     </div>
   );
 }

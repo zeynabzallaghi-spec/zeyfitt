@@ -10,6 +10,7 @@ import {
   Sparkles,
   CloudCheck,
   CircleCheck,
+  Play,
   Scale,
   Ruler,
   Target,
@@ -18,6 +19,8 @@ import {
   BookOpenText,
   Compass,
 } from "lucide-react";
+import { toast } from "sonner";
+import { useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import {
@@ -36,6 +39,7 @@ import { useWeightEntries, type UseWeightEntriesResult } from "@/hooks/use-weigh
 import { useWorkoutPlans } from "@/hooks/use-workout-plans";
 import { useNutritionPlans } from "@/hooks/use-nutrition-plans";
 import { usePlanDetail } from "@/hooks/use-plan-detail";
+import { useActiveSession, useWorkoutStats } from "@/hooks/use-workout-sessions";
 import { cn } from "@/lib/utils";
 import { EmptyState } from "../shared/empty-state";
 import { RealBadge, StageBadge } from "../shared/badges";
@@ -356,6 +360,30 @@ export function DashboardView() {
   const { plans: nutritionPlans, loading: nutritionLoading } = useNutritionPlans();
   const activeNutritionPlan = nutritionPlans.find((p) => p.status === "active") ?? null;
 
+  // جلسه واقعی در حال انجام — بنر ادامه جلسه + قفل شروع دومی
+  const sessionCtrl = useActiveSession();
+  const activeWorkout = sessionCtrl.session;
+  const hasActiveSession = activeWorkout?.status === "in_progress";
+
+  // آمار واقعی جلسات تکمیل‌شده — شمار هفته جاری فقط از جلسات بسته‌شده
+  const { stats: workoutStats, loading: statsLoading } = useWorkoutStats();
+
+  const startDayFromDashboard = useCallback(
+    async (dayId: string) => {
+      const result = await sessionCtrl.startSession({ planDayId: dayId });
+      if (result.ok) {
+        if (result.data.existing) {
+          toast.info("جلسه دیگری در حال انجام است؛ همان ادامه یافت");
+        } else {
+          toast.success("جلسه تمرین شروع شد — رکوردر در بخش برنامه تمرینی آماده است");
+        }
+      } else {
+        toast.error(result.message);
+      }
+    },
+    [sessionCtrl]
+  );
+
   const displayName = fitnessProfile?.displayName ?? user?.name ?? "";
   const goalLabel = fitnessProfile?.goal ? labelOf(GOAL_OPTIONS, fitnessProfile.goal) : null;
   const experienceLabel = fitnessProfile?.experience
@@ -495,20 +523,55 @@ export function DashboardView() {
             icon={Target}
             badge={goalLabel ? <LiveBadge /> : <NotRecordedBadge />}
           />
-          {/* جلسات ثبت‌شده — بدون تاریخچه واقعی هیچ عددی نمایش داده نمی‌شود؛
-              ثبت و تحلیل جلسات انجام‌شده مرحله‌ای جداگانه است */}
+          {/* جلسات تکمیل‌شده این هفته — فقط جلسات واقعی پایان‌یافته؛ بدون جلسه صفر صادقانه */}
           <StatCard
-            label="جلسات تمرینی ثبت‌شده"
-            value="—"
-            note="ثبت و شمارش جلسات انجام‌شده هنوز پیاده‌سازی نشده؛ برنامه فعال شما در بخش برنامه تمرینی قابل مشاهده است"
+            label="جلسات تکمیل‌شده این هفته"
+            value={statsLoading ? "…" : faDigits(workoutStats?.thisWeek.completedSessions ?? 0)}
+            note={
+              statsLoading
+                ? "در حال خواندن آمار واقعی…"
+                : (workoutStats?.thisWeek.completedSessions ?? 0) === 0
+                  ? "این هفته هنوز جلسه تکمیل‌شده‌ای ندارید؛ جلسه فقط با «پایان تمرین» صریح تکمیل می‌شود"
+                  : `مجموع ${faDigits(workoutStats!.thisWeek.setsCompleted)} ست و ${faDigits(workoutStats!.thisWeek.repsTotal)} تکرار ثبت‌شده واقعی`
+            }
             icon={CalendarCheck2}
-            badge={<NotRecordedBadge />}
+            badge={<LiveBadge />}
           />
         </div>
       </motion.section>
 
       {/* شبکه اصلی */}
       <div className="grid gap-4 lg:grid-cols-3">
+        {/* بنر جلسه در حال انجام — دسترسی سریع به رکوردر */}
+        {hasActiveSession && activeWorkout && (
+          <motion.section
+            variants={fadeUp}
+            aria-label="جلسه در حال انجام"
+            className="rounded-2xl border border-primary/30 bg-primary/5 p-5 md:p-6 lg:col-span-3"
+          >
+            <div className="flex flex-wrap items-center gap-3">
+              <span className="relative flex size-2.5 shrink-0" aria-hidden="true">
+                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-primary/60" />
+                <span className="relative inline-flex size-2.5 rounded-full bg-primary" />
+              </span>
+              <div className="min-w-0 flex-1">
+                <h3 className="text-sm font-bold">جلسه در حال انجام: {activeWorkout.title}</h3>
+                <p className="mt-0.5 text-[10px] leading-5 text-muted-foreground">
+                  در پایگاه داده سرور ثبت شده و پس از رفرش هم بازیابی می‌شود — ست‌ها را در
+                  رکوردر ثبت کنید.
+                </p>
+              </div>
+              <Button
+                onClick={() => setActiveView("workout")}
+                className="font-bold text-primary-foreground glow-lime-sm"
+              >
+                <Play className="size-4" aria-hidden="true" />
+                ادامه جلسه
+              </Button>
+            </div>
+          </motion.section>
+        )}
+
         {/* برنامه امروز — فقط برنامه واقعی ذخیره‌شده کاربر */}
         <motion.section
           variants={fadeUp}
@@ -525,7 +588,11 @@ export function DashboardView() {
           {plansLoading ? (
             <div className="h-32 animate-pulse rounded-xl bg-secondary/20" />
           ) : (
-            <TodaySessionCard plan={activePlan} />
+            <TodaySessionCard
+              plan={activePlan}
+              sessionActive={hasActiveSession}
+              onStartDay={(dayId) => void startDayFromDashboard(dayId)}
+            />
           )}
         </motion.section>
 

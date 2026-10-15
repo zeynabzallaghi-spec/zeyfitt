@@ -3,14 +3,15 @@
 import { motion } from "framer-motion";
 import {
   Ruler,
-  History,
   NotebookPen,
 } from "lucide-react";
 import { getNavItem } from "@/lib/nav";
 import { ViewIntro } from "../shared/view-intro";
-import { StageBadge } from "../shared/badges";
+import { RealBadge, StageBadge } from "../shared/badges";
 import { WeightLogCard } from "../shared/weight-log-card";
 import { useWeightEntries } from "@/hooks/use-weight-entries";
+import { SessionHistory } from "./workout/session/session-history";
+import { SessionStats } from "./workout/session/session-stats";
 
 const BODY_MEASURES = ["قفسه سینه", "کمر", "باسن", "بازو", "ران"];
 
@@ -25,10 +26,26 @@ export function ProgressView() {
       transition={{ duration: 0.3, ease: "easeOut" }}
       className="flex flex-col gap-4"
     >
-      <ViewIntro item={item} badges={<StageBadge stage={4} />} />
+      <ViewIntro item={item} badges={<RealBadge />} />
+
+      {/* تحلیل پیشرفت تمرینی — فقط از جلسات واقعی تکمیل‌شده */}
+      <section
+        aria-label="تحلیل پیشرفت"
+        className="rounded-2xl border border-border/60 bg-card p-5 md:p-6"
+      >
+        <SessionStats />
+      </section>
+
+      {/* تاریخچه واقعی جلسات */}
+      <section
+        aria-label="تاریخچه جلسات"
+        className="rounded-2xl border border-border/60 bg-card p-5 md:p-6"
+      >
+        <SessionHistory />
+      </section>
 
       {/* روند وزن — اتصال واقعی به API وزن کاربر جاری */}
-      <section aria-label="روند وزن">
+      <section aria-label="روند وزن" className="rounded-2xl border border-border/60 bg-card p-5 md:p-6">
         <WeightLogCard variant="progress" data={weightData} />
       </section>
 
@@ -59,52 +76,31 @@ export function ProgressView() {
           </p>
         </section>
 
-        {/* تاریخچه تمرین — پس از فعال شدن برنامه‌ساز */}
-        <section
-          aria-label="تاریخچه تمرین"
-          className="rounded-2xl border border-border/60 bg-card p-5 md:p-6"
-        >
-          <div className="flex flex-wrap items-center gap-2.5">
-            <span className="flex size-9 items-center justify-center rounded-lg border border-border/50 bg-secondary/40 text-muted-foreground">
-              <History className="size-4" aria-hidden="true" />
-            </span>
-            <h3 className="text-sm font-bold">تاریخچه تمرین</h3>
-            <StageBadge stage={6} className="ms-auto" />
-          </div>
-          <div className="mt-4 flex flex-col items-center justify-center gap-2 rounded-xl border border-dashed border-border/60 bg-secondary/20 px-6 py-10 text-center">
-            <p className="text-xs font-bold text-foreground/80">هنوز جلسه‌ای ثبت نشده است</p>
-            <p className="max-w-xs text-[11px] leading-6 text-muted-foreground/70">
-              پس از ساخت برنامه تمرینی، هر جلسه کامل‌شده با تاریخ، حرکات و ست‌های
-              انجام‌شده در این فهرست نگهداری می‌شود.
-            </p>
-          </div>
-        </section>
-
         {/* راهنمای ثبت اطلاعات */}
         <section
           aria-label="راهنمای ثبت اطلاعات"
-          className="rounded-2xl border border-border/60 bg-card p-5 md:p-6 lg:col-span-2"
+          className="rounded-2xl border border-border/60 bg-card p-5 md:p-6"
         >
           <h3 className="flex items-center gap-2 text-sm font-bold">
             <NotebookPen className="size-4 text-primary" aria-hidden="true" />
-            چگونه اطلاعات خود را ثبت کنم؟
+            چگونه پیشرفت من ساخته می‌شود؟
           </h3>
           <ol className="mt-5 flex flex-col gap-4">
             {[
               {
-                title: "ثبت وزن در تاریخ‌های مختلف",
-                desc: "همین حالا از کارت «روند وزن» بالای همین صفحه یا داشبورد قابل ثبت است؛ نمودار و تغییرات فقط با داده واقعی شما رسم می‌شود.",
+                title: "شروع جلسه واقعی",
+                desc: "از بخش «برنامه تمرینی» دکمه «شروع تمرین» (روز برنامه یا تمرین آزاد) را بزنید؛ بازدید از برنامه هرگز جلسه حساب نمی‌شود.",
                 ready: true,
               },
               {
-                title: "تکمیل پروفایل بدنی",
-                desc: "قد، وزن اولیه و مشخصات بدنی در بخش پروفایل روی سرور ذخیره می‌شود.",
+                title: "ثبت ست‌های انجام‌شده",
+                desc: "بعد از هر ست واقعی، تکرار و وزنه را ثبت کنید؛ ذخیره در پایگاه داده سرور است و با رفرش از بین نمی‌رود.",
                 ready: true,
               },
               {
-                title: "ثبت جلسات تمرین",
-                desc: "با فعال شدن برنامه‌ساز تمرینی (مرحله ۶)، ست‌های انجام‌شده ثبت و تاریخچه ساخته می‌شود.",
-                ready: false,
+                title: "پایان صریح جلسه",
+                desc: "با «تکمیل تمرین» یا «رهاکردن» جلسه بسته می‌شود؛ فقط جلسات تکمیل‌شده در آمار پیشرفت جمع می‌شوند.",
+                ready: true,
               },
             ].map((step, i) => (
               <li key={i} className="flex items-start gap-3">
@@ -114,13 +110,9 @@ export function ProgressView() {
                 <div className="flex-1">
                   <div className="flex flex-wrap items-center justify-between gap-2">
                     <p className="text-xs font-bold text-foreground">{step.title}</p>
-                    {step.ready ? (
-                      <span className="rounded-md border border-primary/30 bg-primary/10 px-2 py-0.5 text-[10px] font-bold text-primary">
-                        فعال
-                      </span>
-                    ) : (
-                      <StageBadge stage={6} />
-                    )}
+                    <span className="rounded-md border border-primary/30 bg-primary/10 px-2 py-0.5 text-[10px] font-bold text-primary">
+                      فعال
+                    </span>
                   </div>
                   <p className="mt-1 text-[11px] leading-6 text-muted-foreground">{step.desc}</p>
                 </div>
@@ -129,7 +121,8 @@ export function ProgressView() {
           </ol>
           <p className="mt-4 rounded-xl border border-border/50 bg-secondary/30 p-3 text-[11px] leading-relaxed text-muted-foreground">
             داده‌های این بخش فقط از حساب کاربری شما خوانده می‌شوند؛ داده کاربران دیگر هرگز
-            با اطلاعات شما ترکیب نمی‌شود و تاریخ‌ها با تقویم شمسی نمایش داده می‌شوند.
+            با اطلاعات شما ترکیب نمی‌شود، تاریخ‌ها با تقویم شمسی نمایش داده می‌شوند و هفته با
+            تقویم رسمی ایران (شنبه تا جمعه) محاسبه می‌شود.
           </p>
         </section>
       </div>

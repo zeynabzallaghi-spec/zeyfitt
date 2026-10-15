@@ -1,15 +1,15 @@
 "use client";
 
 /**
- * بخش برنامه تمرینی — برنامه‌ساز شخصی متصل به پایگاه داده.
+ * بخش برنامه تمرینی — برنامه‌ساز شخصی + ثبت تمرین واقعی.
  *
- * حالت‌ها:
- *  - بارگذاری → اسکلت شفاف
- *  - خطا → پیام + تلاش مجدد
- *  - بدون برنامه → EmptyState + دکمه ساخت برنامه شخصی
- *  - برنامه فعال → هفته تمرینی + مدیریت برنامه‌ها (فعال‌سازی/بایگانی/حذف)
- *  - فرم ساخت برنامه → تنظیمات با پیش‌فرض پروفایل
- *  - پیش‌نمایش → تأیید و ذخیره (موفقیت فقط پس از پاسخ سرور)
+ * منطق نمایش (مرتب با اولویت):
+ *  ۱. جلسه در حال انجام → رکوردر ثبت ست‌ها (بازیابی‌شده از سرور پس از رفرش)
+ *  ۲. بدون جلسه فعال → برنامه فعال با دکمه «شروع تمرین» هر روز + تمرین آزاد
+ *  ۳. مدیریت برنامه‌ها (فعال‌سازی/بایگانی/حذف) بدون تغییر
+ *
+ * قاعده صادقانه: بازدید از این صفحه هرگز جلسه نمی‌سازد؛ جلسه فقط با کلیک
+ * صریح «شروع تمرین» ساخته می‌شود و هر ست با اقدام واقعی کاربر ثبت می‌گردد.
  */
 
 import { useCallback, useState } from "react";
@@ -20,6 +20,7 @@ import {
   CalendarCheck2,
   ChevronLeft,
   CircleAlert,
+  Play,
   Plus,
   RotateCcw,
   Trash2,
@@ -42,6 +43,7 @@ import { useAppStore } from "@/store/app-store";
 import { useSessionData } from "../../session-context";
 import { useWorkoutPlans } from "@/hooks/use-workout-plans";
 import { usePlanDetail } from "@/hooks/use-plan-detail";
+import { useActiveSession } from "@/hooks/use-workout-sessions";
 import { faDigits } from "@/lib/profile";
 import { cn } from "@/lib/utils";
 import { ViewIntro } from "../../shared/view-intro";
@@ -53,6 +55,8 @@ import type { WorkoutPlanSummaryClient } from "@/lib/plan-storage";
 import { PlanSettingsForm } from "./plan-settings-form";
 import { PlanPreview } from "./plan-preview";
 import { PlanDetail } from "./plan-detail";
+import { ActiveSessionRecorder } from "./session/active-session";
+import { StartFreeWorkoutDialog } from "./session/start-free-dialog";
 
 type Mode = "list" | "form" | "preview";
 
@@ -156,6 +160,7 @@ function SkeletonView() {
 export function WorkoutView() {
   const item = getNavItem("workout");
   const { profile } = useSessionData();
+  const setActiveView = useAppStore((s) => s.setActiveView);
   const {
     plans,
     loading,
@@ -169,6 +174,11 @@ export function WorkoutView() {
     deletingId,
   } = useWorkoutPlans();
 
+  // جلسه واقعی — بازیابی خودکار پس از رفرش یا بازگشت از مربی سه‌بعدی
+  const sessionCtrl = useActiveSession();
+  const activeWorkout = sessionCtrl.session;
+  const hasActiveSession = activeWorkout?.status === "in_progress";
+
   const [mode, setMode] = useState<Mode>("list");
   const [preview, setPreview] = useState<GeneratedPlan | null>(null);
   const [settings, setSettings] = useState<PlanSettings | null>(null);
@@ -176,11 +186,55 @@ export function WorkoutView() {
   const [saveError, setSaveError] = useState<string | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<WorkoutPlanSummaryClient | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
+  const [freeDialogOpen, setFreeDialogOpen] = useState(false);
+  const [startingFree, setStartingFree] = useState(false);
+  const [startingDayId, setStartingDayId] = useState<string | null>(null);
 
   const activePlanSummary = plans.find((p) => p.status === "active") ?? null;
   const archivedPlans = plans.filter((p) => p.status !== "active");
   // جزئیات برنامه فعال — پس از هر تغییر فهرست دوباره خوانده می‌شود
   const activeDetail = usePlanDetail(mode === "list" ? activePlanSummary?.id ?? null : null);
+
+  /* ------------------------------ شروع جلسه واقعی ------------------------------ */
+
+  const handleStartDay = useCallback(
+    async (dayId: string) => {
+      setStartingDayId(dayId);
+      const result = await sessionCtrl.startSession({ planDayId: dayId });
+      setStartingDayId(null);
+      if (result.ok) {
+        if (result.data.existing) {
+          toast.info("جلسه دیگری در حال انجام است؛ همان ادامه یافت");
+        } else {
+          toast.success("جلسه تمرین شروع شد — ست‌ها را پس از انجام واقعی ثبت کنید");
+        }
+      } else {
+        toast.error(result.message);
+      }
+    },
+    [sessionCtrl]
+  );
+
+  const handleStartFree = useCallback(
+    async (exerciseIds: string[]) => {
+      setStartingFree(true);
+      const result = await sessionCtrl.startSession({
+        exercises: exerciseIds.map((exerciseId) => ({ exerciseId })),
+      });
+      setStartingFree(false);
+      if (result.ok) {
+        if (result.data.existing) {
+          toast.info("جلسه دیگری در حال انجام است؛ همان ادامه یافت");
+        } else {
+          toast.success("تمرین آزاد شروع شد — ست‌ها را پس از انجام واقعی ثبت کنید");
+        }
+        return true;
+      }
+      toast.error(result.message);
+      return false;
+    },
+    [sessionCtrl]
+  );
 
   /* ------------------------------ ساخت برنامه ------------------------------ */
 
@@ -263,16 +317,15 @@ export function WorkoutView() {
     >
       <ViewIntro item={item} badges={<RealBadge />} />
 
-      {loading && <SkeletonView />}
+      {sessionCtrl.loading && loading && <SkeletonView />}
 
-      {!loading && error && (
-        <div className="rounded-2xl border border-destructive/40 bg-destructive/10 p-6 text-center">
-          <CircleAlert className="mx-auto size-6 text-rose-300" aria-hidden="true" />
-          <p className="mt-3 text-xs font-bold leading-6 text-rose-200">{error}</p>
+      {sessionCtrl.error && (
+        <div className="rounded-2xl border border-destructive/40 bg-destructive/10 p-4 text-center">
+          <p className="text-xs font-bold leading-6 text-rose-200">{sessionCtrl.error}</p>
           <Button
             variant="outline"
-            onClick={() => void refresh()}
-            className="mt-4 border-border/70 font-semibold hover:border-primary/40 hover:text-primary"
+            onClick={() => void sessionCtrl.refresh()}
+            className="mt-3 border-border/70 font-semibold hover:border-primary/40 hover:text-primary"
           >
             <RotateCcw className="size-3.5" aria-hidden="true" />
             تلاش مجدد
@@ -280,159 +333,244 @@ export function WorkoutView() {
         </div>
       )}
 
-      {!loading && !error && mode === "list" && (
+      {/* ۱) جلسه در حال انجام — رکوردر ثبت واقعی */}
+      {hasActiveSession && activeWorkout && <ActiveSessionRecorder ctrl={sessionCtrl} />}
+
+      {!sessionCtrl.loading && !sessionCtrl.error && (
         <>
-          {activePlanSummary && activeDetail.plan && (
-            <section aria-label="برنامه فعال" className="flex flex-col gap-3">
-              <div className="flex flex-wrap items-center gap-2">
-                <h3 className="text-sm font-bold">برنامه فعال: {activeDetail.plan.title}</h3>
-                <StatusChip status="active" />
-                <div className="ms-auto flex items-center gap-1.5">
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    disabled={busyId === activeDetail.plan.id}
-                    onClick={() => void handleArchive(activeDetail.plan!.id)}
-                    className="h-7 border-border/70 px-2.5 text-[10px] font-semibold hover:border-amber-400/40 hover:text-amber-300"
-                  >
-                    <Archive className="size-3" aria-hidden="true" />
-                    بایگانی
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={() => setDeleteTarget(activePlanSummary)}
-                    className="h-7 border-destructive/30 px-2.5 text-[10px] font-semibold text-rose-300 hover:bg-destructive/10"
-                  >
-                    <Trash2 className="size-3" aria-hidden="true" />
-                    حذف
-                  </Button>
-                </div>
-              </div>
-              <PlanDetail plan={activeDetail.plan} />
-            </section>
+          {loading && <SkeletonView />}
+
+          {!loading && error && (
+            <div className="rounded-2xl border border-destructive/40 bg-destructive/10 p-6 text-center">
+              <CircleAlert className="mx-auto size-6 text-rose-300" aria-hidden="true" />
+              <p className="mt-3 text-xs font-bold leading-6 text-rose-200">{error}</p>
+              <Button
+                variant="outline"
+                onClick={() => void refresh()}
+                className="mt-4 border-border/70 font-semibold hover:border-primary/40 hover:text-primary"
+              >
+                <RotateCcw className="size-3.5" aria-hidden="true" />
+                تلاش مجدد
+              </Button>
+            </div>
           )}
 
-          {!activePlanSummary && plans.length === 0 && (
-            <section className="rounded-2xl border border-border/60 bg-card p-6">
-              <EmptyState
-                icon={CalendarCheck2}
-                title="هنوز برنامه تمرینی نساخته‌اید"
-                description="برنامه‌ساز بر اساس هدف، سطح تجربه، تجهیزات و روزهای شما — و از بانک ۴۸ حرکتی واقعی — برنامه هفتگی ساختاریافته می‌سازد. تنظیمات را پر کنید، پیش‌نمایش را ببینید و ذخیره کنید."
-                action={
+          {!loading && !error && mode === "list" && (
+            <>
+              {/* شروع تمرین — همیشه در دسترس (حتی بدون برنامه) */}
+              <section
+                aria-label="شروع تمرین"
+                className="rounded-2xl border border-primary/25 bg-primary/5 p-4 md:p-5"
+              >
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="flex size-9 items-center justify-center rounded-lg border border-primary/30 bg-primary/10 text-primary">
+                    <Play className="size-4" aria-hidden="true" />
+                  </span>
+                  <div className="min-w-0 flex-1">
+                    <h3 className="text-sm font-bold">شروع تمرین</h3>
+                    <p className="text-[10px] leading-5 text-muted-foreground">
+                      جلسه واقعی با اقدام شما ساخته می‌شود؛ ست‌های انجام‌شده را همان‌جا ثبت
+                      کنید. بازدید از برنامه هرگز جلسه حساب نمی‌شود.
+                    </p>
+                  </div>
+                  <Button
+                    onClick={() => setFreeDialogOpen(true)}
+                    disabled={hasActiveSession}
+                    className="font-bold text-primary-foreground glow-lime-sm"
+                  >
+                    <ListPlus className="size-4" aria-hidden="true" />
+                    {hasActiveSession ? "جلسه فعالی دارید" : "تمرین آزاد"}
+                  </Button>
+                </div>
+                {hasActiveSession && (
+                  <p className="mt-2 rounded-lg border border-amber-400/25 bg-amber-400/10 px-3 py-2 text-[10px] leading-5 text-amber-300/95">
+                    یک جلسه در حال انجام دارید؛ تا پایان یا رهاکردن آن، جلسه جدیدی شروع
+                    نمی‌شود. رکوردر بالای همین صفحه آماده است.
+                  </p>
+                )}
+              </section>
+
+              {activePlanSummary && activeDetail.plan && (
+                <section aria-label="برنامه فعال" className="flex flex-col gap-3">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <h3 className="text-sm font-bold">برنامه فعال: {activeDetail.plan.title}</h3>
+                    <StatusChip status="active" />
+                    <div className="ms-auto flex items-center gap-1.5">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        disabled={busyId === activeDetail.plan.id}
+                        onClick={() => void handleArchive(activeDetail.plan!.id)}
+                        className="h-7 border-border/70 px-2.5 text-[10px] font-semibold hover:border-amber-400/40 hover:text-amber-300"
+                      >
+                        <Archive className="size-3" aria-hidden="true" />
+                        بایگانی
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => setDeleteTarget(activePlanSummary)}
+                        className="h-7 border-destructive/30 px-2.5 text-[10px] font-semibold text-rose-300 hover:bg-destructive/10"
+                      >
+                        <Trash2 className="size-3" aria-hidden="true" />
+                        حذف
+                      </Button>
+                    </div>
+                  </div>
+                  <PlanDetail
+                    plan={activeDetail.plan}
+                    onStartDay={(dayId) => void handleStartDay(dayId)}
+                    startDisabled={hasActiveSession}
+                    startingDayId={startingDayId}
+                  />
+                </section>
+              )}
+
+              {!activePlanSummary && plans.length === 0 && (
+                <section className="rounded-2xl border border-border/60 bg-card p-6">
+                  <EmptyState
+                    icon={CalendarCheck2}
+                    title="هنوز برنامه تمرینی نساخته‌اید"
+                    description="برنامه‌ساز بر اساس هدف، سطح تجربه، تجهیزات و روزهای شما — و از بانک ۴۸ حرکتی واقعی — برنامه هفتگی ساختاریافته می‌سازد. تا آن زمان می‌توانید با «تمرین آزاد» جلسه واقعی ثبت کنید."
+                    action={
+                      <Button
+                        onClick={() => setMode("form")}
+                        className="font-bold text-primary-foreground glow-lime-sm"
+                      >
+                        <Plus className="size-4" aria-hidden="true" />
+                        ساخت برنامه شخصی
+                      </Button>
+                    }
+                  />
+                </section>
+              )}
+
+              {!activePlanSummary && plans.length > 0 && (
+                <section className="rounded-2xl border border-border/60 bg-card p-5 md:p-6">
+                  <p className="text-xs leading-6 text-muted-foreground">
+                    برنامه فعالی ندارید؛ یکی از برنامه‌های بایگانی را فعال کنید یا برنامه جدیدی بسازید.
+                  </p>
                   <Button
                     onClick={() => setMode("form")}
-                    className="font-bold text-primary-foreground glow-lime-sm"
+                    className="mt-3 font-bold text-primary-foreground glow-lime-sm"
                   >
                     <Plus className="size-4" aria-hidden="true" />
                     ساخت برنامه شخصی
                   </Button>
-                }
+                </section>
+              )}
+
+              <section>
+                <Button
+                  variant="outline"
+                  onClick={() => setActiveView("progress")}
+                  className="border-border/70 font-semibold hover:border-primary/40 hover:text-primary"
+                >
+                  تاریخچه و تحلیل پیشرفت
+                  <ChevronLeft className="size-4" aria-hidden="true" />
+                </Button>
+              </section>
+
+              {archivedPlans.length > 0 && (
+                <section
+                  aria-label="برنامه‌های قبلی"
+                  className="rounded-2xl border border-border/60 bg-card p-4 md:p-5"
+                >
+                  <div className="mb-3 flex items-center gap-2.5">
+                    <Archive className="size-4 text-muted-foreground" aria-hidden="true" />
+                    <h3 className="text-xs font-bold">برنامه‌های قبلی</h3>
+                    <span className="rounded-md border border-border/50 bg-secondary/40 px-1.5 py-0.5 text-[9px] font-bold text-muted-foreground">
+                      {faDigits(archivedPlans.length)}
+                    </span>
+                  </div>
+                  <div className="flex flex-col gap-2.5">
+                    {archivedPlans.map((plan) => (
+                      <PlanSummaryCard
+                        key={plan.id}
+                        plan={plan}
+                        active={false}
+                        busy={busyId === plan.id || deletingId === plan.id}
+                        onOpen={() => void 0}
+                        onActivate={() => void handleActivate(plan.id)}
+                        onDelete={() => setDeleteTarget(plan)}
+                      />
+                    ))}
+                  </div>
+                </section>
+              )}
+
+              {activePlanSummary && (
+                <section>
+                  <Button
+                    variant="outline"
+                    onClick={() => setMode("form")}
+                    className="border-border/70 font-semibold hover:border-primary/40 hover:text-primary"
+                  >
+                    <ListPlus className="size-4" aria-hidden="true" />
+                    ساخت برنامه جدید
+                  </Button>
+                </section>
+              )}
+            </>
+          )}
+
+          {!loading && !error && mode === "form" && (
+            <section aria-label="تنظیمات برنامه جدید" className="flex flex-col gap-4">
+              <div className="flex items-center gap-2.5">
+                <h3 className="text-sm font-bold">تنظیمات برنامه</h3>
+                <StageBadge label="گام ۱ از ۲" className="ms-auto" />
+              </div>
+              <PlanSettingsForm
+                profile={profile}
+                submitting={false}
+                serverError={formError}
+                onSubmit={(s) => void handleFormSubmit(s)}
+                onCancel={() => {
+                  setMode("list");
+                  setFormError(null);
+                }}
               />
             </section>
           )}
 
-          {!activePlanSummary && plans.length > 0 && (
-            <section className="rounded-2xl border border-border/60 bg-card p-5 md:p-6">
-              <p className="text-xs leading-6 text-muted-foreground">
-                برنامه فعالی ندارید؛ یکی از برنامه‌های بایگانی را فعال کنید یا برنامه جدیدی بسازید.
-              </p>
-              <Button
-                onClick={() => setMode("form")}
-                className="mt-3 font-bold text-primary-foreground glow-lime-sm"
-              >
-                <Plus className="size-4" aria-hidden="true" />
-                ساخت برنامه شخصی
-              </Button>
-            </section>
-          )}
-
-          {archivedPlans.length > 0 && (
-            <section aria-label="برنامه‌های قبلی" className="rounded-2xl border border-border/60 bg-card p-4 md:p-5">
-              <div className="mb-3 flex items-center gap-2.5">
-                <Archive className="size-4 text-muted-foreground" aria-hidden="true" />
-                <h3 className="text-xs font-bold">برنامه‌های قبلی</h3>
-                <span className="rounded-md border border-border/50 bg-secondary/40 px-1.5 py-0.5 text-[9px] font-bold text-muted-foreground">
-                  {faDigits(archivedPlans.length)}
-                </span>
+          {!loading && !error && mode === "preview" && preview && (
+            <section aria-label="پیش‌نمایش برنامه" className="flex flex-col gap-4">
+              <div className="flex items-center gap-2.5">
+                <h3 className="text-sm font-bold">پیش‌نمایش برنامه</h3>
+                <StageBadge label="گام ۲ از ۲" className="ms-auto" />
               </div>
-              <div className="flex flex-col gap-2.5">
-                {archivedPlans.map((plan) => (
-                  <PlanSummaryCard
-                    key={plan.id}
-                    plan={plan}
-                    active={false}
-                    busy={busyId === plan.id || deletingId === plan.id}
-                    onOpen={() => void 0}
-                    onActivate={() => void handleActivate(plan.id)}
-                    onDelete={() => setDeleteTarget(plan)}
-                  />
-                ))}
-              </div>
-            </section>
-          )}
-
-          {activePlanSummary && (
-            <section>
-              <Button
-                variant="outline"
-                onClick={() => setMode("form")}
-                className="border-border/70 font-semibold hover:border-primary/40 hover:text-primary"
-              >
-                <ListPlus className="size-4" aria-hidden="true" />
-                ساخت برنامه جدید
-              </Button>
+              <PlanPreview
+                plan={preview}
+                saving={creating}
+                saveError={saveError}
+                onSave={() => void handleSave()}
+                onBack={() => {
+                  setMode("form");
+                  setSaveError(null);
+                }}
+              />
             </section>
           )}
         </>
       )}
 
-      {!loading && !error && mode === "form" && (
-        <section aria-label="تنظیمات برنامه جدید" className="flex flex-col gap-4">
-          <div className="flex items-center gap-2.5">
-            <h3 className="text-sm font-bold">تنظیمات برنامه</h3>
-            <StageBadge label="گام ۱ از ۲" className="ms-auto" />
-          </div>
-          <PlanSettingsForm
-            profile={profile}
-            submitting={false}
-            serverError={formError}
-            onSubmit={(s) => void handleFormSubmit(s)}
-            onCancel={() => {
-              setMode("list");
-              setFormError(null);
-            }}
-          />
-        </section>
-      )}
+      {/* دیالوگ شروع تمرین آزاد */}
+      <StartFreeWorkoutDialog
+        open={freeDialogOpen}
+        onOpenChange={setFreeDialogOpen}
+        starting={startingFree}
+        onStart={handleStartFree}
+      />
 
-      {!loading && !error && mode === "preview" && preview && (
-        <section aria-label="پیش‌نمایش برنامه" className="flex flex-col gap-4">
-          <div className="flex items-center gap-2.5">
-            <h3 className="text-sm font-bold">پیش‌نمایش برنامه</h3>
-            <StageBadge label="گام ۲ از ۲" className="ms-auto" />
-          </div>
-          <PlanPreview
-            plan={preview}
-            saving={creating}
-            saveError={saveError}
-            onSave={() => void handleSave()}
-            onBack={() => {
-              setMode("form");
-              setSaveError(null);
-            }}
-          />
-        </section>
-      )}
-
-      {/* دیالوگ تأیید حذف */}
+      {/* دیالوگ تأیید حذف برنامه */}
       <AlertDialog open={deleteTarget !== null} onOpenChange={(open) => !open && setDeleteTarget(null)}>
         <AlertDialogContent dir="rtl">
           <AlertDialogHeader>
             <AlertDialogTitle className="text-start">حذف برنامه تمرینی</AlertDialogTitle>
             <AlertDialogDescription className="text-start leading-7">
               برنامه «{deleteTarget?.title}» برای همیشه حذف می‌شود و قابل بازگشت نیست. اگر این
-              برنامه فعال است، پس از حذف برنامه فعالی باقی نمی‌ماند.
+              برنامه فعال است، پس از حذف برنامه فعالی باقی نمی‌ماند. جلسات واقعی ثبت‌شده شما
+              با حذف برنامه حذف نمی‌شوند.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter className="gap-2">

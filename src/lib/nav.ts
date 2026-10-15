@@ -148,7 +148,7 @@ export function getNavItem(id: ViewId): NavItem {
 }
 
 /** مرحله جاری توسعه — مرجع واحد برای داشبورد و کارت وضعیت */
-export const CURRENT_STAGE = 7;
+export const CURRENT_STAGE = 8;
 
 /** نقشه راه ۱۳ مرحله‌ای توسعه محصول — برای نمایش وضعیت شفاف در داشبورد */
 export interface DevStage {
