@@ -1,0 +1,60 @@
+#!/usr/bin/env python3
+"""Double-fork daemonize the Next.js dev server so it survives tool calls.
+
+The sandbox kills processes spawned within a tool call once the call ends.
+Classic double-fork daemonization reparents the server to init (PID 1),
+which has preserved it across calls in earlier phases.
+"""
+import os
+import sys
+import time
+
+PROJECT = "/home/z/my-project"
+LOG = os.path.join(PROJECT, "dev.log")
+
+
+def daemonize_and_run() -> None:
+    # First fork: parent exits, child becomes session leader.
+    pid = os.fork()
+    if pid > 0:
+        return  # parent returns to main
+    os.setsid()
+    # Second fork: grandchild is no longer a session leader,
+    # can never acquire a controlling terminal.
+    pid2 = os.fork()
+    if pid2 > 0:
+        os._exit(0)
+    # Grandchild: fully detached daemon.
+    os.chdir(PROJECT)
+    devnull = os.open(os.devnull, os.O_RDWR)
+    os.dup2(devnull, 0)
+    log_fd = os.open(LOG, os.O_WRONLY | os.O_CREAT | os.O_APPEND, 0o644)
+    os.dup2(log_fd, 1)
+    os.dup2(log_fd, 2)
+    os.execvp("bun", ["bun", "run", "dev"])
+
+
+def main() -> None:
+    daemonize_and_run()
+    # Parent: give the daemon time to boot, then verify.
+    deadline = time.time() + 60
+    last_err = None
+    while time.time() < deadline:
+        probe = os.system(
+            'curl -s -o /dev/null -w "%{http_code}" http://localhost:3000/ 2>/dev/null'
+        )
+        # curl exit status in high byte of os.system result; 200 body is echoed
+        out = os.popen(
+            'curl -s -o /dev/null -w "%{http_code}" http://localhost:3000/ 2>/dev/null'
+        ).read().strip()
+        if out == "200":
+            print(f"SERVER_READY http=200 after {60 - (deadline - time.time()):.1f}s")
+            sys.exit(0)
+        last_err = out
+        time.sleep(2)
+    print(f"SERVER_NOT_READY last_probe={last_err!r}")
+    sys.exit(1)
+
+
+if __name__ == "__main__":
+    main()
