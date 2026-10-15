@@ -13,7 +13,7 @@ PROJECT = "/home/z/my-project"
 LOG = os.path.join(PROJECT, "dev.log")
 
 
-def daemonize_and_run() -> None:
+def daemonize_and_run(mode: str) -> None:
     # First fork: parent exits, child becomes session leader.
     pid = os.fork()
     if pid > 0:
@@ -31,11 +31,33 @@ def daemonize_and_run() -> None:
     log_fd = os.open(LOG, os.O_WRONLY | os.O_CREAT | os.O_APPEND, 0o644)
     os.dup2(log_fd, 1)
     os.dup2(log_fd, 2)
-    os.execvp("bun", ["bun", "run", "dev"])
+    # Runtime env: inject every KEY=VALUE from .env (standalone server
+    # does not load .env by itself).
+    env = dict(os.environ)
+    env_path = os.path.join(PROJECT, ".env")
+    try:
+        with open(env_path, "r", encoding="utf-8") as fh:
+            for line in fh:
+                line = line.strip()
+                if not line or line.startswith("#") or "=" not in line:
+                    continue
+                key, _, value = line.partition("=")
+                env.setdefault(key.strip(), value.strip())
+    except FileNotFoundError:
+        pass
+    env.setdefault("DATABASE_URL", "file:/home/z/my-project/db/custom.db")
+    if mode == "prod":
+        env["NODE_ENV"] = "production"
+        env.setdefault("PORT", "3000")
+        env.setdefault("HOSTNAME", "0.0.0.0")
+        os.execvpe("bun", ["bun", ".next/standalone/server.js"], env)
+    else:
+        os.execvpe("bun", ["bun", "run", "dev"], env)
 
 
 def main() -> None:
-    daemonize_and_run()
+    mode = sys.argv[1] if len(sys.argv) > 1 else "dev"
+    daemonize_and_run(mode)
     # Parent: give the daemon time to boot, then verify.
     deadline = time.time() + 60
     last_err = None
