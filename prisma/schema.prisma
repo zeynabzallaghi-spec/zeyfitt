@@ -38,6 +38,7 @@ model user {
   workoutPlans  WorkoutPlan[]
   nutritionPlans NutritionPlan[]
   workoutSessions WorkoutSession[]
+  assistantConversations AssistantConversation[]
 }
 
 model account {
@@ -382,4 +383,46 @@ model WorkoutSetLog {
 
   @@unique([sessionExerciseId, setNumber])
   @@index([sessionExerciseId, setNumber])
+}
+
+// ----------------------------------------
+// مکالمه دستیار هوشمند — شخصی و متعلق به یک کاربر
+// ----------------------------------------
+// هر مکالمه فقط برای مالک خودش قابل مشاهده است؛ «نبودن» و «مالک دیگر» در
+// لایه API هر دو 404 پاسخ می‌دهند تا هیچ اطلاعاتی افشا نشود. عنوان مکالمه
+// از نخستین پیام واقعی کاربر ساخته می‌شود (بدون تولید ساختگی).
+// حذف مکالمه با حذف آبشاری همه پیام‌های آن همراه است.
+
+model AssistantConversation {
+  id        String   @id @default(cuid())
+  userId    String
+  title     String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  user      user     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  messages  AssistantMessage[]
+
+  @@index([userId, updatedAt])
+}
+
+// پیام داخل مکالمه — نقش فرستنده (user | assistant)، متن واقعی و زمان ثبت.
+// lang زبان همان پیام است (fa | en) برای جهت‌دهی صحیح نمایش؛ null یعنی
+// نامشخص. متن مدل هرگز جایگزین پیام کاربر نمی‌شود و شکست ارائه‌دهنده پیام
+// کاربر را از بین نمی‌برد (پیام user پیش از فراخوانی مدل ذخیره می‌شود).
+
+model AssistantMessage {
+  id             String   @id @default(cuid())
+  conversationId String
+  // مالک پیام (denormalized از مکالمه) — برای کنترل مالکیت و شمارش محدودسازی
+  // نرخ درخواست بدون join؛ هم‌اره با مالک مکالمه نوشته می‌شود و رکورد یتیم
+  // نمی‌ماند (حذف آبشاری از مسیر مکالمه/کاربر).
+  userId         String
+  role           String // user | assistant
+  content        String
+  lang           String? // fa | en — زبان همان پیام
+  createdAt      DateTime @default(now())
+  conversation   AssistantConversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+
+  @@index([conversationId, createdAt])
+  @@index([userId, role, createdAt])
 }

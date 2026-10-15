@@ -1,128 +1,61 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useState } from "react";
 import { motion } from "framer-motion";
-import { Bot, Send, UserRound, Sparkles } from "lucide-react";
-import { Input } from "@/components/ui/input";
+import { Bot, MessagesSquare, PanelRightOpen, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
 import { cn } from "@/lib/utils";
-import { useAppStore } from "@/store/app-store";
-import {
-  useFitnessStore,
-  ASSISTANT_STATUS_REPLY,
-  type ChatMessage,
-} from "@/store/fitness-store";
-import { getNavItem } from "@/lib/nav";
+import { useAssistantChat } from "@/hooks/use-assistant-chat";
+import { assistantStrings } from "@/lib/assistant/i18n";
 import { ViewIntro } from "../shared/view-intro";
-import { StageBadge } from "../shared/badges";
+import { getNavItem } from "@/lib/nav";
+import { ConversationSidebar, DeleteConversationDialog } from "./assistant/conversation-sidebar";
+import { LanguageSelector } from "./assistant/language-selector";
+import { ChatPanel } from "./assistant/chat-panel";
 
-const SAMPLE_QUESTIONS = [
-  "برای عضله‌سازی چه برنامه‌ای مناسب من است؟",
-  "امروز چه تمرینی دارم؟",
-  "چطور پروتئین روزانه‌ام را تأمین کنم؟",
-  "این حرکت را با چه حرکتی جایگزین کنم؟",
-];
-
-function MessageBubble({ message }: { message: ChatMessage }) {
-  const isAssistant = message.role === "assistant";
-  const Icon = isAssistant ? Bot : UserRound;
-
-  return (
-    <motion.div
-      initial={{ opacity: 0, y: 8 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.25, ease: "easeOut" }}
-      className={cn("flex items-start gap-2.5", isAssistant ? "justify-start" : "justify-end")}
-    >
-      {isAssistant && (
-        <span
-          className="flex size-8 shrink-0 items-center justify-center rounded-lg border border-primary/30 bg-primary/12 text-primary"
-          aria-hidden="true"
-        >
-          <Bot className="size-4" />
-        </span>
-      )}
-      <div
-        className={cn(
-          "max-w-[82%] rounded-2xl px-4 py-3 text-xs leading-6 sm:text-[13px] sm:leading-7",
-          isAssistant
-            ? "rounded-ss-md border border-border/60 bg-secondary/40 text-foreground/90"
-            : "rounded-se-md border border-primary/25 bg-primary/12 text-foreground"
-        )}
-        role={isAssistant ? "status" : undefined}
-      >
-        {message.text}
-      </div>
-      {!isAssistant && (
-        <span
-          className="flex size-8 shrink-0 items-center justify-center rounded-lg border border-border/50 bg-secondary/40 text-muted-foreground"
-          aria-hidden="true"
-        >
-          <UserRound className="size-4" />
-        </span>
-      )}
-    </motion.div>
-  );
-}
-
-function TypingIndicator() {
-  return (
-    <div className="flex items-start gap-2.5" aria-label="در حال نوشتن پاسخ">
-      <span
-        className="flex size-8 shrink-0 items-center justify-center rounded-lg border border-primary/30 bg-primary/12 text-primary"
-        aria-hidden="true"
-      >
-        <Bot className="size-4" />
-      </span>
-      <div className="flex items-center gap-1.5 rounded-2xl rounded-ss-md border border-border/60 bg-secondary/40 px-4 py-3.5">
-        {[0, 1, 2].map((i) => (
-          <span
-            key={i}
-            className="size-1.5 animate-bounce rounded-full bg-muted-foreground/60"
-            style={{ animationDelay: `${i * 150}ms` }}
-          />
-        ))}
-      </div>
-    </div>
-  );
-}
-
+/**
+ * دستیار هوشمند واقعی — چت متصل به مدل زبانی از سمت سرور با مکالمه‌های
+ * ذخیره‌شده، پاسخ فارسی/انگلیسی و حالت‌های صادقانه خطا.
+ *
+ * - زبان رابط: «خودکار/فارسی» → راست‌چین (پیش‌فرض اپ)، «English» → چپ‌چین.
+ * - جهت هر پیام جدا از جهت رابط بر اساس زبان خود پیام تعیین می‌شود.
+ * - اگر اتصال مدل پیکربندی نشده باشد، وضعیت واقعی + راهنمای تنظیم نمایش
+ *   داده می‌شود و هیچ چت ظاهراً فعالی وجود ندارد.
+ */
 export function AssistantView() {
   const item = getNavItem("assistant");
-  const chat = useFitnessStore((s) => s.chat);
-  const addUserMessage = useFitnessStore((s) => s.addUserMessage);
-  const addAssistantMessage = useFitnessStore((s) => s.addAssistantMessage);
-  const setActiveView = useAppStore((s) => s.setActiveView);
+  const chat = useAssistantChat();
+  const strings = assistantStrings(chat.uiLang);
 
-  const [input, setInput] = useState("");
-  const [pending, setPending] = useState(false);
-  const scrollRef = useRef<HTMLDivElement>(null);
-  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [mobileListOpen, setMobileListOpen] = useState(false);
+  const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
 
-  // اسکرول خودکار به آخرین پیام
-  useEffect(() => {
-    scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
-  }, [chat.length, pending]);
+  const configured = chat.provider?.configured === true;
+  const statusLabel = chat.statusLoading
+    ? strings.statusChecking
+    : chat.statusError
+      ? strings.errorNetwork
+      : configured
+        ? strings.statusConnected
+        : strings.statusNotConfigured;
 
-  // پاک‌سازی تایمر در حذف کامپوننت
-  useEffect(() => {
-    return () => {
-      if (timerRef.current) clearTimeout(timerRef.current);
-    };
-  }, []);
+  const handleCreate = () => {
+    void chat.createConversation();
+    setMobileListOpen(false);
+  };
 
-  const hasUserMessages = chat.some((m) => m.role === "user");
+  const handleSelect = (id: string) => {
+    chat.selectConversation(id);
+    setMobileListOpen(false);
+  };
 
-  const sendMessage = (rawText: string) => {
-    const text = rawText.trim();
-    if (!text || pending) return;
-    addUserMessage(text);
-    setInput("");
-    setPending(true);
-    timerRef.current = setTimeout(() => {
-      addAssistantMessage(ASSISTANT_STATUS_REPLY);
-      setPending(false);
-    }, 900);
+  const requestDelete = (id: string) => setPendingDeleteId(id);
+
+  const confirmDelete = () => {
+    const id = pendingDeleteId;
+    setPendingDeleteId(null);
+    if (id) void chat.deleteConversation(id);
   };
 
   return (
@@ -132,99 +65,127 @@ export function AssistantView() {
       transition={{ duration: 0.3, ease: "easeOut" }}
       className="flex flex-col gap-4"
     >
-      <ViewIntro
-        item={item}
-        badges={
-          <StageBadge stage={9} label="اتصال به مدل AI: مرحله ۹" />
-        }
-      />
+      <ViewIntro item={item} />
 
       <section
-        aria-label="گفت‌وگو با دستیار هوشمند"
-        className="flex flex-col rounded-2xl border border-border/60 bg-card"
+        dir={strings.dir}
+        lang={strings.langAttr}
+        aria-label={strings.title}
+        className="flex overflow-hidden rounded-2xl border border-border/60 bg-card"
       >
-        {/* سربرگ گفت‌وگو */}
-        <div className="flex items-center gap-3 border-b border-border/60 px-4 py-3.5 md:px-5">
-          <span className="flex size-9 items-center justify-center rounded-xl border border-primary/30 bg-primary/15 text-primary glow-lime-sm">
-            <Bot className="size-4.5" aria-hidden="true" />
-          </span>
-          <div className="min-w-0 flex-1">
-            <p className="text-xs font-bold text-foreground">دستیار مربی</p>
-            <p className="text-[10px] text-muted-foreground">
-              دسترسی کنترل‌شده به پروفایل و برنامه‌های شما (در نسخه کامل)
-            </p>
-          </div>
-          <span className="inline-flex shrink-0 items-center gap-1.5 rounded-md border border-amber-400/30 bg-amber-400/10 px-2 py-0.5 text-[10px] font-bold text-amber-300">
-            <span className="size-1.5 rounded-full bg-amber-300" aria-hidden="true" />
-            مدل AI متصل نیست
-          </span>
-        </div>
-
-        {/* پیام‌ها */}
-        <div
-          ref={scrollRef}
-          className="flex h-[380px] flex-col gap-4 overflow-y-auto px-4 py-5 md:px-5"
-          aria-live="polite"
+        {/* ستون مکالمه‌ها — دسکتاپ */}
+        <aside
+          className="hidden w-64 shrink-0 flex-col border-e border-border/60 bg-secondary/20 p-3.5 lg:flex"
+          aria-label={strings.conversationsTitle}
         >
-          {chat.map((message) => (
-            <MessageBubble key={message.id} message={message} />
-          ))}
-          {pending && <TypingIndicator />}
-        </div>
-
-        {/* پیشنهاد سؤال‌ها */}
-        {!hasUserMessages && (
-          <div className="flex flex-wrap gap-2 border-t border-border/60 px-4 py-3.5 md:px-5" aria-label="سؤال‌های پیشنهادی">
-            {SAMPLE_QUESTIONS.map((question) => (
-              <button
-                key={question}
-                type="button"
-                disabled={pending}
-                onClick={() => sendMessage(question)}
-                className="flex items-center gap-1.5 rounded-full border border-border/50 bg-secondary/30 px-3 py-1.5 text-[11px] font-medium text-muted-foreground transition-all duration-200 hover:border-primary/35 hover:text-primary disabled:cursor-not-allowed disabled:opacity-50 outline-none focus-visible:ring-2 focus-visible:ring-ring/60"
-              >
-                <Sparkles className="size-3" aria-hidden="true" />
-                {question}
-              </button>
-            ))}
-          </div>
-        )}
-
-        {/* ورودی پیام */}
-        <form
-          onSubmit={(e) => {
-            e.preventDefault();
-            sendMessage(input);
-          }}
-          className="flex items-center gap-2 border-t border-border/60 p-3 md:p-4"
-        >
-          <Input
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            placeholder="سؤال خود را بنویسید…"
-            aria-label="متن سؤال"
-            className="flex-1"
-            maxLength={500}
+          <ConversationSidebar
+            conversations={chat.conversations}
+            activeId={chat.activeId}
+            loading={chat.conversationsLoading}
+            error={chat.conversationsError}
+            deletingId={chat.deletingId}
+            strings={strings}
+            onSelect={chat.selectConversation}
+            onCreate={handleCreate}
+            onDelete={requestDelete}
+            onRetry={() => void chat.refreshConversations()}
           />
-          <Button
-            type="submit"
-            size="icon"
-            disabled={pending || input.trim().length === 0}
-            aria-label="ارسال پیام"
-            className="shrink-0 text-primary-foreground"
-          >
-            <Send className="size-4" />
-          </Button>
-        </form>
+        </aside>
+
+        {/* ستون اصلی چت */}
+        <div className="flex min-w-0 flex-1 flex-col">
+          {/* سربرگ */}
+          <div className="flex flex-wrap items-center gap-2 border-b border-border/60 px-4 py-3 md:px-5">
+            <span className="flex size-9 shrink-0 items-center justify-center rounded-xl border border-primary/30 bg-primary/15 text-primary glow-lime-sm">
+              <Bot className="size-4.5" aria-hidden="true" />
+            </span>
+            <div className="min-w-0 flex-1">
+              <p className="truncate text-xs font-bold text-foreground">{strings.title}</p>
+              <p
+                className={cn(
+                  "flex items-center gap-1.5 text-[10px]",
+                  chat.statusLoading
+                    ? "text-muted-foreground"
+                    : configured
+                      ? "text-primary"
+                      : "text-amber-300"
+                )}
+              >
+                {chat.statusLoading ? (
+                  <Loader2 className="size-2.5 animate-spin" aria-hidden="true" />
+                ) : (
+                  <span
+                    className={cn(
+                      "size-1.5 rounded-full",
+                      configured ? "bg-primary" : "bg-amber-300"
+                    )}
+                    aria-hidden="true"
+                  />
+                )}
+                {statusLabel}
+              </p>
+            </div>
+
+            <LanguageSelector
+              value={chat.langChoice}
+              onChange={chat.setLangChoice}
+              strings={strings}
+            />
+
+            {/* فهرست مکالمه‌ها — موبایل */}
+            <Button
+              type="button"
+              variant="outline"
+              size="icon"
+              onClick={() => setMobileListOpen(true)}
+              aria-label={strings.conversationsTitle}
+              className="size-8 shrink-0 rounded-lg lg:hidden"
+            >
+              <PanelRightOpen className="size-4" aria-hidden="true" />
+            </Button>
+          </div>
+
+          <ChatPanel chat={chat} strings={strings} configured={configured} />
+        </div>
       </section>
 
-      {/* یادداشت شفافیت */}
+      {/* یادداشت شفافیت — مرز نقش دستیار */}
       <p className="rounded-xl border border-border/50 bg-secondary/30 p-3.5 text-[11px] leading-relaxed text-muted-foreground">
-        شفافیت مهم است: در این نسخه، پاسخ دستیار صرفاً پیام وضعیت است و پاسخ واقعی هوش مصنوعی
-        محسوب نمی‌شود. اتصال به مدل زبانی از سمت سرور (بدون قرارگیری کلید در مرورگر) در مرحله ۹
-        انجام می‌شود و دستیار حتی در نسخه کامل، تشخیص پزشکی یا برنامه درمانی ارائه نمی‌کند. برای
-        آشنایی با ساختار محتوا، می‌توانید <button type="button" onClick={() => setActiveView("library")} className="font-bold text-primary underline-offset-4 hover:underline">کتابخانه حرکات</button> را ببینید.
+        {strings.transparencyNote}
       </p>
+
+      {/* فهرست مکالمه‌ها در موبایل */}
+      <Sheet open={mobileListOpen} onOpenChange={setMobileListOpen}>
+        <SheetContent side={strings.dir === "rtl" ? "right" : "left"} className="w-[290px] p-3.5">
+          <SheetTitle className="sr-only">{strings.conversationsTitle}</SheetTitle>
+          <div className="flex h-full min-h-0 flex-col gap-3 pt-6">
+            <div className="flex items-center gap-2 border-b border-border/50 pb-2">
+              <MessagesSquare className="size-4 text-primary" aria-hidden="true" />
+              <p className="text-xs font-bold text-foreground">{strings.conversationsTitle}</p>
+            </div>
+            <ConversationSidebar
+              conversations={chat.conversations}
+              activeId={chat.activeId}
+              loading={chat.conversationsLoading}
+              error={chat.conversationsError}
+              deletingId={chat.deletingId}
+              strings={strings}
+              onSelect={handleSelect}
+              onCreate={handleCreate}
+              onDelete={requestDelete}
+              onRetry={() => void chat.refreshConversations()}
+            />
+          </div>
+        </SheetContent>
+      </Sheet>
+
+      <DeleteConversationDialog
+        open={pendingDeleteId !== null}
+        pending={chat.deletingId !== null}
+        strings={strings}
+        onCancel={() => setPendingDeleteId(null)}
+        onConfirm={confirmDelete}
+      />
     </motion.div>
   );
 }
