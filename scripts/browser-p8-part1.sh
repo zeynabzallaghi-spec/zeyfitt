@@ -34,7 +34,11 @@ echo "token-found:$([ -n "$TOKEN" ] && echo yes || echo no)"
 $AB close > /dev/null 2>&1 || true
 $AB open http://localhost:3000 > /dev/null 2>&1
 sleep 2
-$AB cookies set fitcoach.session_token "$TOKEN" --domain localhost --path / --httpOnly > /dev/null 2>&1 || $AB cookies set fitcoach.session_token "$TOKEN" --domain localhost --path / > /dev/null 2>&1
+# ممیزی مرحله ۱۱: پاک‌سازی کوکی‌های نشست قدیمی سوئیت‌های قبل —
+# کوکی کهنه‌ای از کاربر دیگر باعث می‌شد سرور کاربر اشتباه را بشناسد
+# و مکالمه/ثبتِ seed شده هرگز در UI دیده نمی‌شد (شکست قطعی تست XSS).
+$AB cookies clear >/dev/null 2>&1 || agent-browser cookies clear >/dev/null 2>&1 || true
+$AB cookies set "__Secure-fitcoach.session_token" "$TOKEN" --url http://localhost:3000 --secure --sameSite Lax --httpOnly > /dev/null 2>&1
 $AB open http://localhost:3000 > /dev/null 2>&1
 sleep 4
 $AB wait --load networkidle > /dev/null 2>&1 || true
@@ -52,23 +56,25 @@ free_btn=$($AB snapshot -c 2>/dev/null | rg -c "تمرین آزاد" || echo 0)
 check "دکمه «تمرین آزاد» هست" "yes" "$([ "$free_btn" -gt 0 ] && echo yes || echo no)"
 
 echo "== 2) شروع تمرین آزاد از دیالوگ =="
-$AB find text "تمرین آزاد" click > /dev/null 2>&1
+# ممیزی مرحله ۱۱: find text عبارت را در پاراگراف توضیحات هم می‌یافت و به‌جای
+# دکمه همان را کلیک می‌کرد → دیالوگ باز نمی‌شد. یاب نقش‌محور فقط دکمه را می‌گیرد.
+$AB find role button click --name "تمرین آزاد" > /dev/null 2>&1
 sleep 1.5
 $AB snapshot -i -c 2>/dev/null > /tmp/p8-dialog.txt
-search_ref=$(rg -o 'textbox "جست‌وجو[^"]*" \[ref=(\w+)\]' -r '$1' /tmp/p8-dialog.txt | head -1)
+search_ref=$(rg -o 'textbox "جست[^"]*" \[ref=(\w+)\]' -r '$1' /tmp/p8-dialog.txt | head -1)
 if [ -n "$search_ref" ]; then $AB fill @$search_ref "پرس" > /dev/null 2>&1; sleep 1; fi
 $AB snapshot -i -c 2>/dev/null > /tmp/p8-dialog2.txt
-pick_ref=$(rg -o 'button "افزودن پرس سینه هالتر[^"]*" \[ref=(\w+)\]' -r '$1' /tmp/p8-dialog2.txt | head -1)
-[ -z "$pick_ref" ] && pick_ref=$(rg -o 'button "افزودن [^"]*" \[ref=(\w+)\]' -r '$1' /tmp/p8-dialog2.txt | head -1)
+pick_ref=$(rg -o 'button "انتخاب پرس سینه هالتر[^"]*" \[ref=(\w+)\]' -r '$1' /tmp/p8-dialog2.txt | head -1)
+[ -z "$pick_ref" ] && pick_ref=$(rg -o 'button "انتخاب [^"]*" \[ref=(\w+)\]' -r '$1' /tmp/p8-dialog2.txt | head -1)
 $AB click @$pick_ref > /dev/null 2>&1
 sleep 1.5
 # حرکت دوم — شنا (وزن بدن، دارای مربی سه‌بعدی)
 $AB snapshot -i -c 2>/dev/null > /tmp/p8-dialog3.txt
-search_ref2=$(rg -o 'textbox "جست‌وجو[^"]*" \[ref=(\w+)\]' -r '$1' /tmp/p8-dialog3.txt | head -1)
+search_ref2=$(rg -o 'textbox "جست[^"]*" \[ref=(\w+)\]' -r '$1' /tmp/p8-dialog3.txt | head -1)
 if [ -n "$search_ref2" ]; then $AB fill @$search_ref2 "شنا" > /dev/null 2>&1; sleep 1; fi
 $AB snapshot -i -c 2>/dev/null > /tmp/p8-dialog4.txt
-pick_ref2=$(rg -o 'button "افزودن شنا[^"]*" \[ref=(\w+)\]' -r '$1' /tmp/p8-dialog4.txt | head -1)
-[ -z "$pick_ref2" ] && pick_ref2=$(rg -o 'button "افزودن [^"]*" \[ref=(\w+)\]' -r '$1' /tmp/p8-dialog4.txt | head -1)
+pick_ref2=$(rg -o 'button "انتخاب شنا[^"]*" \[ref=(\w+)\]' -r '$1' /tmp/p8-dialog4.txt | head -1)
+[ -z "$pick_ref2" ] && pick_ref2=$(rg -o 'button "انتخاب [^"]*" \[ref=(\w+)\]' -r '$1' /tmp/p8-dialog4.txt | head -1)
 $AB click @$pick_ref2 > /dev/null 2>&1
 sleep 1
 $AB snapshot -i -c 2>/dev/null > /tmp/p8-dialog5.txt

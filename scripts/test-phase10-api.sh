@@ -149,12 +149,16 @@ check "روز ناسازگار با لحظه (۱۰ روز اختلاف) → 400"
 check "mealType نامعتبر → 400" "400" "$(code_of -H "$AUTH_A" -X POST -H 'Content-Type: application/json' -d "{\"source\":\"bank\",\"foodId\":\"egg\",\"unit\":\"g\",\"amount\":50,\"mealType\":\"brunch\",\"consumedAt\":\"$NOON\",\"localDay\":\"$TODAY_TEH\"}" $BASE/api/food-logs)"
 
 # ============================================================
-echo "== 8) مرز نیمه‌شب تهران — لحظه ۲۰:۳۰Z روز قبل = روز تهران امروز =="
-MIDNIGHT=$(iso_of "$YDAY_UTC" "23:59")
+echo "== 8) مرز نیمه‌شب تهران — لحظه ۰۰:۰۱ تهرانِ امروز = ۲۰:۳۱Zِ دیروزِ UTC =="
+# نکته (اصلاح ممیزی مرحله ۱۱): نسخه قبلی «۲۳:۵۹ دیروز» را با YDAY_UTC (دیروزِ UTC)
+# می‌ساخت که بعد از ۲۰:۳۰ UTC با «دیروز تهران» یکی نیست و پیلود ناسازگار می‌شد —
+# سرور چنین پیلودی را درست رد می‌کند (۴۰۰). حالا لحظهٔ درستِ مرز را می‌سازیم:
+# ۰۰:۰۱ روز تهرانِ امروز، که معادلش در UTC هنوز دیروز است (تفاوت روز UTC/تهران).
+MIDNIGHT=$(iso_of "$TODAY_TEH" "00:01")
 code=$(curl -s -H "$AUTH_A" -o "$OUT" -w "%{http_code}" -X POST -H 'Content-Type: application/json' \
   -d "{\"source\":\"bank\",\"foodId\":\"oats\",\"unit\":\"g\",\"amount\":40,\"mealType\":\"snack_ev\",\"consumedAt\":\"$MIDNIGHT\",\"localDay\":\"$TODAY_TEH\",\"clientRequestId\":\"p10-req-$TS-mid\"}" \
   $BASE/api/food-logs)
-check "ثبت ۲۳:۵۹ تهرانِ شب قبل → 201" "201" "$code"
+check "ثبت ۰۰:۰۱ تهران امروز (۲۰:۳۱Z دیروز UTC) → 201" "201" "$code"
 check "در روز تهران امروز ثبت شد (نه روز UTC)" "$TODAY_TEH" "$(python3 -c "import json;print(json.load(open('$OUT'))['log']['localDay'])")"
 check "kcal جو دوسر ۴۰گرم = ۱۵۶" "156" "$(python3 -c "import json;print(json.load(open('$OUT'))['log']['kcal'])")"
 

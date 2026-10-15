@@ -52,3 +52,7 @@ prompt
 server.log
 # Skills directory
 /skills/tool-results/
+
+# audit phase 11: .env.example باید commit شود؛ backups شامل داده کاربر است و هرگز
+!.env.example
+backups/

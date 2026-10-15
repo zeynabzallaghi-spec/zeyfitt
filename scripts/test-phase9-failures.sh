@@ -5,10 +5,12 @@
 # 3) نشانی غیرقابل‌دسترس → 502 شبکه
 # هر سه: هیچ پاسخ ساختگی تولید نمی‌شود و متن کاربر گم نمی‌شود.
 #
-# نکته: قفل dev یکتاست — سرور اصلی (۳۰۰۰) موقتاً متوقف و در پایان دوباره
-# راه‌اندازی می‌شود (trap EXIT تضمین می‌کند حتی در شکست).
+# نکته (انطباق ممیزی مرحله ۱۱): سرورهای مستقل این سوئیت حالا با بیلد production
+# (standalone — ~۲۳۰MB) اجرا می‌شوند نه حالت dev — اجرای dev دوم در سندباکس ۴GB
+# دو بار توسط OOM killer کشته شد. سرور اصلی ۳۰۰۰ (prod daemon) دست‌نخورده می‌ماند.
 set -u
 ROOT="/home/z/my-project"
+SECRET=$(rg -o 'BETTER_AUTH_SECRET=.*' "$ROOT/.env" | head -1 | cut -d= -f2-)
 PASS=0; FAIL=0
 check() {
   local name="$1" expected="$2" actual="$3"
@@ -20,17 +22,11 @@ check() {
 }
 
 cleanup() {
-  pkill -f "next dev -p 31" 2>/dev/null || true
+  for pf in /tmp/p9-fail-*.pid; do [ -f "$pf" ] && kill "$(cat "$pf")" 2>/dev/null || true; done
   [ -n "${HANG_PID:-}" ] && kill $HANG_PID 2>/dev/null || true
-  (cd $ROOT && setsid node_modules/.bin/next dev -p 3000 > /home/z/my-project/dev.log 2>&1 &)
-  echo "(main server 3000 restarted)"
+  echo "(نمونه‌های ۳۱xx متوقف شدند — سرور اصلی ۳۰۰۰ دست‌نخورده)"
 }
 trap cleanup EXIT
-
-# توقف موقت سرور اصلی
-pkill -f "next dev -p 3000" 2>/dev/null || true
-pkill -f "next-server" 2>/dev/null || true
-sleep 3
 
 # سرور HTTP معلق — اتصال را می‌پذیرد و هرگز جواب نمی‌دهد (stdout جدا تا pipe نگه‌داشته نشود)
 node -e "require('http').createServer(()=>{setInterval(()=>{},1000)}).listen(9401)" >/dev/null 2>&1 &
@@ -38,7 +34,10 @@ HANG_PID=$!
 
 start_server() {
   local port=$1 ; shift
-  (cd $ROOT && setsid env "$@" node_modules/.bin/next dev -p $port > /tmp/p9-fail-$port.log 2>&1 &)
+  (cd $ROOT && setsid env PORT=$port NODE_ENV=production \
+    DATABASE_URL=file:/home/z/my-project/db/custom.db \
+    BETTER_AUTH_SECRET="$SECRET" \
+    "$@" bun .next/standalone/server.js > /tmp/p9-fail-$port.log 2>&1 & echo $! > /tmp/p9-fail-$port.pid)
   for i in $(seq 1 40); do
     sleep 2
     code=$(curl -s -o /dev/null -w "%{http_code}" "http://localhost:$port/" --max-time 3 || true)
@@ -76,7 +75,7 @@ check "پیام کاربر محفوظ ماند و پاسخ ساختگی ثبت �
 
 # ------------------- 2) سرور معلق — timeout واقعی -------------------
 echo "== 2) AI_BASE_URL معلق + AI_TIMEOUT_MS=5000 =="
-pkill -f "next dev -p 3100" 2>/dev/null || true ; sleep 3
+kill "$(cat /tmp/p9-fail-3100.pid)" 2>/dev/null || true ; sleep 2
 start_server 3101 AI_PROVIDER=openai-compatible AI_BASE_URL=http://127.0.0.1:9401/v1 AI_API_KEY=dummy-key AI_TIMEOUT_MS=5000 AI_MODEL=fail-model
 CK2="/tmp/p9-f2.txt"
 register 3101 "p9-f2-$TS@test.local" $CK2
@@ -103,7 +102,7 @@ check "پس از retry شکست‌خورده، پیام کاربر هنوز یک
 
 # ------------------- 3) نشانی غیرقابل‌دسترس -------------------
 echo "== 3) AI_BASE_URL غیرقابل‌دسترس =="
-pkill -f "next dev -p 3101" 2>/dev/null || true ; sleep 3
+kill "$(cat /tmp/p9-fail-3101.pid)" 2>/dev/null || true ; sleep 2
 start_server 3102 AI_PROVIDER=openai-compatible AI_BASE_URL=http://127.0.0.1:9/v1 AI_API_KEY=dummy-key AI_TIMEOUT_MS=15000
 CK3="/tmp/p9-f3.txt"
 register 3102 "p9-f3-$TS@test.local" $CK3
@@ -115,8 +114,8 @@ check "ارسال با نشانی غیرقابل‌دسترس → 502" "502" "$c
 errcode3=$(python3 -c "import json;print(json.load(open('/tmp/p9-f3-msg.json'))['error'])")
 check "کد خطا AI_NETWORK" "AI_NETWORK" "$errcode3"
 
-# پاک‌سازی
-pkill -f "next dev -p 310" 2>/dev/null || true
+# پاک‌سازی — با pidfile (الگوی pkill «next dev» سرور prod اصلی را نمی‌کشد)
+for pf in /tmp/p9-fail-*.pid; do [ -f "$pf" ] && kill "$(cat "$pf")" 2>/dev/null || true; done
 kill $HANG_PID 2>/dev/null || true
 echo ""
 echo "RESULT: PASS=$PASS FAIL=$FAIL"

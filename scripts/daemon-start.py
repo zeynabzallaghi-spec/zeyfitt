@@ -25,11 +25,15 @@ def ensure_auth_secret(env: dict) -> None:
         return
     value = secrets.token_urlsafe(48)
     env["BETTER_AUTH_SECRET"] = value
+    # ردیابی در لاگ: چرخش secret یعنی همه نشست‌های فعال باطل می‌شوند
+    print(f"[daemon] BETTER_AUTH_SECRET missing — regenerated (sessions reset). "
+          f"persisted_to_env={True}")
     try:
         with open(os.path.join(PROJECT, ".env"), "a", encoding="utf-8") as fh:
             fh.write(f"BETTER_AUTH_SECRET={value}\n")
     except OSError:
-        pass
+        print("[daemon] WARNING: could not persist BETTER_AUTH_SECRET to .env — "
+              "a new secret will be generated on every restart")
 
 
 def daemonize_and_run(mode: str) -> None:

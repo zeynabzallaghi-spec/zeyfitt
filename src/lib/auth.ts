@@ -51,8 +51,10 @@ export const auth = betterAuth({
   /**
    * مبداهای مورد اعتماد: فقط همان میزبانی که اپ از آن سرو می‌شود (same-origin).
    * به‌صورت پویا از هدر Host خوانده می‌شود تا دامنه پیش‌نمایش بدون تنظیم
-   * دستوری پذیرفته شود؛ درخواست‌های بدون هدر Origin (مثل curl سمت سرور)
-   * از این بررسی عبور نمی‌کنند مگر اینکه کوکی معتبر داشته باشند.
+   * دستوری پذیرفته شود. نکته امنیتی (ممیزی مرحله ۱۱): هدر Origin خام هرگز
+   * به فهرست اضافه نمی‌شود — انعکاس Originِ برگشتی از سمت کلاینت، بررسی CSRF
+   * کتابخانه را بی‌اثر می‌کرد (مثلاً login-CSRF از دامنه مهاجم). مرورگر واقعی
+   * همیشه Origin همان Host را می‌فرستد و از مسیر Host تأیید می‌شود.
    */
   trustedOrigins: (request?: Request) => {
     const origins: string[] = ["http://localhost:3000"];
@@ -61,8 +63,6 @@ export const auth = betterAuth({
       if (host) {
         origins.push(`https://${host}`, `http://${host}`);
       }
-      const origin = request?.headers.get("origin");
-      if (origin) origins.push(origin);
     } catch {
       // هدرها در دسترس نبودند — فقط پیش‌فرض‌ها اعمال می‌شوند
     }

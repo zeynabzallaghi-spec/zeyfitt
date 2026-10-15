@@ -31,7 +31,8 @@ echo "== 0) ثبت‌نام کاربر مرورگر و داده زمینه =="
 code=$(curl -s -c $CK -o /dev/null -w "%{http_code}" -X POST -H 'Content-Type: application/json' \
   -d "{\"name\":\"کاربر مرورگر۹\",\"email\":\"$EMAIL\",\"password\":\"test1234\"}" $BASE/api/auth/sign-up/email)
 check "ثبت‌نام کاربر مرورگر → 200" "200" "$code"
-TOKEN=$(rg "fitcoach\.session_token" $CK | awk '{print $NF}')
+# ممیزی مرحله ۱۱: در حالت production نام کوکی __Secure-fitcoach.session_token است
+TOKEN=$(rg "__Secure-fitcoach\.session_token" $CK | awk '{print $NF}')
 check "کوکی نشست استخراج شد" "yes" "$([ -n "$TOKEN" ] && echo yes || echo no)"
 
 timeout 90 bun -e "
@@ -51,7 +52,11 @@ await db.\$disconnect();
 echo "== 1) ورود با تزریق کوکی و باز کردن اپ =="
 agent-browser set viewport 1280 900
 agent-browser open $BASE >/dev/null 2>&1
-agent-browser cookies set fitcoach.session_token "$TOKEN" >/dev/null 2>&1
+# ممیزی مرحله ۱۱: پاک‌سازی کوکی‌های نشست قدیمی سوئیت‌های قبل —
+# کوکی کهنه‌ای از کاربر دیگر باعث می‌شد سرور کاربر اشتباه را بشناسد
+# و مکالمه/ثبتِ seed شده هرگز در UI دیده نمی‌شد (شکست قطعی تست XSS).
+agent-browser cookies clear >/dev/null 2>&1 || true
+agent-browser cookies set "__Secure-fitcoach.session_token" "$TOKEN" --url http://localhost:3000 --secure --sameSite Lax --httpOnly >/dev/null 2>&1
 # محیط زبان خنثی — localStorage مرورگر ممکن است از اجرای قبلی زبان را نگه داشته باشد
 agent-browser storage local clear >/dev/null 2>&1
 agent-browser reload >/dev/null 2>&1

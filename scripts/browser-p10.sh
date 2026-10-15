@@ -54,6 +54,10 @@ check "ساخت برنامه فعال برای مرورگر → 201" "201" "$cod
 echo "== 1) ورود با تزریق کوکی و باز کردن اپ =="
 agent-browser set viewport 1280 900 >/dev/null 2>&1
 agent-browser open $BASE >/dev/null 2>&1
+# ممیزی مرحله ۱۱: پاک‌سازی کوکی‌های نشست قدیمی سوئیت‌های قبل —
+# کوکی کهنه‌ای از کاربر دیگر باعث می‌شد سرور کاربر اشتباه را بشناسد
+# و مکالمه/ثبتِ seed شده هرگز در UI دیده نمی‌شد (شکست قطعی تست XSS).
+agent-browser cookies clear >/dev/null 2>&1 || true
 agent-browser cookies set "__Secure-fitcoach.session_token" "$COOKIE" --url $BASE --secure --sameSite Lax --httpOnly >/dev/null 2>&1
 agent-browser storage local clear >/dev/null 2>&1
 agent-browser reload >/dev/null 2>&1

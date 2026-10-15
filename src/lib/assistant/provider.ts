@@ -108,6 +108,10 @@ function classifyProviderError(error: unknown): AssistantError {
     raw.includes("econnrefused") ||
     raw.includes("econnreset") ||
     raw.includes("fetch failed") ||
+    // پیام خطای اتصال در زمان اجرای Bun (ممیزی مرحله ۱۱ — بازتولید و رفع شد):
+    // «Unable to connect. Is the computer able to access the url?» هیچ‌یک از
+    // الگوهای بالا را ندارد و به‌اشتباه AI_PROVIDER طبقه‌بندی می‌شد.
+    raw.includes("unable to connect") ||
     raw.includes("network") ||
     raw.includes("socket")
   ) {

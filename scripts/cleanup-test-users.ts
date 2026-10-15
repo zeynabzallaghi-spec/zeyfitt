@@ -6,7 +6,7 @@ import { PrismaClient } from "@prisma/client";
 
 const db = new PrismaClient();
 
-const PREFIXES = ["p4-user-", "p6-user-", "p6-browser-", "p6-so-", "p6-dbg-", "p7-", "p8-user-", "p8-browser-", "p9-user-", "p9-browser-", "p9-ctx-", "p9-f1-", "p9-f2-", "p9-f3-", "p9-diag", "p9-dup", "p9-fix", "dbg", "dbg2-", "dbg3-"];
+const PREFIXES = ["p4-user-", "p6-user-", "p6-browser-", "p6-so-", "p6-dbg-", "p7-", "p8-user-", "p8-browser-", "p9-user-", "p9-browser-", "p9-ctx-", "p9-f1-", "p9-f2-", "p9-f3-", "p9-diag", "p9-dup", "p9-fix", "p10-", "p11-", "oom-probe", "dbg", "dbg2-", "dbg3-"];
 
 async function main() {
   const users = await db.user.findMany({ select: { id: true, email: true } });
