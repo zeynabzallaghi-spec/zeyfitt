@@ -422,3 +422,21 @@ Work Log:
 Stage Summary:
 - راستی‌آزمایی کامل پس از رفع: ثبت‌نام curl از URL عمومی 200؛ Origin مهاجم هنوز 403؛ مرورگر واقعی: ورود 200 → onboarding و ثبت‌نام 200 → onboarding
 - وضعیت: باگ ورود/ثبت‌نام برطرف شد — سایت بالا و آمادهٔ استفاده است
+
+---
+Task ID: 14
+Agent: Super Z (main agent)
+Task: مرحله ۱۲ — پاک‌سازی امن Git، حفاظت از داده‌ها و ممیزی تاریخچه
+
+Work Log:
+- وضعیت اولیه: main همگام (889a89e)، tree تمیز؛ db/custom.db و ۳ فایل stray tool-results/ از ابتدا tracked بودند
+- بکاپ با SQLite Backup API (اتصال read-only): backups/custom-20261016-103339.db (598KB, mode 600) — integrity=ok، fk_violations=0، شمارش ۱۹ جدول اصلی↔بکاپ یکسان (4 user / 4 account / 5 session / 1 conversation / 8 message)
+- git rm --cached: db/custom.db + tool-results/*.txt (روی دیسک ماندند)؛ قواعد gitignore جدید: db/*.db + جانبی‌های WAL/SHM/journal + *.sqlite* + tool-results/
+- ممیزی کامل ۲۸ commit بدون چاپ هیچ مقدار: .env در ۱۷ commit تاریخی فقط DATABASE_URL (placeholder)؛ در ۳ commit (d00c290, d621160, 58dfb38) BETTER_AUTH_SECRET واقعی — secretهای قدیمی و منسوخ (secret فعلی متفاوت است)؛ PAT گیت‌هاب هرگز وارد تاریخچه نشد (GH_FINE_PAT/GH_CLASSIC=NONE)؛ دو false positive طبقه‌بندی شد: placeholder مستندات database-setup.md و زیررشتهٔ AKIA داخل base64 قالب skills
+- db/custom.db در ۱۶ commit و reachable از origin/main → دادهٔ شخصی در تاریخچهٔ remote (طرح بازنویسی جداگانه در گزارش)
+- تست‌ها: ESLint پاک؛ tsc با tsconfig پروژه = صفر خطا در src/ (سه خطای پیش‌موجود ابزاری در scripts//skills/ بی‌ربط به فاز)؛ build تولید موفق؛ restart کنترل‌شده → همان DB خوانده شد (4 user، integrity=ok)
+- git diff --cached بازبینی شد: فقط .gitignore + ۴ حذف index + اسکریپت‌های ممیزی/بکاپ — بدون .env/بکاپ/داده
+
+Stage Summary:
+- مخزن از انتشار آیندهٔ دیتابیس و آرتیفکت‌ها امن شد؛ دادهٔ واقعی دست‌نخورده (4 user)؛ بکاپ معتبر خارج از tracking
+- وضعیت: مرحله دوازدهم کامل — متوقف و در انتظار تأیید برای هرگونه بازنویسی تاریخچه

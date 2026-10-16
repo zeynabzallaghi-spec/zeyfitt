@@ -56,3 +56,15 @@ server.log
 # audit phase 11: .env.example باید commit شود؛ backups شامل داده کاربر است و هرگز
 !.env.example
 backups/
+
+# phase 12: پایگاه دادهٔ محلی و فایل‌های جانبی SQLite هرگز commit نمیشوند
+# (دیتابیس زنده روی دیسک میماند ولی از tracking خارج است)
+db/*.db
+db/*.db-journal
+db/*.db-wal
+db/*.db-shm
+*.sqlite
+*.sqlite3
+
+# خروجیهای اتفاقی ابزار (آرتیفکت محلی، هرگز commit نمیشود)
+tool-results/
