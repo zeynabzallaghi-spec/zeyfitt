@@ -49,19 +49,35 @@ export const auth = betterAuth({
   },
 
   /**
-   * مبداهای مورد اعتماد: فقط همان میزبانی که اپ از آن سرو می‌شود (same-origin).
-   * به‌صورت پویا از هدر Host خوانده می‌شود تا دامنه پیش‌نمایش بدون تنظیم
-   * دستوری پذیرفته شود. نکته امنیتی (ممیزی مرحله ۱۱): هدر Origin خام هرگز
-   * به فهرست اضافه نمی‌شود — انعکاس Originِ برگشتی از سمت کلاینت، بررسی CSRF
-   * کتابخانه را بی‌اثر می‌کرد (مثلاً login-CSRF از دامنه مهاجم). مرورگر واقعی
-   * همیشه Origin همان Host را می‌فرستد و از مسیر Host تأیید می‌شود.
+   * مبداهای مورد اعتماد: فقط میزبانی که اپ واقعاً از آن سرو می‌شود.
+   *
+   * دو منبع مستقل (بازتولید و اثبات هنگام رفع اشکال ورود/ثبت‌نام پس از
+   * ممیزی مرحله ۱۱):
+   * زنجیرهٔ گیت‌وی پلتفرم (Function Compute → Caddy:81) هدر Host را به
+   * میزبان داخلی FC بازنویسی می‌کند (ws-be-*.fcapp.run) و زیردامنهٔ عمومی
+   * واقعی را در هدر زیرساختی «Abc» می‌رساند (Abc: preview-chat-<id> ←
+   * https://preview-chat-<id>.space-z.ai). پس صرفِ Host باعث 403
+   * INVALID_ORIGIN برای هر ورود/ثبت‌نام مرورگری از دامنهٔ عمومی می‌شد.
+   *
+   * نکتهٔ امنیتی (ممیزی مرحله ۱۱، همچنان برقرار): هدر Origin خام هرگز
+   * بازتابیده نمی‌شود. هدر Abc را گیت‌وی تنظیم می‌کند و مرورگر مهاجم در
+   * سناریوی CSRF نمی‌تواند هدر سفارشی تزریق کند؛ مقدار آن هم به‌سختی
+   * اعتبارسنجی می‌شود (فقط حروف/رقم/خط تیره) و به همان دامنهٔ خودِ اپ
+   * نگاشت می‌گردد، نه دامنهٔ دلخواه مهاجم.
    */
   trustedOrigins: (request?: Request) => {
     const origins: string[] = ["http://localhost:3000"];
     try {
-      const host = request?.headers.get("host");
-      if (host) {
-        origins.push(`https://${host}`, `http://${host}`);
+      const headers = request?.headers;
+      const hosts: string[] = [];
+      const host = headers?.get("host");
+      if (host) hosts.push(host);
+      const platformSub = headers?.get("abc");
+      if (platformSub && /^[a-zA-Z0-9-]+$/.test(platformSub)) {
+        hosts.push(`${platformSub}.space-z.ai`);
+      }
+      for (const h of hosts) {
+        origins.push(`https://${h}`, `http://${h}`);
       }
     } catch {
       // هدرها در دسترس نبودند — فقط پیش‌فرض‌ها اعمال می‌شوند
