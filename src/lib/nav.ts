@@ -25,7 +25,10 @@ export interface NavItem {
   id: ViewId;
   fa: string;
   en: string;
+  /** توضیح فارسی بخش — داده اصلی */
   description: string;
+  /** توضیح انگلیسی بخش — ترجمه نمایشی، داده اصلی دست‌نخورده می‌ماند */
+  descriptionEn: string;
   icon: LucideIcon;
   /** مرحله‌ی توسعه که در آن این بخش واقعاً پیاده‌سازی می‌شود */
   stage: number;
@@ -39,6 +42,8 @@ export const NAV_ITEMS: NavItem[] = [
     fa: "داشبورد",
     en: "Dashboard",
     description: "مرکز مدیریت مسیر تناسب اندام شما با داده واقعی حساب کاربری",
+    descriptionEn:
+      "The control center of your fitness journey, powered by your real account data",
     icon: LayoutDashboard,
     stage: 0,
     features: [],
@@ -48,6 +53,8 @@ export const NAV_ITEMS: NavItem[] = [
     fa: "مربی سه‌بعدی",
     en: "3D Coach",
     description: "اجرای تعاملی حرکات با مدل سه‌بعدی و نمایش عضلات درگیر",
+    descriptionEn:
+      "Interactive exercise walkthrough with a 3D model and engaged-muscle highlights",
     icon: Box,
     stage: 2,
     features: [
@@ -62,6 +69,8 @@ export const NAV_ITEMS: NavItem[] = [
     fa: "کتابخانه حرکات",
     en: "Exercise Library",
     description: "بانک ساختاریافته حرکات با جزئیات فنی کامل و آموزش اجرا",
+    descriptionEn:
+      "A structured exercise bank with full technical details and how-to guidance",
     icon: Dumbbell,
     stage: 5,
     features: [
@@ -76,6 +85,8 @@ export const NAV_ITEMS: NavItem[] = [
     fa: "برنامه تمرینی",
     en: "Workout Plan",
     description: "برنامه هفتگی اختصاصی بر اساس هدف، سطح و تجهیزات شما",
+    descriptionEn:
+      "A dedicated weekly plan built from your goal, level, and available equipment",
     icon: CalendarCheck2,
     stage: 6,
     features: [
@@ -90,6 +101,8 @@ export const NAV_ITEMS: NavItem[] = [
     fa: "برنامه غذایی",
     en: "Nutrition Plan",
     description: "کالری، درشت‌مغذی‌ها و برنامه وعده‌های غذایی شخصی",
+    descriptionEn:
+      "Personal calories, macronutrients, and a custom meal schedule",
     icon: UtensilsCrossed,
     stage: 7,
     features: [
@@ -104,6 +117,8 @@ export const NAV_ITEMS: NavItem[] = [
     fa: "پیشرفت من",
     en: "My Progress",
     description: "نمودار وزن، اندازه‌های بدن و سابقه واقعی تمرین‌ها",
+    descriptionEn:
+      "Weight charts, body measurements, and your real workout history",
     icon: TrendingUp,
     stage: 4,
     features: [
@@ -118,6 +133,8 @@ export const NAV_ITEMS: NavItem[] = [
     fa: "دستیار هوشمند",
     en: "AI Assistant",
     description: "چت واقعی با مدل زبانی بر اساس داده‌های واقعی حساب شما",
+    descriptionEn:
+      "A real language-model chat grounded in your real account data",
     icon: Bot,
     stage: 8,
     features: [
@@ -132,6 +149,8 @@ export const NAV_ITEMS: NavItem[] = [
     fa: "پروفایل و تنظیمات",
     en: "Profile & Settings",
     description: "اطلاعات بدنی، اهداف، تجهیزات و ترجیحات شخصی شما",
+    descriptionEn:
+      "Your body metrics, goals, equipment, and personal preferences",
     icon: UserRoundCog,
     stage: 3,
     features: [
@@ -153,21 +172,24 @@ export const CURRENT_STAGE = 8;
 /** نقشه راه ۱۳ مرحله‌ای توسعه محصول — برای نمایش وضعیت شفاف در داشبورد */
 export interface DevStage {
   index: number;
+  /** عنوان فارسی — داده اصلی */
   title: string;
+  /** عنوان انگلیسی — ترجمه نمایشی */
+  titleEn: string;
 }
 
 export const DEV_STAGES: DevStage[] = [
-  { index: 0, title: "بررسی محیط و راه‌اندازی پوسته پایه" },
-  { index: 1, title: "تکمیل هویت بصری و رابط کاربری" },
-  { index: 2, title: "مربی سه‌بعدی تعاملی و نمایش عضلات" },
-  { index: 3, title: "ثبت‌نام، ورود و پروفایل شخصی" },
-  { index: 4, title: "داشبورد شخصی مبتنی بر داده واقعی" },
-  { index: 5, title: "کتابخانه حرکات ورزشی" },
-  { index: 6, title: "برنامه‌ساز تمرینی شخصی" },
-  { index: 7, title: "سیستم تغذیه و رژیم غذایی" },
-  { index: 8, title: "دستیار هوشمند مربی" },
-  { index: 9, title: "معماری فنی و پایگاه داده" },
-  { index: 10, title: "تست و کنترل کیفیت" },
-  { index: 11, title: "بهینه‌سازی عملکرد" },
-  { index: 12, title: "آماده‌سازی برای انتشار" },
+  { index: 0, title: "بررسی محیط و راه‌اندازی پوسته پایه", titleEn: "Environment survey and base shell setup" },
+  { index: 1, title: "تکمیل هویت بصری و رابط کاربری", titleEn: "Visual identity and UI polish" },
+  { index: 2, title: "مربی سه‌بعدی تعاملی و نمایش عضلات", titleEn: "Interactive 3D coach and muscle mapping" },
+  { index: 3, title: "ثبت‌نام، ورود و پروفایل شخصی", titleEn: "Sign-up, sign-in, and personal profile" },
+  { index: 4, title: "داشبورد شخصی مبتنی بر داده واقعی", titleEn: "Real-data personal dashboard" },
+  { index: 5, title: "کتابخانه حرکات ورزشی", titleEn: "Exercise library" },
+  { index: 6, title: "برنامه‌ساز تمرینی شخصی", titleEn: "Personal workout plan builder" },
+  { index: 7, title: "سیستم تغذیه و رژیم غذایی", titleEn: "Nutrition and diet system" },
+  { index: 8, title: "دستیار هوشمند مربی", titleEn: "AI coach assistant" },
+  { index: 9, title: "معماری فنی و پایگاه داده", titleEn: "Technical architecture and database" },
+  { index: 10, title: "تست و کنترل کیفیت", titleEn: "Testing and quality control" },
+  { index: 11, title: "بهینه‌سازی عملکرد", titleEn: "Performance optimization" },
+  { index: 12, title: "آماده‌سازی برای انتشار", titleEn: "Release readiness" },
 ];

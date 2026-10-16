@@ -19,10 +19,14 @@ export const sendMessageSchema = z.object({
     .min(1, "متن پیام خالی است")
     .max(maxMessageChars(), "متن پیام بیش از حد مجاز طولانی است"),
   language: z.enum(["auto", "fa", "en"]).default("auto"),
+  /** زبان رابط کاربر — فقط راهنمای حالت auto است؛ انتخاب صریح اولویت دارد */
+  uiLocale: z.enum(["fa", "en"]).optional(),
 });
 
 export const retrySchema = z.object({
   language: z.enum(["auto", "fa", "en"]).default("auto"),
+  /** زبان رابط کاربر — فقط راهنمای حالت auto است؛ انتخاب صریح اولویت دارد */
+  uiLocale: z.enum(["fa", "en"]).optional(),
 });
 
 export function firstAssistantError(error: z.ZodError): string {

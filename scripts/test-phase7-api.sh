@@ -43,11 +43,11 @@ check "GET shopping مهمان → 401" "401" "$code"
 echo "== 2) ثبت‌نام کاربران A (با پروفایل کامل) و B (بدون پروفایل) =="
 code=$(curl -s -D $JA -o /tmp/p7-a.json -w "%{http_code}" -X POST -H 'Content-Type: application/json' \
   -d "{\"name\":\"کاربر الف\",\"email\":\"$A\",\"password\":\"test1234\"}" $BASE/api/auth/sign-up/email)
-AUTH_A="Cookie: $(grep -o '__Secure-fitcoach\.session_token=[^;]*' "$JA" | head -1)"
+AUTH_A="Cookie: $(grep -o '\(__Secure-\)\?fitcoach\.session_token=[^;]*' "$JA" | head -1)"
 check "ثبت‌نام A → 200" "200" "$code"
 code=$(curl -s -D $JB -o /tmp/p7-b.json -w "%{http_code}" -X POST -H 'Content-Type: application/json' \
   -d "{\"name\":\"کاربر ب\",\"email\":\"$B\",\"password\":\"test1234\"}" $BASE/api/auth/sign-up/email)
-AUTH_B="Cookie: $(grep -o '__Secure-fitcoach\.session_token=[^;]*' "$JB" | head -1)"
+AUTH_B="Cookie: $(grep -o '\(__Secure-\)\?fitcoach\.session_token=[^;]*' "$JB" | head -1)"
 check "ثبت‌نام B → 200" "200" "$code"
 
 # پروفایل کامل برای A — منبع اطلاعات برآورد
@@ -147,11 +147,11 @@ check "جزئیات پس از GET مجدد یکسان" "yes" "$same"
 echo "== 11) ماندگاری پس از خروج و ورود مجدد =="
 curl -s -H "$AUTH_A" -D $JA -o /dev/null -X POST -H 'Content-Type: application/json' -H "Origin: $BASE" -d '{}' $BASE/api/auth/sign-out
 code=$(curl -s -H "$AUTH_A" -o /tmp/p7-out.json -w "%{http_code}" $BASE/api/nutrition)
-AUTH_A="Cookie: $(grep -o '__Secure-fitcoach\.session_token=[^;]*' "$JA" | head -1)"
+AUTH_A="Cookie: $(grep -o '\(__Secure-\)\?fitcoach\.session_token=[^;]*' "$JA" | head -1)"
 check "بعد از خروج نشست باطل → 401" "401" "$code"
 code=$(curl -s -D $JA2 -o /tmp/p7-a2.json -w "%{http_code}" -X POST -H 'Content-Type: application/json' \
   -d "{\"email\":\"$A\",\"password\":\"test1234\"}" $BASE/api/auth/sign-in/email)
-AUTH_A2="Cookie: $(grep -o '__Secure-fitcoach\.session_token=[^;]*' "$JA2" | head -1)"
+AUTH_A2="Cookie: $(grep -o '\(__Secure-\)\?fitcoach\.session_token=[^;]*' "$JA2" | head -1)"
 check "ورود مجدد A → 200" "200" "$code"
 code=$(curl -s -H "$AUTH_A2" -o /tmp/p7-get2.json -w "%{http_code}" "$BASE/api/nutrition/$PLAN1")
 check "پس از ورود مجدد برنامه موجود → 200" "200" "$code"

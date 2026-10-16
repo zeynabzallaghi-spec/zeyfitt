@@ -9,8 +9,13 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
-import { jalaliFullLabel, toWeightChartData } from "@/lib/weight";
+import { toWeightChartData } from "@/lib/weight";
 import type { WeightEntryClient } from "@/lib/weight";
+import { useLocale, useDir } from "@/lib/i18n/locale";
+import { useStrings } from "@/lib/i18n/use-strings";
+import { localeNumber, localeFullLabel } from "@/lib/i18n/format";
+import { weightStrings } from "@/lib/i18n/sections/weight";
+import type { Locale, Dir } from "@/lib/i18n/shared";
 
 interface TooltipPayloadItem {
   value?: number | string;
@@ -18,27 +23,33 @@ interface TooltipPayloadItem {
 }
 
 /**
- * تولتیپ سفارشی — تاریخ شمسی کامل و مقدار واقعی ثبت‌شده کاربر.
+ * تولتیپ سفارشی — تاریخ کامل متناسب با زبان رابط و مقدار واقعی ثبت‌شده کاربر.
  * برخلاف نمودار نمونه قبلی، هیچ برچسب داده نمونه‌ای ندارد چون داده واقعی است.
  */
 function ChartTooltip({
   active,
   payload,
+  locale,
+  dir,
+  weightText,
 }: {
   active?: boolean;
   payload?: TooltipPayloadItem[];
+  locale: Locale;
+  dir: Dir;
+  weightText: (weight: string) => string;
 }) {
   if (!active || !payload?.length) return null;
   const point = payload[0]?.payload;
   if (!point) return null;
   return (
     <div
-      dir="rtl"
+      dir={dir}
       className="rounded-xl border border-border/60 bg-popover px-3 py-2 text-xs shadow-xl"
     >
-      <p className="font-bold text-foreground">{jalaliFullLabel(point.date)}</p>
+      <p className="font-bold text-foreground">{localeFullLabel(point.date, locale)}</p>
       <p className="mt-0.5 text-muted-foreground">
-        وزن ثبت‌شده: {point.weight.toLocaleString("fa-IR")} کیلوگرم
+        {weightText(localeNumber(point.weight, locale))}
       </p>
     </div>
   );
@@ -46,10 +57,14 @@ function ChartTooltip({
 
 /**
  * نمودار روند وزن — فقط با اندازه‌گیری‌های واقعی و تاریخ‌دار کاربر رسم
- * می‌شود. جهت محور هماهنگ با قرارداد RTL محصول است (قدیمی‌ترین نقطه سمت راست).
+ * می‌شود. جهت محور هماهنگ با زبان رابط است: در فارسی/RTL قدیمی‌ترین نقطه
+ * سمت راست و محور عمودی سمت راست (قرارداد فعلی)، در انگلیسی/LTR آینه می‌شود.
  */
 export function WeightTrendChart({ entries }: { entries: WeightEntryClient[] }) {
-  const data = toWeightChartData(entries, 12);
+  const t = useStrings(weightStrings);
+  const locale = useLocale();
+  const dir = useDir();
+  const data = toWeightChartData(entries, 12, locale);
   const weights = data.map((point) => point.weight);
   const min = Math.min(...weights);
   const max = Math.max(...weights);
@@ -66,10 +81,10 @@ export function WeightTrendChart({ entries }: { entries: WeightEntryClient[] }) 
             </linearGradient>
           </defs>
           <CartesianGrid stroke="oklch(1 0 0 / 0.06)" vertical={false} />
-          {/* reversed: قدیمی‌ترین تاریخ سمت راست — قرارداد خوانش راست‌به‌چپ */}
+          {/* reversed در RTL: قدیمی‌ترین تاریخ سمت راست — قرارداد خوانش راست‌به‌چپ */}
           <XAxis
             dataKey="label"
-            reversed
+            reversed={dir === "rtl"}
             tick={{ fill: "oklch(0.68 0.012 250)", fontSize: 11 }}
             axisLine={false}
             tickLine={false}
@@ -77,22 +92,28 @@ export function WeightTrendChart({ entries }: { entries: WeightEntryClient[] }) 
             minTickGap={18}
           />
           <YAxis
-            orientation="right"
+            orientation={dir === "rtl" ? "right" : "left"}
             domain={[min - padding, max + padding]}
-            tickFormatter={(v: number) => v.toLocaleString("fa-IR")}
+            tickFormatter={(v: number) => localeNumber(v, locale)}
             tick={{ fill: "oklch(0.68 0.012 250)", fontSize: 11 }}
             axisLine={false}
             tickLine={false}
             width={34}
           />
           <Tooltip
-            content={<ChartTooltip />}
+            content={
+              <ChartTooltip
+                locale={locale}
+                dir={dir}
+                weightText={t.chartTooltipWeight}
+              />
+            }
             cursor={{ stroke: "oklch(0.89 0.22 128 / 0.35)", strokeWidth: 1 }}
           />
           <Line
             type="monotone"
             dataKey="weight"
-            name="وزن"
+            name={t.chartSeriesName}
             stroke="oklch(0.89 0.22 128)"
             strokeWidth={2.5}
             dot={{ r: 4, fill: "url(#weightDotFill)", strokeWidth: 0 }}

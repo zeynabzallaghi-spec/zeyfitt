@@ -78,6 +78,7 @@ export async function POST(request: Request, context: RouteContext) {
       conversationId: id,
       language: parsed.data.language,
       sourceMessageText: parsed.data.content,
+      uiLocale: parsed.data.uiLocale,
     });
 
     return NextResponse.json({ userMessage, assistantMessage }, { status: 201 });

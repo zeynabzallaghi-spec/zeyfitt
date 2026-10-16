@@ -1,6 +1,7 @@
 import { z } from "zod";
 import type { weightEntry as DbWeightEntry } from "@prisma/client";
 import { normalizeDigits } from "./profile";
+import type { Locale } from "./i18n/shared";
 
 /**
  * لایه مشترک اندازه‌گیری وزن — بین فرم کلاینت و اعتبارسنجی سرور یکسان است.
@@ -81,25 +82,41 @@ export function toClientWeightEntry(row: DbWeightEntry): WeightEntryClient {
 
 /* --------------------------- کمکی‌های نمایش --------------------------- */
 
-const jalaliDayFormatter = new Intl.DateTimeFormat("fa-IR", {
-  day: "numeric",
-  month: "short",
-});
+// قالب‌کننده‌های نمایش روز/تاریخ — فارسی: دقیقاً همان فرمت قبلی (fa-IR شمسی)،
+// انگلیسی: معادل گرگوری en-GB. پارامتر locale اختیاری است و پیش‌فرض «fa» تا
+// همه فراخوانی‌های موجود بدون تغییر، رفتار فعلی را حفظ کنند.
+const dayFormatters: Record<Locale, Intl.DateTimeFormat> = {
+  fa: new Intl.DateTimeFormat("fa-IR", {
+    day: "numeric",
+    month: "short",
+  }),
+  en: new Intl.DateTimeFormat("en-GB", {
+    day: "numeric",
+    month: "short",
+  }),
+};
 
-const jalaliFullFormatter = new Intl.DateTimeFormat("fa-IR", {
-  year: "numeric",
-  month: "long",
-  day: "numeric",
-});
+const fullFormatters: Record<Locale, Intl.DateTimeFormat> = {
+  fa: new Intl.DateTimeFormat("fa-IR", {
+    year: "numeric",
+    month: "long",
+    day: "numeric",
+  }),
+  en: new Intl.DateTimeFormat("en-GB", {
+    year: "numeric",
+    month: "long",
+    day: "numeric",
+  }),
+};
 
-/** برچسب کوتاه روز (برای محور نمودار) */
-export function jalaliDayLabel(iso: string): string {
-  return jalaliDayFormatter.format(new Date(iso));
+/** برچسب کوتاه روز (برای محور نمودار) — fa: شمسی، en: گرگوری */
+export function jalaliDayLabel(iso: string, locale: Locale = "fa"): string {
+  return dayFormatters[locale].format(new Date(iso));
 }
 
-/** برچسب کامل شمسی (برای تولتیپ و فهرست) */
-export function jalaliFullLabel(iso: string): string {
-  return jalaliFullFormatter.format(new Date(iso));
+/** برچسب کامل (برای تولتیپ و فهرست) — fa: شمسی، en: گرگوری */
+export function jalaliFullLabel(iso: string, locale: Locale = "fa"): string {
+  return fullFormatters[locale].format(new Date(iso));
 }
 
 /**
@@ -108,7 +125,8 @@ export function jalaliFullLabel(iso: string): string {
  */
 export function toWeightChartData(
   entries: WeightEntryClient[],
-  maxPoints = 12
+  maxPoints = 12,
+  locale: Locale = "fa"
 ): { date: string; label: string; weight: number }[] {
   return [...entries]
     .sort(
@@ -118,7 +136,7 @@ export function toWeightChartData(
     .slice(-maxPoints)
     .map((entry) => ({
       date: entry.recordedAt,
-      label: jalaliDayLabel(entry.recordedAt),
+      label: jalaliDayLabel(entry.recordedAt, locale),
       weight: entry.weightKg,
     }));
 }

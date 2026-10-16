@@ -309,7 +309,7 @@ export function FoodLogSection({ activePlan }: Props) {
             className="h-7 border-border/70 px-3 text-[10px] font-semibold"
           >
             <RotateCcw className="size-3" aria-hidden="true" />
-            {lang === "en" ? "Retry" : "تلاش مجدد"}
+            {s.retry}
           </Button>
         </div>
       )}

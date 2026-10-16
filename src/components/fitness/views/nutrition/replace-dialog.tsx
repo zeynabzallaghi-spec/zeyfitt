@@ -17,9 +17,12 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { faDigits } from "@/lib/profile";
 import { cn } from "@/lib/utils";
-import { findFood, foodGroupFa } from "@/lib/foods";
+import { findFood } from "@/lib/foods";
+import { useLocale, useDir } from "@/lib/i18n/locale";
+import { useStrings } from "@/lib/i18n/use-strings";
+import { nutritionStrings } from "@/lib/i18n/sections/nutrition";
+import { localeNumber, localeDecimal } from "@/lib/i18n/format";
 import { suggestReplacements } from "@/lib/nutrition-engine/engine";
 import type { ReplacementSuggestion } from "@/lib/nutrition-engine/types";
 import type { NutritionPlanClient } from "@/lib/nutrition-storage";
@@ -33,8 +36,13 @@ interface Props {
 }
 
 export function ReplaceItemDialog({ open, onOpenChange, plan, item, onConfirm }: Props) {
+  const t = useStrings(nutritionStrings);
+  const locale = useLocale();
+  const dir = useDir();
   const [selected, setSelected] = useState<string | null>(null);
   const [confirming, setConfirming] = useState(false);
+  const num = (value: number) => localeNumber(value, locale);
+  const dec = (value: number) => localeDecimal(value, 1, locale);
 
   const suggestions: ReplacementSuggestion[] = useMemo(() => {
     if (!open) return [];
@@ -63,30 +71,28 @@ export function ReplaceItemDialog({ open, onOpenChange, plan, item, onConfirm }:
   };
 
   const currentFood = findFood(item.foodId);
+  // نام ماده بر اساس زبان رابط — ماده فعلی و پیشنهادها faName + enName دارند
+  const currentName = locale === "fa" ? item.faName : (currentFood?.en ?? item.faName);
 
   return (
     <Dialog open={open} onOpenChange={(next) => !confirming && onOpenChange(next)}>
-      <DialogContent dir="rtl" className="max-h-[85vh] max-w-lg overflow-y-auto">
+      <DialogContent dir={dir} className="max-h-[85vh] max-w-lg overflow-y-auto">
         <DialogHeader>
-          <DialogTitle className="text-start">جایگزینی «{item.faName}»</DialogTitle>
+          <DialogTitle className="text-start">{t.replaceDialogTitle(currentName)}</DialogTitle>
           <DialogDescription className="text-start leading-6">
-            پیشنهادها فقط از مواد سازگار با محدودیت‌های این برنامه (آلرژی، الگوی غذایی، مواد
-            نامطلوب و بودجه) انتخاب شده‌اند. مقدار پیشنهادی برای نزدیک‌شدن انرژی به مقدار فعلی
-            ({faDigits(item.grams)} گرم) تنظیم شده است؛ هیچ دو ماده‌ای «معادل کامل» نیستند و
-            اختلاف درشت‌مغذی‌ها را ببینید.
+            {t.replaceDialogDescription(num(item.grams))}
           </DialogDescription>
         </DialogHeader>
 
         {suggestions.length === 0 ? (
           <p className="rounded-xl border border-amber-400/30 bg-amber-400/10 p-3 text-[11px] leading-5 text-amber-200">
-            با محدودیت‌های این برنامه، گزینه جایگزین مناسبی یافت نشد. می‌توانید به‌جای جایگزینی،
-            مقدار را تغییر دهید یا تنظیمات محدودیت را بازبینی کنید.
+            {t.noSuggestionNote}
           </p>
         ) : (
           <div className="flex flex-col gap-2">
             <p className="text-[10px] text-muted-foreground">
-              ماده فعلی: {item.faName}
-              {currentFood ? ` (${foodGroupFa(currentFood.group)} — ${faDigits(item.kcal)} کیلوکالری)` : ""}
+              {t.currentFoodPrefix}{currentName}
+              {currentFood ? t.currentFoodMeta(t.groupLabel(currentFood.group), num(item.kcal)) : ""}
             </p>
             {suggestions.map((suggestion) => (
               <button
@@ -102,16 +108,16 @@ export function ReplaceItemDialog({ open, onOpenChange, plan, item, onConfirm }:
                 )}
               >
                 <div className="flex flex-wrap items-center justify-between gap-2">
-                  <p className="text-xs font-bold">{suggestion.faName}</p>
+                  <p className="text-xs font-bold">{locale === "fa" ? suggestion.faName : suggestion.enName}</p>
                   <span className="text-[10px] font-semibold text-muted-foreground">
-                    {faDigits(suggestion.grams)} گرم ≈ {faDigits(suggestion.kcal)} کیلوکالری
+                    {num(suggestion.grams)} {t.gramsUnit} ≈ {num(suggestion.kcal)} {t.kcalUnit}
                   </span>
                 </div>
                 <p className="mt-1 text-[10px] leading-5 text-muted-foreground">
-                  پروتئین {faDigits(suggestion.protein)} گرم — کربوهیدرات {faDigits(suggestion.carb)} گرم — چربی{" "}
-                  {faDigits(suggestion.fat)} گرم
+                  {t.proteinLabel} {dec(suggestion.protein)} {t.gramsUnit} — {t.carbLabel} {dec(suggestion.carb)} {t.gramsUnit} — {t.fatLabel}{" "}
+                  {dec(suggestion.fat)} {t.gramsUnit}
                   <span className={cn("ms-2 font-semibold", suggestion.kcalDiff === 0 ? "text-primary" : suggestion.kcalDiff > 0 ? "text-amber-300" : "text-sky-300")}>
-                    (انرژی {suggestion.kcalDiff > 0 ? "+" : ""}{faDigits(suggestion.kcalDiff)} نسبت به فعلی)
+                    {t.kcalDiffLabel(`${suggestion.kcalDiff > 0 ? "+" : ""}${num(suggestion.kcalDiff)}`)}
                   </span>
                 </p>
               </button>
@@ -121,7 +127,7 @@ export function ReplaceItemDialog({ open, onOpenChange, plan, item, onConfirm }:
 
         <DialogFooter className="gap-2">
           <Button variant="outline" onClick={() => onOpenChange(false)} disabled={confirming}>
-            انصراف
+            {t.cancel}
           </Button>
           <Button
             onClick={() => void handleConfirm()}
@@ -133,7 +139,7 @@ export function ReplaceItemDialog({ open, onOpenChange, plan, item, onConfirm }:
             ) : (
               <Repeat2 className="size-4" aria-hidden="true" />
             )}
-            جایگزینی و محاسبه مجدد
+            {t.replaceConfirmButton}
           </Button>
         </DialogFooter>
       </DialogContent>

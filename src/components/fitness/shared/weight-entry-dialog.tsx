@@ -13,10 +13,14 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { faDigits, normalizeDigits } from "@/lib/profile";
-import { jalaliFullLabel } from "@/lib/weight";
+import { normalizeDigits } from "@/lib/profile";
+import { useLocale, useDir } from "@/lib/i18n/locale";
+import { useStrings } from "@/lib/i18n/use-strings";
+import { localeNumber, localeFullLabel } from "@/lib/i18n/format";
+import { weightStrings } from "@/lib/i18n/sections/weight";
+import type { Locale } from "@/lib/i18n/shared";
 
-/** مقدار فقط-کلاینت برای تاریخ شمسی — سازگار با هیدراتیشن */
+/** مقدار فقط-کلاینت برای برچسب تاریخ انتخابی — سازگار با هیدراتیشن */
 function subscribeNoop(_onChange: () => void) {
   return () => {};
 }
@@ -26,13 +30,13 @@ function todayIsoDate(): string {
   return new Date().toISOString().slice(0, 10);
 }
 
-/** برچسب شمسی تاریخ انتخابی — فقط سمت کلاینت محاسبه می‌شود */
-function useJalaliLabel(isoDate: string): string {
+/** برچسب خوانای تاریخ انتخابی — فقط سمت کلاینت محاسبه می‌شود */
+function useDateLabel(isoDate: string, locale: Locale): string {
   const value = useSyncExternalStore(
     subscribeNoop,
     () => {
       try {
-        return jalaliFullLabel(`${isoDate}T00:00:00.000Z`);
+        return localeFullLabel(`${isoDate}T00:00:00.000Z`, locale);
       } catch {
         return "";
       }
@@ -50,15 +54,16 @@ interface WeightEntryDialogProps {
 
 /**
  * دیالوگ ثبت اندازه‌گیری وزن — وزن با پذیرش ارقام فارسی و تاریخ ثبت با
- * نمایش شمسی زنده. تاریخ آینده سمت سرور رد می‌شود و پیام فارسی برمی‌گردد.
+ * نمایش زندهٔ خوانا. تاریخ آینده سمت سرور رد می‌شود و پیام برمی‌گردد.
  *
  * فرم داخلی فقط هنگام باز بودن دیالوگ mount می‌شود؛ بنابراین در هر باز شدن
  * با وضعیت تمیز و بدون effect اضافه شروع می‌شود.
  */
 export function WeightEntryDialog({ open, onOpenChange, onSubmit }: WeightEntryDialogProps) {
+  const dir = useDir();
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent dir="rtl" className="sm:max-w-sm">
+      <DialogContent dir={dir} className="sm:max-w-sm">
         <WeightEntryForm
           onSubmit={onSubmit}
           onClose={() => onOpenChange(false)}
@@ -79,7 +84,9 @@ function WeightEntryForm({ onSubmit, onClose }: WeightEntryFormProps) {
   const [date, setDate] = useState(todayIsoDate);
   const [fieldError, setFieldError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
-  const jalaliLabel = useJalaliLabel(date);
+  const t = useStrings(weightStrings);
+  const locale = useLocale();
+  const dateLabel = useDateLabel(date, locale);
   const maxDate = todayIsoDate();
 
   const handleSubmit = async () => {
@@ -87,16 +94,16 @@ function WeightEntryForm({ onSubmit, onClose }: WeightEntryFormProps) {
     setFieldError(null);
     const cleaned = normalizeDigits(weight).trim();
     if (cleaned === "") {
-      setFieldError("وزن را وارد کنید");
+      setFieldError(t.errWeightRequired);
       return;
     }
     const parsed = Number(cleaned.replace(/[٫,]/g, "."));
     if (Number.isNaN(parsed)) {
-      setFieldError("وزن باید عدد معتبر باشد");
+      setFieldError(t.errWeightInvalid);
       return;
     }
     if (parsed < 25 || parsed > 300) {
-      setFieldError("وزن باید بین ۲۵ تا ۳۰۰ کیلوگرم باشد");
+      setFieldError(t.errWeightRange);
       return;
     }
     setSubmitting(true);
@@ -105,7 +112,7 @@ function WeightEntryForm({ onSubmit, onClose }: WeightEntryFormProps) {
     if (result.ok) {
       onClose();
     } else {
-      setFieldError(result.message ?? "ثبت انجام نشد؛ دوباره تلاش کنید.");
+      setFieldError(result.message ?? t.errSubmitFallback);
     }
   };
 
@@ -114,21 +121,18 @@ function WeightEntryForm({ onSubmit, onClose }: WeightEntryFormProps) {
       <DialogHeader className="text-start">
         <DialogTitle className="flex items-center gap-2 text-base">
           <Scale className="size-4 text-primary" aria-hidden="true" />
-          ثبت اندازه‌گیری وزن
+          {t.dialogTitle}
         </DialogTitle>
-        <DialogDescription>
-          وزن امروز یا یک تاریخ گذشته را ثبت کنید؛ روند نمودار فقط با اندازه‌گیری‌های
-          تاریخ‌دار شما ساخته می‌شود.
-        </DialogDescription>
+        <DialogDescription>{t.dialogDescription}</DialogDescription>
       </DialogHeader>
 
       <div className="flex flex-col gap-4">
         <div className="flex flex-col gap-2">
-          <Label htmlFor="weight-entry-value">وزن (کیلوگرم)</Label>
+          <Label htmlFor="weight-entry-value">{t.weightInputLabel}</Label>
           <Input
             id="weight-entry-value"
             inputMode="decimal"
-            placeholder="مثلاً ۷۵٫۵"
+            placeholder={t.weightInputPlaceholder}
             value={weight}
             onChange={(event) => {
               setWeight(event.target.value);
@@ -145,7 +149,7 @@ function WeightEntryForm({ onSubmit, onClose }: WeightEntryFormProps) {
         </div>
 
         <div className="flex flex-col gap-2">
-          <Label htmlFor="weight-entry-date">تاریخ ثبت</Label>
+          <Label htmlFor="weight-entry-date">{t.dateInputLabel}</Label>
           <Input
             id="weight-entry-date"
             dir="ltr"
@@ -157,11 +161,11 @@ function WeightEntryForm({ onSubmit, onClose }: WeightEntryFormProps) {
               setDate(event.target.value || todayIsoDate());
               setFieldError(null);
             }}
-            className="text-left"
+            className="text-start"
           />
-          {jalaliLabel && (
+          {dateLabel && (
             <p className="text-[11px] text-muted-foreground">
-              معادل شمسی: {jalaliLabel}
+              {t.dateEquivalentLabel(dateLabel)}
             </p>
           )}
         </div>
@@ -187,7 +191,7 @@ function WeightEntryForm({ onSubmit, onClose }: WeightEntryFormProps) {
           ) : (
             <Scale className="size-4" aria-hidden="true" />
           )}
-          {submitting ? "در حال ثبت…" : "ثبت روی سرور"}
+          {submitting ? t.submitting : t.submitButton}
         </Button>
         <Button
           variant="outline"
@@ -195,11 +199,11 @@ function WeightEntryForm({ onSubmit, onClose }: WeightEntryFormProps) {
           disabled={submitting}
           className="font-semibold"
         >
-          انصراف
+          {t.cancelButton}
         </Button>
       </DialogFooter>
       <p className="pb-1 text-center text-[10px] leading-5 text-muted-foreground/70">
-        حداکثر {faDigits(500)} اندازه‌گیری برای هر حساب نگهداری می‌شود.
+        {t.maxEntriesNote(localeNumber(500, locale))}
       </p>
     </>
   );

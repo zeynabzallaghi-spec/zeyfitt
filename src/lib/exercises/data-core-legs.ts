@@ -34,6 +34,25 @@ export const CORE_LEGS_EXERCISES: LibraryExercise[] = [
       "به‌جای مقایسه زمان، وقتی فرم می‌شکند ست را تمام کنید.",
       "اگر در ناحیه کمر احساس فشار دارید، وضعیت را اصلاح کنید یا نسخه زانو روی زمین را اجرا کنید.",
     ],
+    enContent: {
+      summary: "Holding the body in a straight line on the forearms and toes; the foundational core-endurance exercise.",
+      steps: [
+        "Get into position on your forearms and toes; elbows directly under the shoulders.",
+        "Form a straight line from head to heels; gaze at the floor.",
+        "Brace the abs and glutes and keep the hips neither piked up nor sagging.",
+        "Breathe normally and hold until form starts to break down.",
+      ],
+      breathing: "Calm, continuous breathing for the entire hold; do not hold your breath.",
+      mistakes: [
+        "Hips piked up or sagging down",
+        "Shoulders and neck collapsing toward the floor",
+        "Holding the breath and continuing past form failure",
+      ],
+      safety: [
+        "Instead of comparing times, end the set the moment form breaks.",
+        "If you feel pressure in the lower back, fix your position or perform the knees-down version.",
+      ],
+    },
   },
   {
     id: "crunch",
@@ -63,6 +82,25 @@ export const CORE_LEGS_EXERCISES: LibraryExercise[] = [
       "دست‌ها فقط کنار سر بمانند و هیچ فشاری به گردن وارد نشود.",
       "حرکت کوتاه و کنترل‌شده کافی است؛ دامنه بزرگ مزیت بیشتری نمی‌دهد.",
     ],
+    enContent: {
+      summary: "Flexing the upper spine from a lying position; a focused exercise for the rectus abdominis.",
+      steps: [
+        "Lie on your back; knees bent, feet on the floor, hands beside the head or on the chest.",
+        "Keep some space between chin and chest and keep the neck relaxed.",
+        "With abdominal contraction, lift the upper torso until the shoulders leave the floor.",
+        "Return to the start with control, without fully releasing.",
+      ],
+      breathing: "Exhale as the torso rises and inhale on the way back down.",
+      mistakes: [
+        "Pulling the neck with the hands to get up",
+        "Lifting the whole torso with a swing and hip drive",
+        "Fast reps chasing a high rep count",
+      ],
+      safety: [
+        "Keep the hands only beside the head and apply no force to the neck.",
+        "A short, controlled movement is enough; a bigger range adds no benefit.",
+      ],
+    },
   },
   {
     id: "side-plank",
@@ -92,6 +130,25 @@ export const CORE_LEGS_EXERCISES: LibraryExercise[] = [
       "برای ساده‌تر کردن، زانوها را خم کنید و از زانو تکیه بگیرید.",
       "دو سمت را با زمان برابر اجرا کنید تا عدم تعادل جانبی ساخته نشود.",
     ],
+    enContent: {
+      summary: "Holding the body on one forearm in a side line; strengthens the obliques and hip stability.",
+      steps: [
+        "Lie on your left side and place the elbow exactly under the shoulder.",
+        "Press through the forearm to lift the hips off the floor until the body forms a straight line.",
+        "Keep the glutes on that side braced with the feet stacked or one slightly ahead.",
+        "Hold until the hips start to sag, then switch sides.",
+      ],
+      breathing: "Calm, continuous breathing for the entire hold.",
+      mistakes: [
+        "Hips sagging toward the floor",
+        "Torso rotating forward",
+        "Shoulder not stacked directly above the elbow",
+      ],
+      safety: [
+        "To make it easier, bend the knees and support from the knees.",
+        "Perform equal time on both sides so no side-to-side imbalance builds.",
+      ],
+    },
   },
   {
     id: "hanging-leg-raise",
@@ -121,6 +178,25 @@ export const CORE_LEGS_EXERCISES: LibraryExercise[] = [
       "برای شروع، نسخه زانو به سینه را اجرا کنید و سپس پاها را صاف کنید.",
       "در صورت کم شدن قدرت گرفتن، ست را تمام کنید؛ رها شدن ناگهانی از میله خطرناک است.",
     ],
+    enContent: {
+      summary: "Raising the legs while hanging from a bar; an advanced core exercise that also challenges grip and bracing.",
+      steps: [
+        "Hang from the bar; arms extended and shoulders set in the active position (not shrugged to the ears).",
+        "Keep the body still and brace the abs.",
+        "Raise the legs, bent or straight, to at least hip height and tuck the pelvis slightly toward the chest.",
+        "Lower the legs with control and without swinging.",
+      ],
+      breathing: "Exhale as you raise the legs and inhale during the controlled lowering.",
+      mistakes: [
+        "Swinging the body to start each rep",
+        "Incomplete range without the pelvic tuck",
+        "Shoulders relaxing toward the ears while hanging",
+      ],
+      safety: [
+        "Start with the knees-to-chest version and straighten the legs later.",
+        "End the set as your grip fades; suddenly letting go of the bar is dangerous.",
+      ],
+    },
   },
   {
     id: "dead-bug",
@@ -150,6 +226,25 @@ export const CORE_LEGS_EXERCISES: LibraryExercise[] = [
       "اگر کمر از زمین جدا می‌شود، دامنه دست و پا را کوتاه‌تر کنید.",
       "کیفیت کنترل مهم‌تر از تعداد تکرار است.",
     ],
+    enContent: {
+      summary: "Simultaneous opposite arm-and-leg movement from a lying position; trunk control training without loading the lower back.",
+      steps: [
+        "Lie on your back; arms vertical toward the ceiling and knees bent 90 degrees above the hips.",
+        "Gently bring the lower back toward the floor and keep that contact throughout.",
+        "At the same time, reach one arm back overhead and lower the opposite leg down and forward.",
+        "Return the arm and leg to the start and perform the other side.",
+      ],
+      breathing: "In each rep, exhale slowly as the arm and leg move away and inhale on the return.",
+      mistakes: [
+        "Lower back peeling off the floor as the leg lowers",
+        "Fast, uncontrolled reps",
+        "Holding the breath during the movement",
+      ],
+      safety: [
+        "If the back lifts off the floor, shorten the arm and leg range.",
+        "Control quality matters more than rep count.",
+      ],
+    },
   },
 
   /* =============================== چهارسر ران =============================== */
@@ -181,6 +276,25 @@ export const CORE_LEGS_EXERCISES: LibraryExercise[] = [
       "همیشه داخل قفسه با پایه‌های ایمنی و در ارتفاع مناسب اجرا کنید.",
       "وزنه را فقط وقتی تکنیک پایدار است افزایش دهید؛ در صورت درد زانو یا کمر دامنه را اصلاح کنید و از متخصص کمک بگیرید.",
     ],
+    enContent: {
+      summary: "The primary exercise for building lower-body strength and size with a barbell and free load.",
+      steps: [
+        "Set the bar on the upper traps, feet shoulder-width apart with toes slightly turned out.",
+        "Chest open, gaze forward, abs braced; unrack the bar and step back twice.",
+        "As the knees bend, drive the hips back and down; knees tracking over the toes.",
+        "Descend as deep as you can keep form, then rise by pressing the feet — heels-focused — back up.",
+      ],
+      breathing: "Inhale before descending and brace the abs; exhale on the way up.",
+      mistakes: [
+        "Knees caving inward",
+        "Lower back rounding at the bottom of the squat",
+        "Heels lifting off the floor and weight shifting to the toes",
+      ],
+      safety: [
+        "Always lift inside a rack with safety pins set at the proper height.",
+        "Add weight only while technique stays solid; with knee or back pain, adjust the range and consult a specialist.",
+      ],
+    },
   },
   {
     id: "leg-press",
@@ -210,6 +324,25 @@ export const CORE_LEGS_EXERCISES: LibraryExercise[] = [
       "دامنه را به اندازه‌ای انتخاب کنید که همیشه کنترل و تماس باسن با صندلی حفظ شود.",
       "دست‌ها را روی دستگیره‌های ثابت نگه دارید و زانوها را هرگز از بیرون فشار ندهید.",
     ],
+    enContent: {
+      summary: "Pressing the weight plate with the legs from a seated position; a compound leg exercise with full torso support.",
+      steps: [
+        "Place the feet shoulder-width apart on the plate; lower back and hips fully against the seat.",
+        "Release the safeties and bend the knees with control.",
+        "Descend only as far as the hips stay on the seat and the back does not round.",
+        "Press the plate back up through the whole foot — heels-focused — without violently locking the knees.",
+      ],
+      breathing: "Inhale as the plate comes down and exhale as you press it up.",
+      mistakes: [
+        "Hips lifting and the lower back rounding at the bottom",
+        "Fully and violently locking the knees at the top of every rep",
+        "Knees caving inward while pressing",
+      ],
+      safety: [
+        "Choose a range that always preserves control and hip contact with the seat.",
+        "Keep the hands on the fixed handles and never push on the knees from outside.",
+      ],
+    },
   },
   {
     id: "leg-extension",
@@ -239,6 +372,25 @@ export const CORE_LEGS_EXERCISES: LibraryExercise[] = [
       "با وزنه متعادل و مکث کوتاه در بالای حرکت اجرا کنید.",
       "در صورت درد زیر یا دور کاسه زانو، دامنه را کاهش دهید و با متخصص مشورت کنید.",
     ],
+    enContent: {
+      summary: "Straightening the knee in a seated machine; a high-focus isolation exercise for the quadriceps.",
+      steps: [
+        "Sit on the machine; the backs of the thighs on the seat and the pad just above the feet.",
+        "Grab the handles and fix the hips in the seat.",
+        "Extend the knees up until they are nearly fully straight.",
+        "Return to the start with control, without letting the weight drop.",
+      ],
+      breathing: "Exhale as you extend the knee and inhale as the weight returns.",
+      mistakes: [
+        "Kicking the weight up with an initial jerk",
+        "Thighs lifting off the seat and using hip motion",
+        "Violently locking the knee with a heavy load at the top",
+      ],
+      safety: [
+        "Lift a balanced weight and add a brief pause at the top of the movement.",
+        "With pain under or around the kneecap, reduce the range and consult a specialist.",
+      ],
+    },
   },
   {
     id: "squat-bodyweight",
@@ -269,6 +421,25 @@ export const CORE_LEGS_EXERCISES: LibraryExercise[] = [
       "در تمام طول حرکت وزن بدن روی تمام کف پا با تمرکز پاشنه بماند.",
       "عمق را به اندازه‌ای انتخاب کنید که کمر خنثی بماند.",
     ],
+    enContent: {
+      summary: "Sitting down and standing up with body weight; the foundation of the squat pattern for beginners and a warm-up for all levels.",
+      steps: [
+        "Stand with feet shoulder-width apart or slightly wider and toes slightly turned out.",
+        "Brace the core and keep the chest open.",
+        "As the knees bend, drive the hips back and down as if sitting on a chair.",
+        "Descend until the thighs are at least parallel to the floor while form holds, then rise by pressing through the heels.",
+      ],
+      breathing: "Inhale on the way down and exhale as you stand back up.",
+      mistakes: [
+        "Heels lifting off the floor",
+        "Knees caving inward instead of tracking over the toes",
+        "Chest slumping or excessive lower-back arch at the bottom",
+      ],
+      safety: [
+        "Throughout the movement keep your body weight over the whole foot with a heel focus.",
+        "Choose a depth that keeps the lower back neutral.",
+      ],
+    },
   },
   {
     id: "lunge",
@@ -299,6 +470,25 @@ export const CORE_LEGS_EXERCISES: LibraryExercise[] = [
       "در شروع، کنار دیوار یا با دست روی تکیه‌گاه ثابت اجرا کنید تا تعادل ساده‌تر شود.",
       "اندازه گام را بلندتر از حد عادی انتخاب نکنید؛ گام معقول کنترل فرم را آسان‌تر می‌کند.",
     ],
+    enContent: {
+      summary: "A long step forward and a descent on each leg; a single-leg exercise for strength, balance, and hip stability.",
+      steps: [
+        "Stand with feet hip-width apart and abs braced.",
+        "Take a long step forward and split your body weight between the two legs.",
+        "Descend until the rear knee nears the floor while the front knee stays over the toes.",
+        "Press through the front foot to return to standing and switch legs.",
+      ],
+      breathing: "Inhale on the way down and exhale as you stand back up.",
+      mistakes: [
+        "Front knee caving inward",
+        "Too short a step, overloading the front knee",
+        "Torso twisting and balance lost",
+      ],
+      safety: [
+        "At first, perform beside a wall or with a hand on a fixed support to make balance easier.",
+        "Do not take longer steps than natural; a sensible stride makes form easier to control.",
+      ],
+    },
   },
 
   /* =============================== همسترینگ =============================== */
@@ -330,6 +520,25 @@ export const CORE_LEGS_EXERCISES: LibraryExercise[] = [
       "دامنه را تا جایی ادامه دهید که کمر خنثی بماند؛ کشش را در پشت ران حس کنید نه در کمر.",
       "وزنه را روی قفسه یا پایه‌های اسکوات بلند کنید تا شروع حرکت آسان‌تر و امن‌تر باشد.",
     ],
+    enContent: {
+      summary: "Lowering the barbell with a hip hinge to the hamstring stretch; strengthens the posterior chain without lifting from the floor.",
+      steps: [
+        "Grip the barbell while standing; feet hip-width apart and knees in a fixed, soft bend.",
+        "Push the hips back and bend the torso forward with a neutral spine, keeping the bar close to the legs.",
+        "Descend until the stretch behind the thighs is felt — usually below the knees.",
+        "Drive the hips forward with glute and hamstring contraction and return to full standing.",
+      ],
+      breathing: "Inhale before descending and hold it on the way down; exhale as you stand back up.",
+      mistakes: [
+        "Lower back rounding at the bottom of the movement",
+        "Bending the knees too much, turning it into a squat",
+        "The bar drifting away from the legs",
+      ],
+      safety: [
+        "Continue the range only as far as the back stays neutral; feel the stretch in the hamstrings, not in the back.",
+        "Start the set from a rack or squat stands so the lift-off is easier and safer.",
+      ],
+    },
   },
   {
     id: "leg-curl-lying",
@@ -359,6 +568,25 @@ export const CORE_LEGS_EXERCISES: LibraryExercise[] = [
       "بالشتک را در جای صحیح — بالای پاشنه و دور از ساق — تنظیم کنید.",
       "اگر لگن در طول ست بالا می‌آید، وزنه را کمتر کنید.",
     ],
+    enContent: {
+      summary: "Bending the knee on a lying machine; hamstring isolation with a controlled range.",
+      steps: [
+        "Lie face down on the machine bench; the pad just above the heels and the hips on the bench.",
+        "Grab the handles and place your forehead on the machine's face rest toward the floor.",
+        "Curl the knees up with hamstring contraction until fully or nearly fully bent.",
+        "Return the weight to the start with control and without the hips lifting.",
+      ],
+      breathing: "Exhale as you curl the knees and inhale on the controlled return.",
+      mistakes: [
+        "Hips lifting off the bench to steal force",
+        "Kicking the weight up with an initial jerk",
+        "Incomplete range at the bottom, losing the stretch",
+      ],
+      safety: [
+        "Adjust the pad to the correct spot — above the heels and away from the calves.",
+        "If the hips rise during the set, reduce the weight.",
+      ],
+    },
   },
   {
     id: "single-leg-rdl",
@@ -388,5 +616,24 @@ export const CORE_LEGS_EXERCISES: LibraryExercise[] = [
       "ابتدا الگو را بدون وزنه تمرین کنید؛ تکیه نزدیک دیوار در شروع مشکلی ندارد.",
       "اگر تعادل محدود است، دامنه را کوتاه‌تر و سرعت را آهسته‌تر کنید.",
     ],
+    enContent: {
+      summary: "A single-leg hip hinge with a dumbbell; combines hamstring stretch with a balance and hip-stability challenge.",
+      steps: [
+        "Shift your weight onto one leg and hold a dumbbell in the same-side or opposite hand.",
+        "Push the hips back and bend the torso forward with a neutral spine; the free leg extends behind you.",
+        "Descend until you feel the stretch in the standing leg's hamstring while the hips stay square to the floor.",
+        "Return to full standing with glute contraction, then perform the other side.",
+      ],
+      breathing: "Inhale on the way down and exhale as you rise back to full standing.",
+      mistakes: [
+        "Rotating the hips up and opening away from the body line",
+        "Lower back rounding at the bottom",
+        "Fully locking the standing knee instead of keeping a soft bend",
+      ],
+      safety: [
+        "Train the pattern without load first; standing near a wall for support is fine at the start.",
+        "If balance is limited, shorten the range and slow the tempo.",
+      ],
+    },
   },
 ];

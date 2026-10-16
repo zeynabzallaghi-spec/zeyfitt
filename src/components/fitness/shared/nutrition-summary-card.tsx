@@ -12,14 +12,14 @@
 
 import { ChefHat, ChevronLeft, ChevronRight, Loader2, Utensils } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { faDigits } from "@/lib/profile";
 import { useAppStore } from "@/store/app-store";
-import { NUTRITION_GOAL_LABELS, type NutritionGoal } from "@/lib/nutrition-engine/types";
 import type { NutritionPlanSummaryClient } from "@/lib/nutrition-storage";
 import { useFoodLogSummary } from "@/hooks/use-food-logs";
 import { tehranLocalDay } from "@/lib/foodlog/calc";
 import { foodLogStrings } from "@/lib/foodlog/i18n";
 import { useFoodLogUiLang } from "@/lib/foodlog/use-ui-lang";
+import { nutritionStrings } from "@/lib/i18n/sections/nutrition";
+import { localeNumber } from "@/lib/i18n/format";
 
 export function NutritionSummaryCard({
   plan,
@@ -29,9 +29,10 @@ export function NutritionSummaryCard({
   loading: boolean;
 }) {
   const setActiveView = useAppStore((s) => s.setActiveView);
-  // مصرف واقعی امروز — فقط داده واقعی پایگاه داده؛ بدون localStorage
+  // زبان رابط کارت — از کلید سراسری FA/EN (یک منبع واحد برای کل اپ)
   const logLang = useFoodLogUiLang();
   const ls = foodLogStrings(logLang);
+  const ns = nutritionStrings(logLang);
   const today = tehranLocalDay(Date.now());
   const { data: logSummary, loading: logLoading } = useFoodLogSummary(today);
   const todayTotals = logSummary?.totals ?? null;
@@ -44,7 +45,7 @@ export function NutritionSummaryCard({
         <span className="flex size-9 items-center justify-center rounded-lg border border-border/50 bg-secondary/40 text-muted-foreground">
           <ChefHat className="size-4" aria-hidden="true" />
         </span>
-        <h3 className="text-sm font-bold">برنامه غذایی</h3>
+        <h3 className="text-sm font-bold">{ls.planCardTitle}</h3>
       </div>
 
       {loading ? (
@@ -57,22 +58,24 @@ export function NutritionSummaryCard({
             <div>
               <p className="text-xs font-bold leading-6 text-foreground">{plan.title}</p>
               <p className="mt-1 text-[11px] leading-6 text-muted-foreground">
-                هدف: {NUTRITION_GOAL_LABELS[plan.goal as NutritionGoal] ?? plan.goal} — {faDigits(plan.mealsPerDay)} وعده در روز
+                {ls.planGoalLine(
+                  ns.goalLabel(plan.goal as string) ?? plan.goal,
+                  localeNumber(plan.mealsPerDay, logLang)
+                )}
               </p>
               <p className="mt-2 text-[11px] leading-6 text-muted-foreground">
                 {plan.caution || plan.targetKcal === null
-                  ? "حالت احتیاط — بدون هدف کالری شخصی"
-                  : `هدف انرژی روزانه: ${faDigits(plan.targetKcal)} کیلوکالری (تخمینی)`}
+                  ? ls.planCaution
+                  : ls.planTargetEnergy(localeNumber(plan.targetKcal, logLang))}
               </p>
               <p className="mt-2 text-[10px] leading-5 text-muted-foreground/70">
-                این هدف برنامهٔ پیشنهادی است؛ غذای واقعی خورده‌شده در بخش «مصرف واقعی غذا» ثبت و با همین هدف مقایسه می‌شود.
+                {ls.planTransparencyNote}
               </p>
             </div>
           ) : (
             <div>
               <p className="text-[11px] leading-6 text-muted-foreground">
-                برنامه غذایی فعالی ندارید. برنامه‌ساز بر اساس پروفایل و آلرژی‌های شما وعده‌ها را با
-                مقدار گرم هر ماده پیشنهاد می‌دهد.
+                {ls.planEmptyBody}
               </p>
               <div className="mt-3">
                 <Button
@@ -80,8 +83,8 @@ export function NutritionSummaryCard({
                   onClick={() => setActiveView("nutrition")}
                   className="h-8 w-full font-bold text-primary-foreground glow-lime-sm"
                 >
-                  ساخت برنامه غذایی
-                  <ChevronLeft className="size-3.5" aria-hidden="true" />
+                  {ls.planCreateCta}
+                  <ChevronLeft className="size-3.5 rtl:rotate-180" aria-hidden="true" />
                 </Button>
               </div>
             </div>
@@ -104,16 +107,16 @@ export function NutritionSummaryCard({
                 <div className="rounded-lg border border-primary/30 bg-primary/5 py-1.5">
                   <p className="text-[9px] text-muted-foreground">{ls.dashboardEnergy}</p>
                   <p className="text-[11px] font-extrabold text-primary">
-                    {faDigits(todayTotals.kcal)}
+                    {localeNumber(todayTotals.kcal, logLang)}
                   </p>
                 </div>
                 <div className="rounded-lg border border-border/40 bg-card py-1.5">
                   <p className="text-[9px] text-muted-foreground">{ls.dashboardProtein}</p>
-                  <p className="text-[11px] font-extrabold">{faDigits(todayTotals.protein)}</p>
+                  <p className="text-[11px] font-extrabold">{localeNumber(todayTotals.protein, logLang)}</p>
                 </div>
                 <div className="rounded-lg border border-border/40 bg-card py-1.5">
                   <p className="text-[9px] text-muted-foreground">{ls.dashboardEntries}</p>
-                  <p className="text-[11px] font-extrabold">{faDigits(todayTotals.count)}</p>
+                  <p className="text-[11px] font-extrabold">{localeNumber(todayTotals.count, logLang)}</p>
                 </div>
               </div>
             ) : (
@@ -138,8 +141,8 @@ export function NutritionSummaryCard({
                 onClick={() => setActiveView("nutrition")}
                 className="h-8 w-full bg-primary/15 text-[11px] font-bold text-primary hover:bg-primary/25"
               >
-                مشاهده وعده‌ها
-                <ChevronLeft className="size-3.5" aria-hidden="true" />
+                {ls.planViewMeals}
+                <ChevronLeft className="size-3.5 rtl:rotate-180" aria-hidden="true" />
               </Button>
             </div>
           )}

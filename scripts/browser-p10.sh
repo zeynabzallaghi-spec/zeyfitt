@@ -33,7 +33,9 @@ echo "== 0) آماده‌سازی: ثبت‌نام + پروفایل + برنام
 code=$(curl -s -D $HDR -o /dev/null -w "%{http_code}" -X POST -H 'Content-Type: application/json' \
   -d "{\"name\":\"کاربر مرورگر۱۰\",\"email\":\"$EMAIL\",\"password\":\"test1234\"}" $BASE/api/auth/sign-up/email)
 check "ثبت‌نام کاربر مرورگر → 200" "200" "$code"
-COOKIE=$(grep -o '__Secure-fitcoach\.session_token=[^;]*' $HDR | head -1 | cut -d= -f2-)
+CKNAME=$(grep -o '\(__Secure-\)\?fitcoach\.session_token' $HDR | head -1)
+COOKIE=$(grep -o '\(__Secure-\)\?fitcoach\.session_token=[^;]*' $HDR | head -1 | cut -d= -f2-)
+SECFLAG=$([ "${CKNAME#__Secure-}" != "$CKNAME" ] && echo "--secure" || echo "")
 check "کوکی نشست استخراج شد" "yes" "$([ -n "$COOKIE" ] && echo yes || echo no)"
 
 timeout 90 bun -e "
@@ -46,7 +48,7 @@ console.log('profile seeded for', u.id);
 await db.\$disconnect();
 "
 
-code=$(curl -s -H "Cookie: __Secure-fitcoach.session_token=$COOKIE" -o /tmp/p10-b-plan.json -w "%{http_code}" -X POST -H 'Content-Type: application/json' \
+code=$(curl -s -H "Cookie: $CKNAME=$COOKIE" -o /tmp/p10-b-plan.json -w "%{http_code}" -X POST -H 'Content-Type: application/json' \
   -d '{"goal":"maintain","activityLevel":"light","mealsPerDay":3,"planLength":1,"dietPattern":"none","allergens":[],"dislikedFoodIds":[],"budget":"any","prep":"any","pregnancyBreastfeeding":false,"estimate":{"age":30,"heightCm":180,"weightKg":88,"gender":"male"}}' \
   $BASE/api/nutrition)
 check "ساخت برنامه فعال برای مرورگر → 201" "201" "$code"
@@ -58,7 +60,7 @@ agent-browser open $BASE >/dev/null 2>&1
 # کوکی کهنه‌ای از کاربر دیگر باعث می‌شد سرور کاربر اشتباه را بشناسد
 # و مکالمه/ثبتِ seed شده هرگز در UI دیده نمی‌شد (شکست قطعی تست XSS).
 agent-browser cookies clear >/dev/null 2>&1 || true
-agent-browser cookies set "__Secure-fitcoach.session_token" "$COOKIE" --url $BASE --secure --sameSite Lax --httpOnly >/dev/null 2>&1
+agent-browser cookies set "$CKNAME" "$COOKIE" --url $BASE $SECFLAG --sameSite Lax --httpOnly >/dev/null 2>&1
 agent-browser storage local clear >/dev/null 2>&1
 agent-browser reload >/dev/null 2>&1
 waitfor "fetch('/api/nutrition').then(r=>r.status===200?'YES':'NO')" 20 SESS
@@ -167,12 +169,14 @@ ab "(() => { const b = Array.from(document.querySelectorAll('button')).find(x =>
 waitfor "document.querySelectorAll('button[aria-label=حذف]').length < $DELCOUNT ? 'YES' : 'NO'" 20 DELETED
 check "حذف انجام شد (فهرست کم شد)" "YES" "$DELETED"
 
-echo "== 8) دوزبانگی — English با LTR =="
-ab "localStorage.setItem('fitcoach.assistant.lang', 'en'); 'ok'"
+echo "== 8) دوزبانگی — کلید سراسری English با LTR =="
+# (مرحله ۱۳) زبان رابط همه بخش‌ها از کلید سراسری fit-ui-lang می‌آید
+ab "(() => { const b = Array.from(document.querySelectorAll('button')).find(x => x.getAttribute('aria-label') === 'English'); if (b) { b.click(); return 'ok'; } return 'NO'; })()"
+sleep 1
 agent-browser reload >/dev/null 2>&1
 # پس از reload اپ روی داشبورد می‌افتد — ابتدا به بخش تغذیه برو
-waitfor "Array.from(document.querySelectorAll('button')).find(b => b.textContent.includes('برنامه غذایی')) ? 'YES' : 'NO'" 25 NAVEN
-ab "(() => { const b = Array.from(document.querySelectorAll('button')).find(x => x.textContent.includes('برنامه غذایی')); if (b) { b.click(); return 'ok'; } return 'NO'; })()"
+waitfor "Array.from(document.querySelectorAll('button')).find(b => b.textContent.includes('Nutrition Plan')) ? 'YES' : 'NO'" 25 NAVEN
+ab "(() => { const b = Array.from(document.querySelectorAll('button')).find(x => x.textContent.includes('Nutrition Plan')); if (b) { b.click(); return 'ok'; } return 'NO'; })()"
 waitfor "document.querySelector('section[aria-label=\\\"Real food intake\\\"]') ? 'YES' : 'NO'" 25 EN
 check "رابط انگلیسی بخش مصرف رندر شد" "YES" "$EN"
 DIRC=$(agent-browser eval "(() => { const el = document.querySelector('section[aria-label=\\\"Real food intake\\\"]'); return el ? (el.getAttribute('dir') || 'NULL') : 'NONE'; })()" 2>/dev/null | tr -d '"')
@@ -187,7 +191,8 @@ agent-browser set viewport 390 844 >/dev/null 2>&1
 sleep 2
 OVF_EN=$(agent-browser eval "(document.documentElement.scrollWidth <= 391) ? 'YES' : 'NO'" 2>/dev/null | tr -d '"')
 check "390px انگلیسی: بدون سرریز افقی" "YES" "$OVF_EN"
-ab "localStorage.setItem('fitcoach.assistant.lang', 'fa'); 'ok'"
+ab "(() => { const b = Array.from(document.querySelectorAll('button')).find(x => x.getAttribute('aria-label') === 'فارسی'); if (b) { b.click(); return 'ok'; } return 'NO'; })()"
+sleep 1
 agent-browser reload >/dev/null 2>&1
 # پس از reload اپ روی داشبورد است — ابتدا به بخش تغذیه برو
 waitfor "Array.from(document.querySelectorAll('button')).find(b => b.textContent.includes('برنامه غذایی')) ? 'YES' : 'NO'" 25 NAVFA

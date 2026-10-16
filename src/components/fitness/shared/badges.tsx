@@ -3,9 +3,12 @@
 import { FlaskConical, CircleCheck } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { Difficulty } from "@/lib/exercises/types";
+import { useStrings } from "@/lib/i18n/use-strings";
+import { sharedStrings } from "@/lib/i18n/sections/shared";
 
 /** نشان «واقعی» — داده‌ای که مستقیماً از پایگاه داده سرور آمده است */
 export function RealBadge({ className }: { className?: string }) {
+  const t = useStrings(sharedStrings);
   return (
     <span
       className={cn(
@@ -14,7 +17,7 @@ export function RealBadge({ className }: { className?: string }) {
       )}
     >
       <CircleCheck className="size-3" aria-hidden="true" />
-      واقعی
+      {t.realBadge}
     </span>
   );
 }
@@ -27,6 +30,7 @@ export function DemoBadge({
   children?: React.ReactNode;
   className?: string;
 }) {
+  const t = useStrings(sharedStrings);
   return (
     <span
       className={cn(
@@ -35,7 +39,7 @@ export function DemoBadge({
       )}
     >
       <FlaskConical className="size-3" aria-hidden="true" />
-      {children ?? "نمونه نمایشی"}
+      {children ?? t.demoBadge}
     </span>
   );
 }
@@ -50,6 +54,7 @@ export function StageBadge({
   label?: string;
   className?: string;
 }) {
+  const t = useStrings(sharedStrings);
   return (
     <span
       className={cn(
@@ -57,13 +62,15 @@ export function StageBadge({
         className
       )}
     >
-      {label ?? `مرحله ${stage?.toLocaleString("fa-IR")}`}
+      {label ?? t.stageBadge(stage ?? 0)}
     </span>
   );
 }
 
-/** نشان سطح دشواری حرکت — کدگذاری رنگی ملایم */
+/** نشان سطح دشواری حرکت — کدگذاری رنگی ملایم؛ مقدار داده فارسی است و
+ *  برچسب نمایشی به زبان رابط ترجمه می‌شود (داده تغییر نمی‌کند) */
 export function DifficultyBadge({ level }: { level: Difficulty }) {
+  const t = useStrings(sharedStrings);
   const styles: Record<Difficulty, string> = {
     مبتدی: "border-emerald-400/30 bg-emerald-400/10 text-emerald-300",
     متوسط: "border-amber-400/30 bg-amber-400/10 text-amber-300",
@@ -76,7 +83,7 @@ export function DifficultyBadge({ level }: { level: Difficulty }) {
         styles[level]
       )}
     >
-      {level}
+      {t.difficultyLabel(level)}
     </span>
   );
 }

@@ -23,9 +23,11 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
-import { faDigits } from "@/lib/profile";
-import { jalaliFullLabel } from "@/lib/weight";
-import { EXERCISE_LIBRARY, categoryFa } from "@/lib/exercises";
+import { useLocale, useDir } from "@/lib/i18n/locale";
+import { useStrings } from "@/lib/i18n/use-strings";
+import { workoutStrings } from "@/lib/i18n/sections/workout";
+import { localeNumber, localeFullLabel } from "@/lib/i18n/format";
+import { EXERCISE_LIBRARY } from "@/lib/exercises";
 import type { ExerciseProgressResult } from "@/lib/workout-session/stats";
 import { useWorkoutStats } from "@/hooks/use-workout-sessions";
 
@@ -35,9 +37,11 @@ function TrendBars({
 }: {
   buckets: { weekStartIso: string; label: string; completedSessions: number }[];
 }) {
+  const t = useStrings(workoutStrings);
+  const locale = useLocale();
   const max = Math.max(...buckets.map((b) => b.completedSessions), 1);
   return (
-    <div className="flex items-end justify-between gap-2 pt-2" dir="ltr">
+    <div className="flex items-end justify-between gap-2 pt-2">
       {buckets.map((b) => {
         const heightPx = b.completedSessions === 0 ? 4 : Math.max(8, Math.round((b.completedSessions / max) * 72));
         return (
@@ -51,7 +55,7 @@ function TrendBars({
               aria-hidden="true"
             />
             <span className="text-[9px] font-bold text-foreground/80">
-              {faDigits(b.completedSessions)}
+              {localeNumber(b.completedSessions, locale)}
             </span>
             <span className="truncate text-center text-[8px] leading-3 text-muted-foreground/70" dir="rtl">
               {b.label}
@@ -66,6 +70,9 @@ function TrendBars({
 /* ------------------------------ روند یک حرکت ------------------------------ */
 
 function ExerciseProgressPicker() {
+  const t = useStrings(workoutStrings);
+  const locale = useLocale();
+  const dir = useDir();
   const [selected, setSelected] = useState<string>("");
   const [progress, setProgress] = useState<ExerciseProgressResult | null>(null);
   const [loading, setLoading] = useState(false);
@@ -80,19 +87,19 @@ function ExerciseProgressPicker() {
         { cache: "no-store" }
       );
       if (!response.ok) {
-        setError("خواندن روند حرکت ممکن نشد؛ دوباره تلاش کنید.");
+        setError(t.progressReadFailed);
         setProgress(null);
         return;
       }
       const data = (await response.json()) as { progress: ExerciseProgressResult };
       setProgress(data.progress);
     } catch {
-      setError("ارتباط با سرور برقرار نشد.");
+      setError(t.networkFailed);
       setProgress(null);
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [t]);
 
   // ابطال انتخاب هنگام بستن
   useEffect(() => {
@@ -112,13 +119,13 @@ function ExerciseProgressPicker() {
             void fetchProgress(v);
           }}
         >
-          <SelectTrigger className="w-full text-xs sm:w-72" aria-label="انتخاب حرکت برای مشاهده روند">
-            <SelectValue placeholder="انتخاب حرکت از بانک حرکات" />
+          <SelectTrigger className="w-full text-xs sm:w-72" aria-label={t.pickerAria}>
+            <SelectValue placeholder={t.pickerPlaceholder} />
           </SelectTrigger>
-          <SelectContent dir="rtl" className="max-h-72">
+          <SelectContent dir={dir} className="max-h-72">
             {EXERCISE_LIBRARY.map((ex) => (
               <SelectItem key={ex.id} value={ex.id} className="text-xs">
-                {ex.fa} — {categoryFa(ex.category)}
+                {locale === "fa" ? ex.fa : ex.en} — {t.categoryName(ex.category)}
               </SelectItem>
             ))}
           </SelectContent>
@@ -131,7 +138,7 @@ function ExerciseProgressPicker() {
             className="h-8 px-2 text-[10px] text-muted-foreground"
           >
             <RotateCcw className="size-3" aria-hidden="true" />
-            پاک‌کردن
+            {t.clearPicker}
           </Button>
         )}
       </div>
@@ -149,38 +156,38 @@ function ExerciseProgressPicker() {
           {/* رکوردها — فقط با حداقل دو نقطه داده */}
           <div className="grid gap-2 sm:grid-cols-2">
             <div className="rounded-xl border border-border/60 bg-secondary/20 p-3">
-              <p className="text-[10px] font-bold text-muted-foreground">بهترین وزنه ثبت‌شده</p>
+              <p className="text-[10px] font-bold text-muted-foreground">{t.bestWeightLabel}</p>
               {progress.bestWeightKg !== null ? (
                 <p className="mt-1 text-lg font-extrabold text-primary">
-                  {faDigits(progress.bestWeightKg)}{" "}
-                  <span className="text-[10px] font-bold text-muted-foreground">کیلوگرم</span>
+                  {localeNumber(progress.bestWeightKg, locale)}{" "}
+                  <span className="text-[10px] font-bold text-muted-foreground">{t.kilograms}</span>
                 </p>
               ) : (
                 <p className="mt-1 text-xs font-bold text-muted-foreground">
                   {progress.rows.length === 0
-                    ? "داده کافی نیست"
-                    : "بدون بار خارجی ثبت شده — فقط تکرار سنجه دارد"}
+                    ? t.insufficientData
+                    : t.noExternalLoad}
                 </p>
               )}
               {progress.bestWeightKgDate && (
                 <p className="mt-1 text-[9px] text-muted-foreground/70">
-                  در {jalaliFullLabel(progress.bestWeightKgDate)}
+                  {t.onDate(localeFullLabel(progress.bestWeightKgDate, locale))}
                 </p>
               )}
             </div>
             <div className="rounded-xl border border-border/60 bg-secondary/20 p-3">
-              <p className="text-[10px] font-bold text-muted-foreground">بیشترین تکرار یک ست</p>
+              <p className="text-[10px] font-bold text-muted-foreground">{t.bestRepsLabel}</p>
               {progress.bestReps !== null ? (
                 <p className="mt-1 text-lg font-extrabold text-primary">
-                  {faDigits(progress.bestReps)}{" "}
-                  <span className="text-[10px] font-bold text-muted-foreground">تکرار</span>
+                  {localeNumber(progress.bestReps, locale)}{" "}
+                  <span className="text-[10px] font-bold text-muted-foreground">{t.repsUnit}</span>
                 </p>
               ) : (
-                <p className="mt-1 text-xs font-bold text-muted-foreground">داده کافی نیست</p>
+                <p className="mt-1 text-xs font-bold text-muted-foreground">{t.insufficientData}</p>
               )}
               {progress.bestRepsDate && (
                 <p className="mt-1 text-[9px] text-muted-foreground/70">
-                  در {jalaliFullLabel(progress.bestRepsDate)}
+                  {t.onDate(localeFullLabel(progress.bestRepsDate, locale))}
                 </p>
               )}
             </div>
@@ -198,21 +205,20 @@ function ExerciseProgressPicker() {
                   key={`${row.sessionId}-${i}`}
                   className="flex flex-wrap items-center gap-x-3 gap-y-1 rounded-xl border border-border/50 bg-card p-3 text-[11px]"
                 >
-                  <span className="font-bold text-foreground">{jalaliFullLabel(row.startedAt)}</span>
+                  <span className="font-bold text-foreground">{localeFullLabel(row.startedAt, locale)}</span>
                   <span className="text-muted-foreground">{row.sessionTitle}</span>
                   <span className="ms-auto font-bold text-foreground/85">
-                    {faDigits(row.setsCount)} ست — {faDigits(row.totalReps)} تکرار
+                    {t.historyRowLine(row.setsCount, row.totalReps)}
                     {row.bestWeightKg !== null
-                      ? ` — بهترین وزنه ${faDigits(row.bestWeightKg)} کیلوگرم`
-                      : " — وزن بدن"}
+                      ? t.bestWeightSuffix(row.bestWeightKg)
+                      : t.bodyweightRowSuffix}
                   </span>
                 </li>
               ))}
             </ul>
           ) : (
             <p className="rounded-xl border border-dashed border-border/50 bg-secondary/20 px-4 py-6 text-center text-[11px] leading-6 text-muted-foreground">
-              این حرکت هنوز در هیچ جلسه تکمیل‌شده‌ای ثبت نشده است. حرکات رهاشده یا ناتمام در
-              روند پیشرفت وارد نمی‌شوند.
+              {t.emptyExerciseTrend}
             </p>
           )}
         </div>
@@ -222,15 +228,17 @@ function ExerciseProgressPicker() {
 }
 
 export function SessionStats() {
+  const t = useStrings(workoutStrings);
+  const locale = useLocale();
   const { stats, loading, error, refresh } = useWorkoutStats();
 
   return (
-    <section aria-label="تحلیل پیشرفت تمرینی" className="flex flex-col gap-4">
+    <section aria-label={t.statsAria} className="flex flex-col gap-4">
       <div className="flex flex-wrap items-center gap-2.5">
         <span className="flex size-9 items-center justify-center rounded-lg border border-border/50 bg-secondary/40 text-muted-foreground">
           <TrendingUp className="size-4" aria-hidden="true" />
         </span>
-        <h3 className="text-sm font-bold">تحلیل پیشرفت تمرینی</h3>
+        <h3 className="text-sm font-bold">{t.statsTitle}</h3>
         <Button
           size="sm"
           variant="ghost"
@@ -238,7 +246,7 @@ export function SessionStats() {
           className="ms-auto h-7 px-2 text-[10px] font-semibold text-muted-foreground hover:text-primary"
         >
           <RotateCcw className="size-3" aria-hidden="true" />
-          به‌روزرسانی
+          {t.refresh}
         </Button>
       </div>
 
@@ -252,7 +260,7 @@ export function SessionStats() {
             onClick={() => void refresh()}
             className="mt-3 border-border/70 font-semibold hover:border-primary/40 hover:text-primary"
           >
-            تلاش مجدد
+            {t.retry}
           </Button>
         </div>
       )}
@@ -263,23 +271,22 @@ export function SessionStats() {
           <div className="rounded-2xl border border-border/60 bg-card p-4 md:p-5">
             <div className="flex flex-wrap items-center gap-2">
               <CalendarRange className="size-4 text-primary" aria-hidden="true" />
-              <h4 className="text-xs font-bold">این هفته (شنبه تا امروز)</h4>
+              <h4 className="text-xs font-bold">{t.thisWeekTitle}</h4>
               <span className="ms-auto text-[9px] text-muted-foreground/60">
-                محاسبه با تقویم رسمی ایران
+                {t.iranCalendarNote}
               </span>
             </div>
             {stats.thisWeek.completedSessions === 0 ? (
               <p className="mt-3 rounded-xl border border-dashed border-border/50 bg-secondary/20 px-4 py-6 text-center text-[11px] leading-6 text-muted-foreground">
-                این هفته هنوز جلسه تکمیل‌شده‌ای ندارید. جلسه فقط پس از «پایان تمرین» صریح شما
-                تکمیل‌شده حساب می‌شود.
+                {t.emptyWeek}
               </p>
             ) : (
               <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4">
                 {[
-                  { label: "جلسات تکمیل‌شده", value: faDigits(stats.thisWeek.completedSessions) },
-                  { label: "ست‌های ثبت‌شده", value: faDigits(stats.thisWeek.setsCompleted) },
-                  { label: "مجموع تکرارها", value: faDigits(stats.thisWeek.repsTotal) },
-                  { label: "مجموع مدت", value: `${faDigits(stats.thisWeek.durationMinutes)} دقیقه` },
+                  { label: t.weekCompletedLabel, value: localeNumber(stats.thisWeek.completedSessions, locale) },
+                  { label: t.weekSetsLabel, value: localeNumber(stats.thisWeek.setsCompleted, locale) },
+                  { label: t.weekRepsLabel, value: localeNumber(stats.thisWeek.repsTotal, locale) },
+                  { label: t.weekDurationLabel, value: t.minutesUnit(stats.thisWeek.durationMinutes) },
                 ].map((item) => (
                   <div key={item.label} className="rounded-xl border border-border/50 bg-secondary/20 p-3 text-center">
                     <p className="text-lg font-extrabold text-primary">{item.value}</p>
@@ -294,35 +301,34 @@ export function SessionStats() {
           <div className="rounded-2xl border border-border/60 bg-card p-4 md:p-5">
             <div className="flex flex-wrap items-center gap-2">
               <Activity className="size-4 text-primary" aria-hidden="true" />
-              <h4 className="text-xs font-bold">روند ۶ هفته اخیر</h4>
+              <h4 className="text-xs font-bold">{t.trendTitle}</h4>
               <span className="ms-auto text-[9px] text-muted-foreground/60">
-                تعداد جلسات تکمیل‌شده در هر هفته
+                {t.trendSubtitle}
               </span>
             </div>
             <TrendBars buckets={stats.weeklyTrend} />
             <p className="mt-2 text-[9px] leading-5 text-muted-foreground/60">
-              هفته‌های بدون جلسه صفر واقعی‌اند؛ هیچ داده‌ای پر کردن نشده است.
+              {t.zeroWeeksNote}
             </p>
           </div>
 
           {/* مجموع بازه داده */}
           <div className="rounded-2xl border border-border/60 bg-card p-4 md:p-5">
-            <h4 className="text-xs font-bold">مجموع یک سال اخیر</h4>
+            <h4 className="text-xs font-bold">{t.totalsTitle}</h4>
             {stats.totals.completedSessions === 0 ? (
               <p className="mt-3 rounded-xl border border-dashed border-border/50 bg-secondary/20 px-4 py-6 text-center text-[11px] leading-6 text-muted-foreground">
-                هنوز جلسه تکمیل‌شده‌ای ثبت نشده است؛ با اولین جلسه کامل‌شده، مجموع‌ها و روندها
-                همین‌جا ساخته می‌شوند.
+                {t.emptyTotals}
               </p>
             ) : (
               <>
                 <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-6">
                   {[
-                    { label: "تکمیل‌شده", value: faDigits(stats.totals.completedSessions) },
-                    { label: "رهاشده", value: faDigits(stats.totals.abandonedSessions) },
-                    { label: "ست‌ها", value: faDigits(stats.totals.setsCompleted) },
-                    { label: "تکرارها", value: faDigits(stats.totals.repsTotal) },
-                    { label: "مدت کل", value: `${faDigits(stats.totals.durationMinutes)} دقیقه` },
-                    { label: "حجم (بار خارجی)", value: `${faDigits(stats.totals.volumeKg)} کیلوگرم` },
+                    { label: t.totalsCompleted, value: localeNumber(stats.totals.completedSessions, locale) },
+                    { label: t.totalsAbandoned, value: localeNumber(stats.totals.abandonedSessions, locale) },
+                    { label: t.totalsSets, value: localeNumber(stats.totals.setsCompleted, locale) },
+                    { label: t.totalsReps, value: localeNumber(stats.totals.repsTotal, locale) },
+                    { label: t.totalsDuration, value: t.minutesUnit(stats.totals.durationMinutes) },
+                    { label: t.totalsVolume, value: `${localeNumber(stats.totals.volumeKg, locale)} ${t.kilograms}` },
                   ].map((item) => (
                     <div key={item.label} className="rounded-xl border border-border/50 bg-secondary/20 p-3 text-center">
                       <p className="text-sm font-extrabold text-foreground/90">{item.value}</p>
@@ -331,10 +337,7 @@ export function SessionStats() {
                   ))}
                 </div>
                 <p className="mt-3 rounded-xl border border-border/50 bg-secondary/20 p-3 text-[10px] leading-6 text-muted-foreground">
-                  «حجم تمرین» = مجموع (تکرار × وزنه) فقط برای ست‌های دارای بار خارجی ثبت‌شده؛
-                  ست‌های وزن بدن در آن وارد نمی‌شوند و وزن بدن کاربر هرگز با وزنه تمرینی جمع
-                  نمی‌شود. حجم با حرکات وزن بدن مقایسه‌پذیر نیست و جمع وزنه‌های حرکات مختلف
-                  سنجه علمی قدرت نیست — این عدد فقط برای پیگیری روند شخصی شماست.
+                  {t.volumeExplainer}
                 </p>
               </>
             )}
@@ -342,10 +345,9 @@ export function SessionStats() {
 
           {/* روند یک حرکت */}
           <div className="rounded-2xl border border-border/60 bg-card p-4 md:p-5">
-            <h4 className="text-xs font-bold">روند یک حرکت مشخص</h4>
+            <h4 className="text-xs font-bold">{t.singleExerciseTitle}</h4>
             <p className="mt-1 text-[10px] leading-5 text-muted-foreground">
-              مقایسه فقط بین جلسات تکمیل‌شده انجام می‌شود؛ رکورد وزنه فقط با حداقل دو جلسه دارای
-              ثبت وزنه معنا پیدا می‌کند.
+              {t.singleExerciseIntro}
             </p>
             <div className="mt-3">
               <ExerciseProgressPicker />

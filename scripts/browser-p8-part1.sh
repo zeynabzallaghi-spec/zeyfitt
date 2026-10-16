@@ -29,7 +29,9 @@ code=$(curl -s -b $JA -o /dev/null -w "%{http_code}" -X PUT -H 'Content-Type: ap
 check "تکمیل پروفایل API → 200" "200" "$code"
 
 # کوکی نشست را در مرورگر تزریق می‌کنیم (نام کوکی پروژه: fitcoach.session_token)
-TOKEN=$(rg -o "fitcoach\.session_token\s+(\S+)" $JA -r '$1' | head -1 | tr -d '\t')
+TOKEN=$(rg -o "(?:__Secure-)?fitcoach\.session_token\s+(\S+)" $JA -r '$1' | head -1 | tr -d '\t')
+CKNAME=$(rg -o "(?:__Secure-)?fitcoach\.session_token" $JA | head -1)
+SECFLAG=$([ "${CKNAME#__Secure-}" != "$CKNAME" ] && echo "--secure" || echo "")
 echo "token-found:$([ -n "$TOKEN" ] && echo yes || echo no)"
 $AB close > /dev/null 2>&1 || true
 $AB open http://localhost:3000 > /dev/null 2>&1
@@ -38,7 +40,7 @@ sleep 2
 # کوکی کهنه‌ای از کاربر دیگر باعث می‌شد سرور کاربر اشتباه را بشناسد
 # و مکالمه/ثبتِ seed شده هرگز در UI دیده نمی‌شد (شکست قطعی تست XSS).
 $AB cookies clear >/dev/null 2>&1 || agent-browser cookies clear >/dev/null 2>&1 || true
-$AB cookies set "__Secure-fitcoach.session_token" "$TOKEN" --url http://localhost:3000 --secure --sameSite Lax --httpOnly > /dev/null 2>&1
+$AB cookies set "$CKNAME" "$TOKEN" --url http://localhost:3000 $SECFLAG --sameSite Lax --httpOnly > /dev/null 2>&1
 $AB open http://localhost:3000 > /dev/null 2>&1
 sleep 4
 $AB wait --load networkidle > /dev/null 2>&1 || true

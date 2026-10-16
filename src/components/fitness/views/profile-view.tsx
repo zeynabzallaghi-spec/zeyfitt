@@ -59,6 +59,10 @@ import { useSessionData } from "../session-context";
 import { ViewIntro } from "../shared/view-intro";
 import { StageBadge } from "../shared/badges";
 import { Field, ChipToggle, ProfileSection } from "../shared/profile-fields";
+import { useLocale, useDir } from "@/lib/i18n/locale";
+import { useStrings } from "@/lib/i18n/use-strings";
+import { profileStrings } from "@/lib/i18n/sections/profile";
+import { sharedStrings } from "@/lib/i18n/sections/shared";
 
 /* ------------------------------ وضعیت فرم ------------------------------ */
 
@@ -103,21 +107,26 @@ function fromProfile(profile: FitnessProfileClient): ProfileFormState {
   };
 }
 
-const jalaliDateFormatter = new Intl.DateTimeFormat("fa-IR");
+/* تاریخ نمایشی به زبان رابط — فارسی: دقیقاً همان قالب پیش‌فرض fa-IR فعلی
+   (شمسی + ارقام فارسی)، انگلیسی: قالب پیش‌فرض en-GB (گرگوری + ارقام لاتین).
+   قالب‌های آماره format.ts (مانند localeFullLabel) ماه را کامل می‌نویسند و
+   رفتار نمایشی فعلی این نما را تغییر می‌دهند؛ بنابراین همان قالب پیش‌فرض قبلی
+   این‌جا به‌صورت دوزبانه نگه داشته شده است. */
+const defaultDateFormatter = {
+  fa: new Intl.DateTimeFormat("fa-IR"),
+  en: new Intl.DateTimeFormat("en-GB"),
+} as const;
 
 function subscribeNoop(_onChange: () => void) {
   return () => {};
 }
 
-function formatJalali(iso: string): string {
-  return jalaliDateFormatter.format(new Date(iso));
-}
-
-/** تاریخ شمسی — با الگوی فقط-کلاینت تا هیدراتیشن همیشه سازگار بماند */
-function JalaliDate({ iso }: { iso: string | null }) {
+/** تاریخ به زبان رابط — با الگوی فقط-کلاینت تا هیدراتیشن همیشه سازگار بماند */
+function LocaleDate({ iso }: { iso: string | null }) {
+  const locale = useLocale();
   const value = useSyncExternalStore(
     subscribeNoop,
-    () => (iso ? formatJalali(iso) : "—"),
+    () => (iso ? defaultDateFormatter[locale].format(new Date(iso)) : "—"),
     () => null
   );
   return <span suppressHydrationWarning>{value ?? "—"}</span>;
@@ -127,6 +136,10 @@ type ArrayFieldKey = "equipment" | "limitations" | "allergies";
 
 export function ProfileView() {
   const item = getNavItem("profile");
+  const locale = useLocale();
+  const dir = useDir();
+  const t = useStrings(profileStrings);
+  const s = useStrings(sharedStrings);
   const { toast } = useToast();
   const router = useRouter();
   const { user, profile, setProfile, signOut, deleteAccount } = useSessionData();
@@ -174,7 +187,7 @@ export function ProfileView() {
         />
         <div className="flex items-center justify-center gap-3 rounded-2xl border border-border/60 bg-card p-10 text-sm font-medium text-muted-foreground">
           <Loader2 className="size-5 animate-spin text-primary" aria-hidden="true" />
-          در حال بارگذاری پروفایل از سرور…
+          {t.loadingProfile}
         </div>
       </div>
     );
@@ -185,15 +198,13 @@ export function ProfileView() {
       <div className="flex flex-col gap-4">
         <ViewIntro item={item} badges={<StageBadge stage={3} />} />
         <div className="flex flex-col items-center gap-4 rounded-2xl border border-border/60 bg-card p-10 text-center">
-          <p className="text-sm font-medium text-muted-foreground">
-            هنوز پروفایلی ثبت نشده است. برای ثبت اطلاعات بدنی، راه‌اندازی را آغاز کنید.
-          </p>
+          <p className="text-sm font-medium text-muted-foreground">{t.emptyNoProfile}</p>
           <Button
             onClick={() => router.refresh()}
             variant="outline"
             className="border-border/70 font-semibold"
           >
-            به‌روزرسانی وضعیت
+            {t.refreshStatus}
           </Button>
         </div>
       </div>
@@ -254,10 +265,10 @@ export function ProfileView() {
       const parsed = profilePayloadSchema.safeParse(payload);
       if (!parsed.success) {
         const first = parsed.error.issues[0];
-        setFormError(first?.message ?? "اطلاعات واردشده معتبر نیست.");
+        setFormError(first?.message ?? t.invalidInfoFallback);
         toast({
-          title: "اعتبارسنجی ناموفق",
-          description: first?.message ?? "فیلدهای مشخص‌شده را بررسی کنید.",
+          title: t.clientValidationTitle,
+          description: first?.message ?? t.clientValidationDescFallback,
         });
         return;
       }
@@ -273,15 +284,15 @@ export function ProfileView() {
         setProfile(data.profile);
         setForm(fromProfile(data.profile));
         toast({
-          title: "پروفایل ذخیره شد",
-          description: "اطلاعات شما روی سرور و در پایگاه داده ثبت شد.",
+          title: t.savedTitle,
+          description: t.savedDesc,
         });
         router.refresh();
         return;
       }
 
       if (response.status === 401) {
-        toast({ title: "نشست منقضی شده", description: "لطفاً دوباره وارد حساب خود شوید." });
+        toast({ title: t.sessionExpiredTitle, description: t.sessionExpiredDesc });
         router.refresh();
         return;
       }
@@ -289,22 +300,22 @@ export function ProfileView() {
       if (response.status === 400) {
         const data = (await response.json()) as { fields?: Record<string, string> };
         const first = data.fields ? Object.values(data.fields)[0] : undefined;
-        setFormError(first ?? "اطلاعات واردشده معتبر نیست.");
+        setFormError(first ?? t.invalidInfoFallback);
         toast({
-          title: "اعتبارسنجی سرور ناموفق",
-          description: first ?? "فیلدها را بررسی و دوباره تلاش کنید.",
+          title: t.serverValidationTitle,
+          description: first ?? t.serverValidationDescFallback,
         });
         return;
       }
 
       toast({
-        title: "ذخیره انجام نشد",
-        description: "خطای غیرمنتظره در سرور رخ داد؛ لطفاً دوباره تلاش کنید.",
+        title: t.saveFailedTitle,
+        description: t.saveFailedDesc,
       });
     } catch {
       toast({
-        title: "ارتباط برقرار نشد",
-        description: "اتصال اینترنت خود را بررسی و دوباره تلاش کنید.",
+        title: t.networkErrorTitle,
+        description: t.networkErrorDesc,
       });
     } finally {
       setSaving(false);
@@ -316,8 +327,8 @@ export function ProfileView() {
     setForm(fromProfile(profile));
     setFormError(null);
     toast({
-      title: "فرم بازنشانی شد",
-      description: "مقادیر به آخرین نسخه ذخیره‌شده روی سرور بازگشت.",
+      title: t.resetTitle,
+      description: t.resetDesc,
     });
   };
 
@@ -328,8 +339,8 @@ export function ProfileView() {
     setDeleting(false);
     if (!ok) {
       toast({
-        title: "حذف حساب انجام نشد",
-        description: "خطای غیرمنتظره رخ داد؛ لطفاً دوباره تلاش کنید.",
+        title: t.deleteFailedTitle,
+        description: t.deleteFailedDesc,
       });
     }
   };
@@ -351,14 +362,15 @@ export function ProfileView() {
         <Info className="mt-0.5 size-4 shrink-0 text-primary" aria-hidden="true" />
         <div className="text-xs leading-6 text-muted-foreground">
           <p>
-            این فرم به <span className="font-bold text-foreground">پایگاه داده سرور</span> متصل
-            است؛ تغییرات پس از ذخیره دائمی می‌شود و پس از بستن مرورگر باقی می‌ماند. رمز عبور
-            حساب شما به‌صورت هش bcrypt نگهداری می‌شود و اطلاعات سلامت شما محرمانه تلقی می‌شود.
+            {t.bannerPrefix}
+            <span className="font-bold text-foreground">{t.bannerServerDb}</span>
+            {t.bannerSuffix}
           </p>
           {profile?.complete && (
             <p className="mt-1.5 flex items-center gap-1.5 font-bold text-primary">
               <CircleCheck className="size-3.5" aria-hidden="true" />
-              پروفایل کامل است — آخرین به‌روزرسانی: <JalaliDate iso={profile.updatedAt} />
+              {t.profileCompletePrefix}
+              <LocaleDate iso={profile.updatedAt} />
             </p>
           )}
         </div>
@@ -376,108 +388,108 @@ export function ProfileView() {
 
       <div className="grid gap-4 lg:grid-cols-2">
         {/* اطلاعات پایه */}
-        <ProfileSection icon={UserRound} title="اطلاعات پایه">
+        <ProfileSection icon={UserRound} title={t.sectionBasic}>
           <div className="grid gap-4 sm:grid-cols-2">
-            <Field id="displayName" label="نام نمایشی">
-              <Input id="displayName" placeholder="مثلاً علی" {...text("displayName")} />
+            <Field id="displayName" label={t.labelDisplayName}>
+              <Input id="displayName" placeholder={t.placeholderDisplayName} {...text("displayName")} />
             </Field>
-            <Field id="age" label="سن" hint="سال">
-              <Input id="age" inputMode="numeric" placeholder="مثلاً ۲۷" {...text("age")} />
+            <Field id="age" label={t.labelAge} hint={t.hintYear}>
+              <Input id="age" inputMode="numeric" placeholder={t.placeholderAge} {...text("age")} />
             </Field>
-            <Field id="gender" label="جنسیت" hint="اختیاری">
+            <Field id="gender" label={t.labelGender} hint={t.hintOptional}>
               <Select {...select("gender")}>
-                <SelectTrigger id="gender" className="w-full" aria-label="انتخاب جنسیت">
-                  <SelectValue placeholder="انتخاب کنید" />
+                <SelectTrigger id="gender" className="w-full" aria-label={t.ariaGender}>
+                  <SelectValue placeholder={t.selectPlaceholder} />
                 </SelectTrigger>
                 <SelectContent>
                   {GENDER_OPTIONS.map((option) => (
                     <SelectItem key={option.value} value={option.value}>
-                      {option.label}
+                      {s.genderLabel(option.value)}
                     </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
             </Field>
-            <Field id="units" label="واحد اندازه‌گیری">
+            <Field id="units" label={t.labelUnits}>
               <Select {...select("units")}>
-                <SelectTrigger id="units" className="w-full" aria-label="انتخاب واحد اندازه‌گیری">
-                  <SelectValue placeholder="انتخاب کنید" />
+                <SelectTrigger id="units" className="w-full" aria-label={t.ariaUnits}>
+                  <SelectValue placeholder={t.selectPlaceholder} />
                 </SelectTrigger>
                 <SelectContent>
                   {UNITS_OPTIONS.map((option) => (
                     <SelectItem key={option.value} value={option.value}>
-                      {option.label}
+                      {s.unitsLabel(option.value)}
                     </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
             </Field>
-            <Field id="height" label="قد" hint="سانتی‌متر">
-              <Input id="height" inputMode="numeric" placeholder="مثلاً ۱۷۸" {...text("heightCm")} />
+            <Field id="height" label={t.labelHeight} hint={t.hintCm}>
+              <Input id="height" inputMode="numeric" placeholder={t.placeholderHeight} {...text("heightCm")} />
             </Field>
-            <Field id="weight" label="وزن" hint="کیلوگرم">
-              <Input id="weight" inputMode="decimal" placeholder="مثلاً ۷۵٫۵" {...text("weightKg")} />
+            <Field id="weight" label={t.labelWeight} hint={t.hintKg}>
+              <Input id="weight" inputMode="decimal" placeholder={t.placeholderWeight} {...text("weightKg")} />
             </Field>
-            <Field id="bodyFat" label="درصد چربی بدن" hint="در صورت اطلاع">
-              <Input id="bodyFat" inputMode="decimal" placeholder="مثلاً ۱۸" {...text("bodyFat")} />
+            <Field id="bodyFat" label={t.labelBodyFat} hint={t.hintIfKnown}>
+              <Input id="bodyFat" inputMode="decimal" placeholder={t.placeholderBodyFat} {...text("bodyFat")} />
             </Field>
           </div>
         </ProfileSection>
 
         {/* هدف و سطح */}
-        <ProfileSection icon={Target} title="هدف و سطح تمرینی">
+        <ProfileSection icon={Target} title={t.sectionGoal}>
           <div className="grid gap-4 sm:grid-cols-2">
-            <Field id="goal" label="هدف تمرینی">
+            <Field id="goal" label={t.labelGoal}>
               <Select {...select("goal")}>
-                <SelectTrigger id="goal" className="w-full" aria-label="انتخاب هدف تمرینی">
-                  <SelectValue placeholder="انتخاب کنید" />
+                <SelectTrigger id="goal" className="w-full" aria-label={t.ariaGoal}>
+                  <SelectValue placeholder={t.selectPlaceholder} />
                 </SelectTrigger>
                 <SelectContent>
                   {GOAL_OPTIONS.map((option) => (
                     <SelectItem key={option.value} value={option.value}>
-                      {option.label}
+                      {s.goalLabel(option.value)}
                     </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
             </Field>
-            <Field id="level" label="سطح تجربه">
+            <Field id="level" label={t.labelExperience}>
               <Select {...select("experience")}>
-                <SelectTrigger id="level" className="w-full" aria-label="انتخاب سطح تجربه">
-                  <SelectValue placeholder="انتخاب کنید" />
+                <SelectTrigger id="level" className="w-full" aria-label={t.ariaExperience}>
+                  <SelectValue placeholder={t.selectPlaceholder} />
                 </SelectTrigger>
                 <SelectContent>
                   {EXPERIENCE_OPTIONS.map((option) => (
                     <SelectItem key={option.value} value={option.value}>
-                      {option.label}
+                      {s.experienceLabel(option.value)}
                     </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
             </Field>
-            <Field id="daysPerWeek" label="روزهای تمرین در هفته">
+            <Field id="daysPerWeek" label={t.labelDaysPerWeek}>
               <Select {...select("trainingDaysPerWeek")}>
-                <SelectTrigger id="daysPerWeek" className="w-full" aria-label="انتخاب روزهای تمرین">
-                  <SelectValue placeholder="انتخاب کنید" />
+                <SelectTrigger id="daysPerWeek" className="w-full" aria-label={t.ariaDays}>
+                  <SelectValue placeholder={t.selectPlaceholder} />
                 </SelectTrigger>
                 <SelectContent>
                   {[1, 2, 3, 4, 5, 6, 7].map((day) => (
                     <SelectItem key={day} value={String(day)}>
-                      {day.toLocaleString("fa-IR")} روز
+                      {t.daysPerWeekItem(day)}
                     </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
             </Field>
-            <Field id="sessionMinutes" label="مدت هر جلسه" hint="اختیاری">
+            <Field id="sessionMinutes" label={t.labelSessionMinutes} hint={t.hintOptional}>
               <Select {...select("sessionMinutes")}>
-                <SelectTrigger id="sessionMinutes" className="w-full" aria-label="انتخاب مدت جلسه">
-                  <SelectValue placeholder="انتخاب کنید" />
+                <SelectTrigger id="sessionMinutes" className="w-full" aria-label={t.ariaSessionMinutes}>
+                  <SelectValue placeholder={t.selectPlaceholder} />
                 </SelectTrigger>
                 <SelectContent>
                   {SESSION_MINUTES_OPTIONS.map((minutes) => (
                     <SelectItem key={minutes} value={String(minutes)}>
-                      {minutes.toLocaleString("fa-IR")} دقیقه
+                      {t.minutesItem(minutes)}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -487,7 +499,7 @@ export function ProfileView() {
         </ProfileSection>
 
         {/* تجهیزات */}
-        <ProfileSection icon={Dumbbell} title="تجهیزات در دسترس">
+        <ProfileSection icon={Dumbbell} title={t.sectionEquipment}>
           <div className="flex flex-wrap gap-2">
             {EQUIPMENT_OPTIONS.map((option) => (
               <ChipToggle
@@ -495,17 +507,17 @@ export function ProfileView() {
                 active={form.equipment.includes(option.value)}
                 onClick={() => toggleArrayField("equipment", option.value)}
               >
-                {option.label}
+                {s.equipmentLabel(option.value)}
               </ChipToggle>
             ))}
           </div>
           <p className="mt-3 text-[10px] leading-5 text-muted-foreground/70">
-            برنامه‌ساز فقط حرکاتی را پیشنهاد می‌دهد که با تجهیزات شما قابل اجرا باشند.
+            {t.equipmentNote}
           </p>
         </ProfileSection>
 
         {/* محدودیت‌ها */}
-        <ProfileSection icon={HeartPulse} title="محدودیت‌های حرکتی و آسیب‌ها">
+        <ProfileSection icon={HeartPulse} title={t.sectionLimitations}>
           <div className="flex flex-wrap gap-2">
             {LIMITATION_OPTIONS.map((option) => (
               <ChipToggle
@@ -513,38 +525,38 @@ export function ProfileView() {
                 active={form.limitations.includes(option.value)}
                 onClick={() => toggleArrayField("limitations", option.value)}
               >
-                {option.label}
+                {s.limitationLabel(option.value)}
               </ChipToggle>
             ))}
           </div>
           <div className="mt-4">
-            <Field id="limitationNotes" label="توضیح بیشتر" hint="اختیاری">
+            <Field id="limitationNotes" label={t.labelLimitationNotes} hint={t.hintOptional}>
               <Textarea
                 id="limitationNotes"
                 rows={3}
-                placeholder="مثلاً: هنگام اسکات عمیق، درد خفیف زانوی راست..."
+                placeholder={t.placeholderLimitationNotes}
                 {...text("limitationNotes")}
               />
             </Field>
           </div>
           <p className="mt-3 text-[10px] leading-5 text-muted-foreground/70">
-            این بخش محرمانه است، جایگزین تشخیص پزشکی نیست؛ در صورت آسیب جدی با پزشک مشورت کنید.
+            {t.limitationsNote}
           </p>
         </ProfileSection>
       </div>
 
       {/* ترجیحات غذایی */}
-      <ProfileSection icon={HeartPulse} title="ترجیحات غذایی">
+      <ProfileSection icon={HeartPulse} title={t.sectionDiet}>
         <div className="grid gap-5 lg:grid-cols-2">
-          <Field id="diet" label="رژیم غذایی انتخابی" hint="اختیاری">
+          <Field id="diet" label={t.labelDiet} hint={t.hintOptional}>
             <Select {...select("diet")}>
-              <SelectTrigger id="diet" className="w-full" aria-label="انتخاب رژیم غذایی">
-                <SelectValue placeholder="انتخاب کنید" />
+              <SelectTrigger id="diet" className="w-full" aria-label={t.ariaDiet}>
+                <SelectValue placeholder={t.selectPlaceholder} />
               </SelectTrigger>
               <SelectContent>
                 {DIET_OPTIONS.map((option) => (
                   <SelectItem key={option.value} value={option.value}>
-                    {option.label}
+                    {s.dietLabel(option.value)}
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -552,8 +564,8 @@ export function ProfileView() {
           </Field>
           <div className="flex flex-col gap-2">
             <span className="text-xs font-semibold text-foreground/90">
-              آلرژی‌های غذایی
-              <span className="ms-1.5 font-normal text-muted-foreground/70">(اختیاری)</span>
+              {t.labelAllergies}
+              <span className="ms-1.5 font-normal text-muted-foreground/70">{t.allergyHint}</span>
             </span>
             <div className="flex flex-wrap gap-2">
               {ALLERGY_OPTIONS.map((option) => (
@@ -562,34 +574,34 @@ export function ProfileView() {
                   active={form.allergies.includes(option.value)}
                   onClick={() => toggleArrayField("allergies", option.value)}
                 >
-                  {option.label}
+                  {s.allergyLabel(option.value)}
                 </ChipToggle>
               ))}
             </div>
           </div>
         </div>
         <p className="mt-4 text-[10px] leading-5 text-muted-foreground/70">
-          در مرحله برنامه غذایی، مواد غذایی دارای آلرژی برای شما هشدار می‌گیرند.
+          {t.dietNote}
         </p>
       </ProfileSection>
 
       {/* حساب کاربری و امنیت */}
-      <ProfileSection icon={ShieldCheck} title="حساب کاربری و امنیت">
+      <ProfileSection icon={ShieldCheck} title={t.sectionAccount}>
         <div className="grid gap-4 sm:grid-cols-2">
-          <Field id="account-email" label="ایمیل حساب" hint="غیرقابل ویرایش در این نسخه">
+          <Field id="account-email" label={t.labelEmail} hint={t.hintEmailLocked}>
             <Input
               id="account-email"
               dir="ltr"
-              className="text-left"
+              className="text-start"
               value={user?.email ?? ""}
               readOnly
               disabled
               aria-readonly="true"
             />
           </Field>
-          <Field id="member-since" label="عضویت از" hint="تاریخ شمسی">
+          <Field id="member-since" label={t.labelMemberSince} hint={t.hintCalendar}>
             <div className="flex h-9 items-center rounded-md border border-border/50 bg-secondary/30 px-3 text-sm text-muted-foreground">
-              <JalaliDate iso={profile?.createdAt ?? null} />
+              <LocaleDate iso={profile?.createdAt ?? null} />
             </div>
           </Field>
         </div>
@@ -600,7 +612,7 @@ export function ProfileView() {
             className="border-border/70 font-semibold"
           >
             <LogOut className="size-4" aria-hidden="true" />
-            خروج از حساب
+            {t.buttonSignOut}
           </Button>
 
           <AlertDialog>
@@ -615,34 +627,29 @@ export function ProfileView() {
                 ) : (
                   <Trash2 className="size-4" aria-hidden="true" />
                 )}
-                حذف کامل حساب
+                {t.buttonDeleteAccount}
               </Button>
             </AlertDialogTrigger>
-            <AlertDialogContent dir="rtl">
+            <AlertDialogContent dir={dir}>
               <AlertDialogHeader className="text-start">
-                <AlertDialogTitle>حذف کامل حساب کاربری؟</AlertDialogTitle>
-                <AlertDialogDescription>
-                  با تأیید، حساب شما به‌همراه پروفایل تناسب اندام و همه اطلاعات وابسته به‌صورت
-                  کامل از پایگاه داده حذف می‌شود و این عملیات قابل بازگشت نیست. برای ادامه،
-                  دکمه تأیید را بزنید.
-                </AlertDialogDescription>
+                <AlertDialogTitle>{t.deleteDialogTitle}</AlertDialogTitle>
+                <AlertDialogDescription>{t.deleteDialogDesc}</AlertDialogDescription>
               </AlertDialogHeader>
               <AlertDialogFooter className="flex-row-reverse gap-2">
                 <AlertDialogAction
                   onClick={() => void handleDeleteAccount()}
                   className="bg-destructive text-white hover:bg-destructive/90"
                 >
-                  بله، حسابم را حذف کن
+                  {t.deleteConfirm}
                 </AlertDialogAction>
-                <AlertDialogCancel className="font-semibold">انصراف</AlertDialogCancel>
+                <AlertDialogCancel className="font-semibold">{t.deleteCancel}</AlertDialogCancel>
               </AlertDialogFooter>
             </AlertDialogContent>
           </AlertDialog>
         </div>
         <p className="mt-4 flex items-start gap-1.5 text-[10px] leading-5 text-muted-foreground/70">
           <Ruler className="mt-0.5 size-3.5 shrink-0" aria-hidden="true" />
-          رمز عبور شما با bcrypt هش می‌شود، نشست با کوکی امن HttpOnly نگهداری می‌شود و با خروج
-          یا حذف حساب، نشست‌ها ابطال می‌شوند.
+          {t.securityNote}
         </p>
       </ProfileSection>
 
@@ -658,7 +665,7 @@ export function ProfileView() {
           ) : (
             <CloudUpload className="size-4" aria-hidden="true" />
           )}
-          {saving ? "در حال ذخیره…" : "ذخیره روی سرور"}
+          {saving ? t.saveSaving : t.saveIdle}
         </Button>
         <Button
           variant="outline"
@@ -667,11 +674,11 @@ export function ProfileView() {
           className="border-border/70 font-semibold hover:border-destructive/50 hover:text-destructive"
         >
           <RotateCcw className="size-4" aria-hidden="true" />
-          بازگرداندن به نسخه ذخیره‌شده
+          {t.buttonReset}
         </Button>
         <p className="ms-auto hidden items-center gap-1.5 text-[10px] text-muted-foreground/70 sm:flex">
           <Save className="size-3.5" aria-hidden="true" />
-          ذخیره‌سازی دائمی در پایگاه داده سرور
+          {t.footerStorageNote}
         </p>
       </div>
     </motion.div>

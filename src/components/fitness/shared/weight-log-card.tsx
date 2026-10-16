@@ -13,14 +13,16 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { faDigits } from "@/lib/profile";
 import {
-  jalaliFullLabel,
   latestWeightEntry,
   weightTrendSummary,
 } from "@/lib/weight";
-import { useWeightEntries, type UseWeightEntriesResult } from "@/hooks/use-weight-entries";
+import type { UseWeightEntriesResult } from "@/hooks/use-weight-entries";
 import { cn } from "@/lib/utils";
+import { useLocale } from "@/lib/i18n/locale";
+import { useStrings } from "@/lib/i18n/use-strings";
+import { localeNumber, localeDecimal, localeFullLabel } from "@/lib/i18n/format";
+import { weightStrings } from "@/lib/i18n/sections/weight";
 import { EmptyState } from "./empty-state";
 import { RealBadge } from "./badges";
 import { WeightTrendChart } from "./weight-trend-chart";
@@ -50,6 +52,8 @@ export function WeightLogCard({ variant, data }: WeightLogCardProps) {
   } = data;
   const [dialogOpen, setDialogOpen] = useState(false);
   const full = variant === "progress";
+  const t = useStrings(weightStrings);
+  const locale = useLocale();
 
   const latest = latestWeightEntry(entries);
   const trend = weightTrendSummary(entries);
@@ -60,7 +64,7 @@ export function WeightLogCard({ variant, data }: WeightLogCardProps) {
         <span className="flex size-9 items-center justify-center rounded-lg border border-border/50 bg-secondary/40 text-muted-foreground">
           <Scale className="size-4" aria-hidden="true" />
         </span>
-        <h3 className="text-sm font-bold">روند وزن شما</h3>
+        <h3 className="text-sm font-bold">{t.trendTitle}</h3>
         {entries.length > 0 && <RealBadge className="ms-auto" />}
         <div className={cn("flex items-center gap-2", entries.length > 0 && "ms-auto", entries.length === 0 && "ms-auto")}>
           <Button
@@ -69,7 +73,7 @@ export function WeightLogCard({ variant, data }: WeightLogCardProps) {
             className="font-bold text-primary-foreground glow-lime-sm"
           >
             <Plus className="size-4" aria-hidden="true" />
-            ثبت وزن
+            {t.addWeight}
           </Button>
           {error && (
             <Button
@@ -77,10 +81,10 @@ export function WeightLogCard({ variant, data }: WeightLogCardProps) {
               variant="outline"
               onClick={() => void refresh()}
               className="border-border/70 font-semibold"
-              aria-label="تلاش مجدد برای خواندن تاریخچه وزن"
+              aria-label={t.retryAria}
             >
               <RotateCcw className="size-3.5" aria-hidden="true" />
-              تلاش مجدد
+              {t.retry}
             </Button>
           )}
         </div>
@@ -95,7 +99,7 @@ export function WeightLogCard({ variant, data }: WeightLogCardProps) {
             <Skeleton className="hidden h-16 flex-1 rounded-xl sm:block" />
           </div>
           <Skeleton className="h-44 rounded-xl" />
-          <span className="sr-only">در حال خواندن تاریخچه وزن از سرور…</span>
+          <span className="sr-only">{t.loadingSr}</span>
         </div>
       )}
 
@@ -113,7 +117,7 @@ export function WeightLogCard({ variant, data }: WeightLogCardProps) {
             className="border-border/70 font-semibold"
           >
             <RotateCcw className="size-3.5" aria-hidden="true" />
-            تلاش مجدد
+            {t.retry}
           </Button>
         </div>
       )}
@@ -122,15 +126,15 @@ export function WeightLogCard({ variant, data }: WeightLogCardProps) {
       {!loading && !error && entries.length === 0 && (
         <EmptyState
           icon={Scale}
-          title="هنوز اندازه‌گیری وزنی ثبت نکرده‌اید"
-          description="اولین وزن خود را ثبت کنید؛ نمودار روند، تغییر وزن و خلاصه اندازه‌گیری‌ها فقط با داده واقعی و تاریخ‌دار شما رسم می‌شود."
+          title={t.emptyTitle}
+          description={t.emptyDescription}
           action={
             <Button
               onClick={() => setDialogOpen(true)}
               className="font-bold text-primary-foreground glow-lime-sm"
             >
               <Plus className="size-4" aria-hidden="true" />
-              ثبت اولین وزن
+              {t.addFirstWeight}
             </Button>
           }
           compact={!full}
@@ -143,25 +147,25 @@ export function WeightLogCard({ variant, data }: WeightLogCardProps) {
           {/* خلاصه اندازه‌گیری‌ها */}
           <div className="grid gap-3 sm:grid-cols-3">
             <div className="rounded-xl border border-border/50 bg-secondary/30 p-3.5">
-              <p className="text-[10px] font-bold text-muted-foreground">آخرین وزن ثبت‌شده</p>
+              <p className="text-[10px] font-bold text-muted-foreground">{t.latestWeightLabel}</p>
               <p className="mt-1 text-lg font-extrabold text-foreground">
-                {faDigits(latest?.weightKg ?? 0)}{" "}
-                <span className="text-[10px] font-medium text-muted-foreground">کیلوگرم</span>
+                {localeNumber(latest?.weightKg ?? 0, locale)}{" "}
+                <span className="text-[10px] font-medium text-muted-foreground">{t.kilogramUnit}</span>
               </p>
               <p className="mt-0.5 text-[10px] text-muted-foreground/70">
-                {latest ? jalaliFullLabel(latest.recordedAt) : "—"}
+                {latest ? localeFullLabel(latest.recordedAt, locale) : t.emptyValue}
               </p>
             </div>
             <div className="rounded-xl border border-border/50 bg-secondary/30 p-3.5">
-              <p className="text-[10px] font-bold text-muted-foreground">تعداد اندازه‌گیری</p>
+              <p className="text-[10px] font-bold text-muted-foreground">{t.entriesCountLabel}</p>
               <p className="mt-1 text-lg font-extrabold text-foreground">
-                {faDigits(entries.length)}
-                <span className="ms-1 text-[10px] font-medium text-muted-foreground">رکورد</span>
+                {localeNumber(entries.length, locale)}
+                <span className="ms-1 text-[10px] font-medium text-muted-foreground">{t.recordsUnit}</span>
               </p>
-              <p className="mt-0.5 text-[10px] text-muted-foreground/70">ذخیره‌شده روی سرور</p>
+              <p className="mt-0.5 text-[10px] text-muted-foreground/70">{t.storedOnServer}</p>
             </div>
             <div className="rounded-xl border border-border/50 bg-secondary/30 p-3.5">
-              <p className="text-[10px] font-bold text-muted-foreground">تغییر از اولین ثبت</p>
+              <p className="text-[10px] font-bold text-muted-foreground">{t.changeFromFirstLabel}</p>
               {trend ? (
                 <>
                   <p
@@ -179,21 +183,19 @@ export function WeightLogCard({ variant, data }: WeightLogCardProps) {
                       <TrendingUp className="size-4" aria-hidden="true" />
                     )}
                     {trend.direction === "stable" && <Minus className="size-4" aria-hidden="true" />}
-                    {faDigits(Math.abs(trend.diff))}{" "}
-                    <span className="text-[10px] font-medium text-muted-foreground">کیلوگرم</span>
+                    {localeDecimal(Math.abs(trend.diff), 1, locale)}{" "}
+                    <span className="text-[10px] font-medium text-muted-foreground">{t.kilogramUnit}</span>
                   </p>
                   <p className="mt-0.5 text-[10px] text-muted-foreground/70">
-                    {trend.direction === "down" && "کاهش وزن نسبت به اولین اندازه‌گیری"}
-                    {trend.direction === "up" && "افزایش وزن نسبت به اولین اندازه‌گیری"}
-                    {trend.direction === "stable" && "تغییر معناداری ندارد"}
+                    {trend.direction === "down" && t.trendDownNote}
+                    {trend.direction === "up" && t.trendUpNote}
+                    {trend.direction === "stable" && t.trendStableNote}
                   </p>
                 </>
               ) : (
                 <>
-                  <p className="mt-1 text-lg font-extrabold text-muted-foreground/60">—</p>
-                  <p className="mt-0.5 text-[10px] text-muted-foreground/70">
-                    با ثبت حداقل دو اندازه‌گیری محاسبه می‌شود
-                  </p>
+                  <p className="mt-1 text-lg font-extrabold text-muted-foreground/60">{t.emptyValue}</p>
+                  <p className="mt-0.5 text-[10px] text-muted-foreground/70">{t.trendNeedsTwoNote}</p>
                 </>
               )}
             </div>
@@ -206,7 +208,7 @@ export function WeightLogCard({ variant, data }: WeightLogCardProps) {
           {full && (
             <div>
               <p className="mb-2 text-[11px] font-bold text-muted-foreground">
-                اندازه‌گیری‌های اخیر
+                {t.recentMeasurements}
               </p>
               <ul className="max-h-64 divide-y divide-border/50 overflow-y-auto rounded-xl border border-border/40">
                 {[...entries]
@@ -221,10 +223,10 @@ export function WeightLogCard({ variant, data }: WeightLogCardProps) {
                       className="flex items-center justify-between gap-3 px-3.5 py-2.5"
                     >
                       <span className="text-xs font-bold text-foreground">
-                        {faDigits(entry.weightKg)} کیلوگرم
+                        {localeNumber(entry.weightKg, locale)} {t.kilogramUnit}
                       </span>
                       <span className="text-[11px] text-muted-foreground">
-                        {jalaliFullLabel(entry.recordedAt)}
+                        {localeFullLabel(entry.recordedAt, locale)}
                       </span>
                       <Button
                         variant="ghost"
@@ -232,7 +234,9 @@ export function WeightLogCard({ variant, data }: WeightLogCardProps) {
                         onClick={() => void removeEntry(entry.id)}
                         disabled={removingId === entry.id}
                         className="size-7 text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
-                        aria-label={`حذف اندازه‌گیری ${jalaliFullLabel(entry.recordedAt)}`}
+                        aria-label={t.deleteMeasurementAria(
+                          localeFullLabel(entry.recordedAt, locale)
+                        )}
                       >
                         {removingId === entry.id ? (
                           <Loader2 className="size-3.5 animate-spin" aria-hidden="true" />

@@ -19,9 +19,10 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { cn } from "@/lib/utils";
-import { faDigits } from "@/lib/profile";
+import { useLocale, useDir } from "@/lib/i18n/locale";
+import { useStrings } from "@/lib/i18n/use-strings";
+import { workoutStrings } from "@/lib/i18n/sections/workout";
 import {
-  categoryFa,
   filterExercises,
   EMPTY_FILTER,
   EXERCISE_COUNT,
@@ -41,6 +42,9 @@ export function StartFreeWorkoutDialog({
   /** ارسال شروع جلسه — پاسخ موفق دیالوگ را می‌بندد */
   onStart: (exerciseIds: string[]) => Promise<boolean>;
 }) {
+  const t = useStrings(workoutStrings);
+  const locale = useLocale();
+  const dir = useDir();
   const [query, setQuery] = useState("");
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [localError, setLocalError] = useState<string | null>(null);
@@ -65,7 +69,7 @@ export function StartFreeWorkoutDialog({
 
   const start = async () => {
     if (selected.size === 0) {
-      setLocalError("برای شروع تمرین آزاد حداقل یک حرکت انتخاب کنید.");
+      setLocalError(t.minOneError);
       return;
     }
     const ok = await onStart(Array.from(selected));
@@ -79,13 +83,11 @@ export function StartFreeWorkoutDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent dir="rtl" className="max-h-[85vh] md:max-w-lg">
+      <DialogContent dir={dir} className="max-h-[85vh] md:max-w-lg">
         <DialogHeader>
-          <DialogTitle className="text-start">شروع تمرین آزاد</DialogTitle>
+          <DialogTitle className="text-start">{t.startFreeTitle}</DialogTitle>
           <DialogDescription className="text-start leading-6">
-            حرکات را از بانک {faDigits(EXERCISE_COUNT)} حرکتی واقعی انتخاب کنید (حداقل یک
-            حرکت، حداکثر {faDigits(SESSION_EXERCISES_MAX)}). جلسه فقط با کلیک شما ساخته می‌شود
-            و بلافاصله در سرور ثبت می‌گردد.
+            {t.startFreeDescription(EXERCISE_COUNT, SESSION_EXERCISES_MAX)}
           </DialogDescription>
         </DialogHeader>
 
@@ -97,16 +99,16 @@ export function StartFreeWorkoutDialog({
           <Input
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder="جست‌وجو — فارسی یا انگلیسی"
+            placeholder={t.freeSearchPlaceholder}
             className="pe-9 text-xs"
-            aria-label="جست‌وجوی حرکت برای تمرین آزاد"
+            aria-label={t.freeSearchAria}
           />
         </div>
 
         <ScrollArea className="h-64 rounded-xl border border-border/50">
           {results.length === 0 ? (
             <p className="p-6 text-center text-[11px] leading-6 text-muted-foreground">
-              حرکتی با این جست‌وجو یافت نشد.
+              {t.noResults}
             </p>
           ) : (
             <ul className="divide-y divide-border/40">
@@ -115,13 +117,15 @@ export function StartFreeWorkoutDialog({
                 return (
                   <li key={ex.id} className="flex items-center gap-2 p-2.5">
                     <div className="min-w-0 flex-1">
-                      <p className="truncate text-[11px] font-bold text-foreground">{ex.fa}</p>
+                      <p className="truncate text-[11px] font-bold text-foreground">
+                        {locale === "fa" ? ex.fa : ex.en}
+                      </p>
                       <p className="mt-0.5 flex flex-wrap items-center gap-x-2 text-[9px] text-muted-foreground">
                         <span dir="ltr">{ex.en}</span>
-                        <span>{categoryFa(ex.category)}</span>
-                        <span>{ex.difficulty}</span>
+                        <span>{t.categoryName(ex.category)}</span>
+                        <span>{t.difficultyName(ex.difficulty)}</span>
                         {hasCoach3dAnimation(ex) && (
-                          <span className="font-bold text-primary">سه‌بعدی دارد</span>
+                          <span className="font-bold text-primary">{t.has3d}</span>
                         )}
                       </p>
                     </div>
@@ -135,17 +139,17 @@ export function StartFreeWorkoutDialog({
                           ? "border-primary/40 bg-primary/10 text-primary"
                           : "border-border/70 hover:border-primary/40 hover:text-primary"
                       )}
-                      aria-label={`${isPicked ? "حذف" : "انتخاب"} ${ex.fa}`}
+                      aria-label={t.pickAria(isPicked ? t.unpickAction : t.pickAction, locale === "fa" ? ex.fa : ex.en)}
                     >
                       {isPicked ? (
                         <>
                           <X className="size-3" aria-hidden="true" />
-                          حذف
+                          {t.unpickAction}
                         </>
                       ) : (
                         <>
                           <Play className="size-3" aria-hidden="true" />
-                          انتخاب
+                          {t.pickAction}
                         </>
                       )}
                     </Button>
@@ -164,7 +168,7 @@ export function StartFreeWorkoutDialog({
 
         <div className="flex flex-wrap items-center justify-between gap-2">
           <p className="text-[10px] text-muted-foreground">
-            {faDigits(selected.size)} حرکت انتخاب شده
+            {t.selectedCount(selected.size)}
           </p>
           <div className="flex items-center gap-2">
             <Button
@@ -172,7 +176,7 @@ export function StartFreeWorkoutDialog({
               onClick={() => onOpenChange(false)}
               className="h-8 px-3 text-[10px] font-semibold text-muted-foreground"
             >
-              انصراف
+              {t.cancel}
             </Button>
             <Button
               disabled={starting || selected.size === 0}
@@ -180,7 +184,7 @@ export function StartFreeWorkoutDialog({
               className="h-8 bg-primary/15 px-4 text-[10px] font-bold text-primary hover:bg-primary/25"
             >
               <Play className="size-3.5" aria-hidden="true" />
-              {starting ? "در حال شروع…" : "شروع تمرین آزاد"}
+              {starting ? t.starting : t.startFreeTitle}
             </Button>
           </div>
         </div>

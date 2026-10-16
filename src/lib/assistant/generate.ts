@@ -29,6 +29,8 @@ export interface GenerateReplyInput {
   language: "auto" | AssistantLang;
   /** متن پیام کاربر مبدأ (برای تشخیص زبان در حالت auto) */
   sourceMessageText: string;
+  /** زبان رابط کاربر — راهنمای حالت auto در ابهام (اختیاری) */
+  uiLocale?: "fa" | "en";
 }
 
 export interface GenerateReplyResult {
@@ -36,7 +38,7 @@ export interface GenerateReplyResult {
 }
 
 export async function generateReply(input: GenerateReplyInput): Promise<GenerateReplyResult> {
-  const { userId, conversationId, language, sourceMessageText } = input;
+  const { userId, conversationId, language, sourceMessageText, uiLocale } = input;
 
   const responseLang = resolveResponseLang(language, sourceMessageText);
 
@@ -45,7 +47,7 @@ export async function generateReply(input: GenerateReplyInput): Promise<Generate
     recentOwnedMessages(conversationId, userId, historyWindow()),
   ]);
 
-  const systemPrompt = buildSystemPrompt({ responseLang, contextBlock });
+  const systemPrompt = buildSystemPrompt({ responseLang, contextBlock, uiLocale });
 
   const modelMessages = [
     { role: "system" as const, content: systemPrompt },

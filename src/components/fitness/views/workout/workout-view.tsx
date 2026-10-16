@@ -18,7 +18,7 @@ import {
   ArchiveRestore,
   Archive,
   CalendarCheck2,
-  ChevronLeft,
+  ChevronRight,
   CircleAlert,
   Play,
   Plus,
@@ -44,12 +44,14 @@ import { useSessionData } from "../../session-context";
 import { useWorkoutPlans } from "@/hooks/use-workout-plans";
 import { usePlanDetail } from "@/hooks/use-plan-detail";
 import { useActiveSession } from "@/hooks/use-workout-sessions";
-import { faDigits } from "@/lib/profile";
+import { useLocale, useDir } from "@/lib/i18n/locale";
+import { useStrings } from "@/lib/i18n/use-strings";
+import { workoutStrings } from "@/lib/i18n/sections/workout";
+import { localeNumber } from "@/lib/i18n/format";
 import { cn } from "@/lib/utils";
 import { ViewIntro } from "../../shared/view-intro";
 import { EmptyState } from "../../shared/empty-state";
 import { RealBadge, StageBadge } from "../../shared/badges";
-import { PLAN_EXPERIENCE_LABELS, PLAN_GOAL_LABELS } from "@/lib/plan-engine/types";
 import type { GeneratedPlan, PlanSettings } from "@/lib/plan-engine/types";
 import type { WorkoutPlanSummaryClient } from "@/lib/plan-storage";
 import { PlanSettingsForm } from "./plan-settings-form";
@@ -61,6 +63,7 @@ import { StartFreeWorkoutDialog } from "./session/start-free-dialog";
 type Mode = "list" | "form" | "preview";
 
 function StatusChip({ status }: { status: "active" | "archived" }) {
+  const t = useStrings(workoutStrings);
   return (
     <span
       className={cn(
@@ -70,7 +73,7 @@ function StatusChip({ status }: { status: "active" | "archived" }) {
           : "border-border/50 bg-secondary/40 text-muted-foreground"
       )}
     >
-      {status === "active" ? "فعال" : "بایگانی"}
+      {status === "active" ? t.statusActive : t.statusArchivedPlan}
     </span>
   );
 }
@@ -90,6 +93,7 @@ function PlanSummaryCard({
   onActivate: () => void;
   onDelete: () => void;
 }) {
+  const t = useStrings(workoutStrings);
   return (
     <div
       className={cn(
@@ -103,9 +107,12 @@ function PlanSummaryCard({
           <StatusChip status={plan.status} />
         </div>
         <p className="mt-1 text-[10px] leading-5 text-muted-foreground">
-          {faDigits(plan.daysPerWeek)} روز — {faDigits(plan.totalExercises)} حرکت —{" "}
-          {PLAN_GOAL_LABELS[plan.goal as keyof typeof PLAN_GOAL_LABELS] ?? plan.goal} —{" "}
-          {PLAN_EXPERIENCE_LABELS[plan.experience as keyof typeof PLAN_EXPERIENCE_LABELS] ?? plan.experience}
+          {t.planSummaryLine(
+            plan.daysPerWeek,
+            plan.totalExercises,
+            t.planGoalLabel(plan.goal),
+            t.planExperienceLabel(plan.experience)
+          )}
         </p>
       </div>
       <div className="flex shrink-0 flex-wrap items-center gap-1.5">
@@ -115,8 +122,8 @@ function PlanSummaryCard({
             onClick={onOpen}
             className="h-7 bg-primary/15 px-2.5 text-[10px] font-bold text-primary hover:bg-primary/25"
           >
-            مشاهده برنامه
-            <ChevronLeft className="size-3.5" aria-hidden="true" />
+            {t.viewPlan}
+            <ChevronRight className="size-3.5 rtl:rotate-180" aria-hidden="true" />
           </Button>
         ) : (
           <Button
@@ -127,7 +134,7 @@ function PlanSummaryCard({
             className="h-7 border-border/70 px-2.5 text-[10px] font-semibold hover:border-primary/40 hover:text-primary"
           >
             <ArchiveRestore className="size-3" aria-hidden="true" />
-            فعال‌سازی
+            {t.activate}
           </Button>
         )}
         {!active && (
@@ -139,7 +146,7 @@ function PlanSummaryCard({
             className="h-7 border-destructive/30 px-2 text-[10px] font-semibold text-rose-300 hover:bg-destructive/10"
           >
             <Trash2 className="size-3" aria-hidden="true" />
-            حذف
+            {t.deleteAction}
           </Button>
         )}
       </div>
@@ -159,6 +166,9 @@ function SkeletonView() {
 
 export function WorkoutView() {
   const item = getNavItem("workout");
+  const t = useStrings(workoutStrings);
+  const locale = useLocale();
+  const dir = useDir();
   const { profile } = useSessionData();
   const setActiveView = useAppStore((s) => s.setActiveView);
   const {
@@ -204,15 +214,15 @@ export function WorkoutView() {
       setStartingDayId(null);
       if (result.ok) {
         if (result.data.existing) {
-          toast.info("جلسه دیگری در حال انجام است؛ همان ادامه یافت");
+          toast.info(t.anotherSessionToast);
         } else {
-          toast.success("جلسه تمرین شروع شد — ست‌ها را پس از انجام واقعی ثبت کنید");
+          toast.success(t.planSessionStartedToast);
         }
       } else {
         toast.error(result.message);
       }
     },
-    [sessionCtrl]
+    [sessionCtrl, t]
   );
 
   const handleStartFree = useCallback(
@@ -224,16 +234,16 @@ export function WorkoutView() {
       setStartingFree(false);
       if (result.ok) {
         if (result.data.existing) {
-          toast.info("جلسه دیگری در حال انجام است؛ همان ادامه یافت");
+          toast.info(t.anotherSessionToast);
         } else {
-          toast.success("تمرین آزاد شروع شد — ست‌ها را پس از انجام واقعی ثبت کنید");
+          toast.success(t.freeSessionStartedToast);
         }
         return true;
       }
       toast.error(result.message);
       return false;
     },
-    [sessionCtrl]
+    [sessionCtrl, t]
   );
 
   /* ------------------------------ ساخت برنامه ------------------------------ */
@@ -261,11 +271,11 @@ export function WorkoutView() {
       setPreview(null);
       setSettings(null);
       setMode("list");
-      toast.success("برنامه تمرینی ذخیره و فعال شد");
+      toast.success(t.planSavedToast);
     } else {
       setSaveError(result.message);
     }
-  }, [createPlan, settings]);
+  }, [createPlan, settings, t]);
 
   const handleActivate = useCallback(
     async (id: string) => {
@@ -273,12 +283,12 @@ export function WorkoutView() {
       const result = await updatePlan(id, { status: "active" });
       setBusyId(null);
       if (result.ok) {
-        toast.success("برنامه فعال شد؛ برنامه فعال قبلی بایگانی شد");
+        toast.success(t.planActivatedToast);
       } else {
         toast.error(result.message);
       }
     },
-    [updatePlan]
+    [updatePlan, t]
   );
 
   const handleArchive = useCallback(
@@ -287,24 +297,24 @@ export function WorkoutView() {
       const result = await updatePlan(id, { status: "archived" });
       setBusyId(null);
       if (result.ok) {
-        toast.success("برنامه بایگانی شد");
+        toast.success(t.planArchivedToast);
       } else {
         toast.error(result.message);
       }
     },
-    [updatePlan]
+    [updatePlan, t]
   );
 
   const handleDeleteConfirm = useCallback(async () => {
     if (!deleteTarget) return;
     const result = await deletePlan(deleteTarget.id);
     if (result.ok) {
-      toast.success("برنامه حذف شد");
+      toast.success(t.planDeletedToast);
     } else {
       toast.error(result.message);
     }
     setDeleteTarget(null);
-  }, [deletePlan, deleteTarget]);
+  }, [deletePlan, deleteTarget, t]);
 
   /* ------------------------------ حالت‌ها ------------------------------ */
 
@@ -328,7 +338,7 @@ export function WorkoutView() {
             className="mt-3 border-border/70 font-semibold hover:border-primary/40 hover:text-primary"
           >
             <RotateCcw className="size-3.5" aria-hidden="true" />
-            تلاش مجدد
+            {t.retry}
           </Button>
         </div>
       )}
@@ -350,7 +360,7 @@ export function WorkoutView() {
                 className="mt-4 border-border/70 font-semibold hover:border-primary/40 hover:text-primary"
               >
                 <RotateCcw className="size-3.5" aria-hidden="true" />
-                تلاش مجدد
+                {t.retry}
               </Button>
             </div>
           )}
@@ -359,7 +369,7 @@ export function WorkoutView() {
             <>
               {/* شروع تمرین — همیشه در دسترس (حتی بدون برنامه) */}
               <section
-                aria-label="شروع تمرین"
+                aria-label={t.startTrainingAria}
                 className="rounded-2xl border border-primary/25 bg-primary/5 p-4 md:p-5"
               >
                 <div className="flex flex-wrap items-center gap-2">
@@ -367,10 +377,9 @@ export function WorkoutView() {
                     <Play className="size-4" aria-hidden="true" />
                   </span>
                   <div className="min-w-0 flex-1">
-                    <h3 className="text-sm font-bold">شروع تمرین</h3>
+                    <h3 className="text-sm font-bold">{t.startTrainingTitle}</h3>
                     <p className="text-[10px] leading-5 text-muted-foreground">
-                      جلسه واقعی با اقدام شما ساخته می‌شود؛ ست‌های انجام‌شده را همان‌جا ثبت
-                      کنید. بازدید از برنامه هرگز جلسه حساب نمی‌شود.
+                      {t.startTrainingIntro}
                     </p>
                   </div>
                   <Button
@@ -379,21 +388,20 @@ export function WorkoutView() {
                     className="font-bold text-primary-foreground glow-lime-sm"
                   >
                     <ListPlus className="size-4" aria-hidden="true" />
-                    {hasActiveSession ? "جلسه فعالی دارید" : "تمرین آزاد"}
+                    {hasActiveSession ? t.busyButton : t.freeWorkoutButton}
                   </Button>
                 </div>
                 {hasActiveSession && (
                   <p className="mt-2 rounded-lg border border-amber-400/25 bg-amber-400/10 px-3 py-2 text-[10px] leading-5 text-amber-300/95">
-                    یک جلسه در حال انجام دارید؛ تا پایان یا رهاکردن آن، جلسه جدیدی شروع
-                    نمی‌شود. رکوردر بالای همین صفحه آماده است.
+                    {t.activeSessionNote}
                   </p>
                 )}
               </section>
 
               {activePlanSummary && activeDetail.plan && (
-                <section aria-label="برنامه فعال" className="flex flex-col gap-3">
+                <section aria-label={t.activePlanAria} className="flex flex-col gap-3">
                   <div className="flex flex-wrap items-center gap-2">
-                    <h3 className="text-sm font-bold">برنامه فعال: {activeDetail.plan.title}</h3>
+                    <h3 className="text-sm font-bold">{t.activePlanHeading(activeDetail.plan.title)}</h3>
                     <StatusChip status="active" />
                     <div className="ms-auto flex items-center gap-1.5">
                       <Button
@@ -404,7 +412,7 @@ export function WorkoutView() {
                         className="h-7 border-border/70 px-2.5 text-[10px] font-semibold hover:border-amber-400/40 hover:text-amber-300"
                       >
                         <Archive className="size-3" aria-hidden="true" />
-                        بایگانی
+                        {t.archiveAction}
                       </Button>
                       <Button
                         size="sm"
@@ -413,7 +421,7 @@ export function WorkoutView() {
                         className="h-7 border-destructive/30 px-2.5 text-[10px] font-semibold text-rose-300 hover:bg-destructive/10"
                       >
                         <Trash2 className="size-3" aria-hidden="true" />
-                        حذف
+                        {t.deleteAction}
                       </Button>
                     </div>
                   </div>
@@ -430,15 +438,15 @@ export function WorkoutView() {
                 <section className="rounded-2xl border border-border/60 bg-card p-6">
                   <EmptyState
                     icon={CalendarCheck2}
-                    title="هنوز برنامه تمرینی نساخته‌اید"
-                    description="برنامه‌ساز بر اساس هدف، سطح تجربه، تجهیزات و روزهای شما — و از بانک ۴۸ حرکتی واقعی — برنامه هفتگی ساختاریافته می‌سازد. تا آن زمان می‌توانید با «تمرین آزاد» جلسه واقعی ثبت کنید."
+                    title={t.emptyTitle}
+                    description={t.emptyDescription}
                     action={
                       <Button
                         onClick={() => setMode("form")}
                         className="font-bold text-primary-foreground glow-lime-sm"
                       >
                         <Plus className="size-4" aria-hidden="true" />
-                        ساخت برنامه شخصی
+                        {t.createPlan}
                       </Button>
                     }
                   />
@@ -448,14 +456,14 @@ export function WorkoutView() {
               {!activePlanSummary && plans.length > 0 && (
                 <section className="rounded-2xl border border-border/60 bg-card p-5 md:p-6">
                   <p className="text-xs leading-6 text-muted-foreground">
-                    برنامه فعالی ندارید؛ یکی از برنامه‌های بایگانی را فعال کنید یا برنامه جدیدی بسازید.
+                    {t.noActiveNote}
                   </p>
                   <Button
                     onClick={() => setMode("form")}
                     className="mt-3 font-bold text-primary-foreground glow-lime-sm"
                   >
                     <Plus className="size-4" aria-hidden="true" />
-                    ساخت برنامه شخصی
+                    {t.createPlan}
                   </Button>
                 </section>
               )}
@@ -466,21 +474,21 @@ export function WorkoutView() {
                   onClick={() => setActiveView("progress")}
                   className="border-border/70 font-semibold hover:border-primary/40 hover:text-primary"
                 >
-                  تاریخچه و تحلیل پیشرفت
-                  <ChevronLeft className="size-4" aria-hidden="true" />
+                  {t.historyLink}
+                  <ChevronRight className="size-4 rtl:rotate-180" aria-hidden="true" />
                 </Button>
               </section>
 
               {archivedPlans.length > 0 && (
                 <section
-                  aria-label="برنامه‌های قبلی"
+                  aria-label={t.previousPlansAria}
                   className="rounded-2xl border border-border/60 bg-card p-4 md:p-5"
                 >
                   <div className="mb-3 flex items-center gap-2.5">
                     <Archive className="size-4 text-muted-foreground" aria-hidden="true" />
-                    <h3 className="text-xs font-bold">برنامه‌های قبلی</h3>
+                    <h3 className="text-xs font-bold">{t.previousPlansTitle}</h3>
                     <span className="rounded-md border border-border/50 bg-secondary/40 px-1.5 py-0.5 text-[9px] font-bold text-muted-foreground">
-                      {faDigits(archivedPlans.length)}
+                      {localeNumber(archivedPlans.length, locale)}
                     </span>
                   </div>
                   <div className="flex flex-col gap-2.5">
@@ -507,7 +515,7 @@ export function WorkoutView() {
                     className="border-border/70 font-semibold hover:border-primary/40 hover:text-primary"
                   >
                     <ListPlus className="size-4" aria-hidden="true" />
-                    ساخت برنامه جدید
+                    {t.newPlan}
                   </Button>
                 </section>
               )}
@@ -515,10 +523,10 @@ export function WorkoutView() {
           )}
 
           {!loading && !error && mode === "form" && (
-            <section aria-label="تنظیمات برنامه جدید" className="flex flex-col gap-4">
+            <section aria-label={t.planFormAria} className="flex flex-col gap-4">
               <div className="flex items-center gap-2.5">
-                <h3 className="text-sm font-bold">تنظیمات برنامه</h3>
-                <StageBadge label="گام ۱ از ۲" className="ms-auto" />
+                <h3 className="text-sm font-bold">{t.planSettingsTitle}</h3>
+                <StageBadge label={t.stepOne} className="ms-auto" />
               </div>
               <PlanSettingsForm
                 profile={profile}
@@ -534,10 +542,10 @@ export function WorkoutView() {
           )}
 
           {!loading && !error && mode === "preview" && preview && (
-            <section aria-label="پیش‌نمایش برنامه" className="flex flex-col gap-4">
+            <section aria-label={t.planPreviewAria} className="flex flex-col gap-4">
               <div className="flex items-center gap-2.5">
-                <h3 className="text-sm font-bold">پیش‌نمایش برنامه</h3>
-                <StageBadge label="گام ۲ از ۲" className="ms-auto" />
+                <h3 className="text-sm font-bold">{t.planPreviewTitle}</h3>
+                <StageBadge label={t.stepTwo} className="ms-auto" />
               </div>
               <PlanPreview
                 plan={preview}
@@ -564,22 +572,20 @@ export function WorkoutView() {
 
       {/* دیالوگ تأیید حذف برنامه */}
       <AlertDialog open={deleteTarget !== null} onOpenChange={(open) => !open && setDeleteTarget(null)}>
-        <AlertDialogContent dir="rtl">
+        <AlertDialogContent dir={dir}>
           <AlertDialogHeader>
-            <AlertDialogTitle className="text-start">حذف برنامه تمرینی</AlertDialogTitle>
+            <AlertDialogTitle className="text-start">{t.deletePlanTitle}</AlertDialogTitle>
             <AlertDialogDescription className="text-start leading-7">
-              برنامه «{deleteTarget?.title}» برای همیشه حذف می‌شود و قابل بازگشت نیست. اگر این
-              برنامه فعال است، پس از حذف برنامه فعالی باقی نمی‌ماند. جلسات واقعی ثبت‌شده شما
-              با حذف برنامه حذف نمی‌شوند.
+              {t.deletePlanDescription(deleteTarget?.title ?? "")}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter className="gap-2">
-            <AlertDialogCancel>انصراف</AlertDialogCancel>
+            <AlertDialogCancel>{t.cancel}</AlertDialogCancel>
             <AlertDialogAction
               onClick={() => void handleDeleteConfirm()}
               className="bg-destructive text-white hover:bg-destructive/90"
             >
-              حذف برنامه
+              {t.deletePlanAction}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

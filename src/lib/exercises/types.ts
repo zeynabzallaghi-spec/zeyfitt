@@ -166,4 +166,12 @@ export interface LibraryExercise {
   mistakes: string[];
   /** نکات ایمنی و اصلاحات متداول — مختصر و کاربردی، بدون ادعای پزشکی */
   safety: string[];
+  /** ترجمه نمایشی محتوای آموزشی به انگلیسی — داده اصلی (فیلدهای فارسی) دست‌نخورده می‌ماند */
+  enContent?: {
+    summary: string;
+    steps: string[];
+    breathing: string;
+    mistakes: string[];
+    safety: string[];
+  };
 }

@@ -70,15 +70,33 @@ function langDirective(lang: AssistantLang): string {
 const AUTO_DIRECTIVE =
   "RESPONSE LANGUAGE DIRECTIVE (auto): Detect the dominant language of the user's latest message and reply in that same language. Persian message → Persian reply; English message → English reply. If the language is genuinely ambiguous, briefly ask which language the user prefers (ask in both Persian and English) and answer in that language once known.";
 
+/**
+ * حالت خودکار با راهنمای زبان رابط — اگر پیام کاربر به زبان دیگری نوشته
+ * شده باشد همان زبان پیام اولویت دارد؛ در ابهام، زبان رابط کاربر ملاک است.
+ */
+function autoDirectiveWithUiLocale(uiLocale: "fa" | "en"): string {
+  const ui = uiLocale === "fa" ? "Persian (فارسی)" : "English";
+  return `RESPONSE LANGUAGE DIRECTIVE (auto): First, check the user's latest message: if it is clearly written in Persian or English, reply in that same language — an explicit request language always wins. If the language is genuinely ambiguous, reply in the user's interface language, which is ${ui}.`;
+}
+
 export interface SystemPromptInput {
   /** زبان نهایی پاسخ؛ null یعنی حالت خودکار — تشخیص از پیام کاربر */
   responseLang: AssistantLang | null;
   /** بلاک زمینه شخصی کاربر (فقط‌خواندنی) یا null اگر داده‌ای موجود نیست */
   contextBlock: string | null;
+  /** زبان رابط کاربر — راهنمای حالت auto در ابهام (اختیاری) */
+  uiLocale?: "fa" | "en";
 }
 
 export function buildSystemPrompt(input: SystemPromptInput): string {
-  const parts: string[] = [BASE_RULES, input.responseLang ? langDirective(input.responseLang) : AUTO_DIRECTIVE];
+  const parts: string[] = [
+    BASE_RULES,
+    input.responseLang
+      ? langDirective(input.responseLang)
+      : input.uiLocale
+        ? autoDirectiveWithUiLocale(input.uiLocale)
+        : AUTO_DIRECTIVE,
+  ];
 
   if (input.contextBlock) {
     parts.push(

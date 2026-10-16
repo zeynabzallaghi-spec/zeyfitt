@@ -13,10 +13,11 @@
 import { ChevronLeft, CalendarCheck2, Clock3, ListChecks, Play } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAppStore } from "@/store/app-store";
-import { faDigits } from "@/lib/profile";
 import type { WorkoutPlanClient } from "@/lib/plan-storage";
-
-const WEEK_DAY_LABELS = ["شنبه", "یکشنبه", "دوشنبه", "سه‌شنبه", "چهارشنبه", "پنجشنبه", "جمعه"];
+import { useLocale } from "@/lib/i18n/locale";
+import { useStrings } from "@/lib/i18n/use-strings";
+import { localeNumber } from "@/lib/i18n/format";
+import { weightStrings } from "@/lib/i18n/sections/weight";
 
 /** اندیس روز هفته شمسی (۰=شنبه … ۶=جمعه) از تاریخ سیستم */
 export function iranWeekdayIndex(date: Date = new Date()): number {
@@ -34,21 +35,23 @@ export function TodaySessionCard({
   onStartDay?: (dayId: string) => void;
 }) {
   const setActiveView = useAppStore((s) => s.setActiveView);
+  const t = useStrings(weightStrings);
+  const locale = useLocale();
 
   if (!plan) {
     return (
       <div className="flex flex-col gap-3">
         <p className="text-[11px] leading-6 text-muted-foreground">
-          با برنامه‌ساز تمرینی، برنامه‌ای واقعاً بر اساس هدف، سطح و تجهیزات شما ساخته و در
-          پایگاه داده ذخیره می‌شود. تا آن زمان اینجا برنامه‌ای نمایش داده نمی‌شود.
+          {t.todayPlanEmptyDescription}
         </p>
         <Button
           variant="outline"
           onClick={() => setActiveView("workout")}
           className="w-fit border-border/70 font-semibold hover:border-primary/40 hover:text-primary"
         >
-          ساخت برنامه شخصی
-          <ChevronLeft className="size-4" aria-hidden="true" />
+          {t.buildPlanButton}
+          {/* آیکن جهت‌دار «جلو» — ظاهر فعلی RTL حفظ می‌شود؛ در LTR آینه می‌شود */}
+          <ChevronLeft className="size-4 ltr:rotate-180" aria-hidden="true" />
         </Button>
       </div>
     );
@@ -66,18 +69,18 @@ export function TodaySessionCard({
         <div className="flex flex-wrap items-center gap-2">
           <span className="inline-flex items-center gap-1.5 rounded-lg border border-primary/35 bg-primary/10 px-2.5 py-1 text-[11px] font-bold text-primary">
             <CalendarCheck2 className="size-3.5" aria-hidden="true" />
-            امروز {WEEK_DAY_LABELS[today]} — جلسه {faDigits(todaySession.order)}
+            {t.todayBadge(t.weekdayLabels[today], localeNumber(todaySession.order, locale))}
           </span>
           <span className="text-[11px] font-bold text-foreground">{todaySession.title}</span>
         </div>
         <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-[10px] leading-5 text-muted-foreground">
           <span className="inline-flex items-center gap-1">
             <ListChecks className="size-3" aria-hidden="true" />
-            {faDigits(todaySession.exercises.length)} حرکت
+            {t.exercisesCount(localeNumber(todaySession.exercises.length, locale))}
           </span>
           <span className="inline-flex items-center gap-1">
             <Clock3 className="size-3" aria-hidden="true" />
-            ~{faDigits(todaySession.estMinutes)} دقیقه (شامل گرم‌کردن)
+            {t.estMinutes(localeNumber(todaySession.estMinutes, locale))}
           </span>
         </div>
         <ul className="flex flex-col gap-1">
@@ -89,7 +92,7 @@ export function TodaySessionCard({
           ))}
           {rest > 0 && (
             <li className="text-[10px] leading-5 text-muted-foreground">
-              و {faDigits(rest)} حرکت دیگر…
+              {t.moreExercises(localeNumber(rest, locale))}
             </li>
           )}
         </ul>
@@ -100,7 +103,7 @@ export function TodaySessionCard({
               className="font-bold text-primary-foreground glow-lime-sm"
             >
               <Play className="size-4" aria-hidden="true" />
-              ادامه جلسه در حال انجام
+              {t.continueActiveSession}
             </Button>
           ) : (
             onStartDay && (
@@ -109,7 +112,7 @@ export function TodaySessionCard({
                 className="font-bold text-primary-foreground glow-lime-sm"
               >
                 <Play className="size-4" aria-hidden="true" />
-                شروع تمرین امروز
+                {t.startTodayWorkout}
               </Button>
             )
           )}
@@ -118,13 +121,14 @@ export function TodaySessionCard({
             onClick={() => setActiveView("workout")}
             className="border-border/70 font-semibold hover:border-primary/40 hover:text-primary"
           >
-            مشاهده برنامه کامل
-            <ChevronLeft className="size-4" aria-hidden="true" />
+            {t.viewFullPlan}
+            {/* آیکن جهت‌دار «جلو» — ظاهر فعلی RTL حفظ می‌شود؛ در LTR آینه می‌شود */}
+            <ChevronLeft className="size-4 ltr:rotate-180" aria-hidden="true" />
           </Button>
         </div>
         {onStartDay && !sessionActive && (
           <p className="text-[9px] leading-5 text-muted-foreground/70">
-            شروع تمرین یک جلسه واقعی در سرور می‌سازد؛ ست‌های انجام‌شده را در رکوردر ثبت می‌کنید.
+            {t.startSessionNote}
           </p>
         )}
       </div>
@@ -139,7 +143,7 @@ export function TodaySessionCard({
       const found = plan.days.find((d) => d.weekday === dayIndex);
       if (found) {
         upcoming = {
-          label: offset === 1 ? "فردا" : WEEK_DAY_LABELS[dayIndex],
+          label: offset === 1 ? t.tomorrowLabel : t.weekdayLabels[dayIndex],
           title: found.title,
         };
         break;
@@ -150,10 +154,10 @@ export function TodaySessionCard({
   return (
     <div className="flex flex-col gap-3">
       <p className="text-[11px] leading-6 text-muted-foreground">
-        امروز جلسه‌ای در برنامه «{plan.title}» نیست.
+        {t.noSessionToday(plan.title)}
         {upcoming
-          ? ` جلسه بعدی ${upcoming.label} است: ${upcoming.title}.`
-          : " روزهای جلسات در این برنامه تاریخ مشخصی ندارند؛ ترتیب جلسات در صفحه برنامه تمرینی آمده است."}
+          ? t.nextSessionIs(upcoming.label, upcoming.title)
+          : t.noFixedDays}
       </p>
       <div className="flex flex-wrap items-center gap-2">
         {sessionActive && (
@@ -162,7 +166,7 @@ export function TodaySessionCard({
             className="font-bold text-primary-foreground glow-lime-sm"
           >
             <Play className="size-4" aria-hidden="true" />
-            ادامه جلسه در حال انجام
+            {t.continueActiveSession}
           </Button>
         )}
         <Button
@@ -170,8 +174,9 @@ export function TodaySessionCard({
           onClick={() => setActiveView("workout")}
           className="border-border/70 font-semibold hover:border-primary/40 hover:text-primary"
         >
-          مشاهده برنامه تمرینی
-          <ChevronLeft className="size-4" aria-hidden="true" />
+          {t.viewWorkoutPlan}
+          {/* آیکن جهت‌دار «جلو» — ظاهر فعلی RTL حفظ می‌شود؛ در LTR آینه می‌شود */}
+          <ChevronLeft className="size-4 ltr:rotate-180" aria-hidden="true" />
         </Button>
       </div>
     </div>

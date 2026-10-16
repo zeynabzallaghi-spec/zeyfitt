@@ -38,11 +38,11 @@ check "مهمان POST retry → 401" "401" "$code"
 echo "== 2) ثبت‌نام کاربران A و B =="
 code=$(curl -s -D $JA -o /dev/null -w "%{http_code}" -X POST -H 'Content-Type: application/json' \
   -d "{\"name\":\"کاربر الف۹\",\"email\":\"$A\",\"password\":\"test1234\"}" $BASE/api/auth/sign-up/email)
-AUTH_A="Cookie: $(grep -o '__Secure-fitcoach\.session_token=[^;]*' "$JA" | head -1)"
+AUTH_A="Cookie: $(grep -o '\(__Secure-\)\?fitcoach\.session_token=[^;]*' "$JA" | head -1)"
 check "ثبت‌نام A → 200" "200" "$code"
 code=$(curl -s -D $JB -o /dev/null -w "%{http_code}" -X POST -H 'Content-Type: application/json' \
   -d "{\"name\":\"کاربر ب۹\",\"email\":\"$B\",\"password\":\"test1234\"}" $BASE/api/auth/sign-up/email)
-AUTH_B="Cookie: $(grep -o '__Secure-fitcoach\.session_token=[^;]*' "$JB" | head -1)"
+AUTH_B="Cookie: $(grep -o '\(__Secure-\)\?fitcoach\.session_token=[^;]*' "$JB" | head -1)"
 check "ثبت‌نام B → 200" "200" "$code"
 
 echo "== 3) وضعیت اتصال واقعی =="

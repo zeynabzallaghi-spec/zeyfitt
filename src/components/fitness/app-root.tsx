@@ -1,9 +1,11 @@
 "use client";
 
 import { AnimatePresence, motion } from "framer-motion";
+import { UiLangProvider } from "@/lib/i18n/locale";
 import { useSessionData, SessionProvider } from "./session-context";
 import type { SessionUser } from "@/lib/auth";
 import type { FitnessProfileClient } from "@/lib/profile";
+import type { Locale } from "@/lib/i18n/shared";
 import { AuthView } from "./views/auth-view";
 import { OnboardingView } from "./views/onboarding-view";
 import { AppShell } from "./app-shell";
@@ -41,12 +43,16 @@ function Gate() {
 interface AppRootProps {
   initialUser: SessionUser | null;
   initialProfile: FitnessProfileClient | null;
+  /** زبان رابط خوانده‌شده از کوکی در سمت سرور — برای SSR هم‌زبان با کلاینت */
+  initialLocale: Locale;
 }
 
-export function AppRoot({ initialUser, initialProfile }: AppRootProps) {
+export function AppRoot({ initialUser, initialProfile, initialLocale }: AppRootProps) {
   return (
-    <SessionProvider initialUser={initialUser} initialProfile={initialProfile}>
-      <Gate />
-    </SessionProvider>
+    <UiLangProvider initialLocale={initialLocale}>
+      <SessionProvider initialUser={initialUser} initialProfile={initialProfile}>
+        <Gate />
+      </SessionProvider>
+    </UiLangProvider>
   );
 }

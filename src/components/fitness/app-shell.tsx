@@ -6,6 +6,9 @@ import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
 import { useAppStore } from "@/store/app-store";
 import { useJourneyStore, type JourneyVisitKey } from "@/store/journey-store";
 import { getNavItem } from "@/lib/nav";
+import { useStrings } from "@/lib/i18n/use-strings";
+import { shellStrings } from "@/lib/i18n/sections/shell";
+import { useLocale, useDir, useDocumentTitle } from "@/lib/i18n/locale";
 import { useSessionData } from "./session-context";
 import { BrandMark, SidebarNav, DevStatusCard } from "./sidebar-nav";
 import { AppHeader } from "./header";
@@ -20,6 +23,7 @@ import { ProfileView } from "./views/profile-view";
 
 /** محتوای کامل نوار کناری — در دسکتاپ و منوی موبایل مشترک است */
 function SidebarContent() {
+  const t = useStrings(shellStrings);
   return (
     <div className="flex h-full flex-col gap-6 overflow-y-auto p-5">
       <BrandMark className="pe-10" />
@@ -79,24 +83,32 @@ export function AppShell() {
   const activeView = useAppStore((s) => s.activeView);
   const mobileNavOpen = useAppStore((s) => s.mobileNavOpen);
   const setMobileNavOpen = useAppStore((s) => s.setMobileNavOpen);
+  const t = useStrings(shellStrings);
+  const locale = useLocale();
+  const dir = useDir();
+  const item = getNavItem(activeView);
+
+  // عنوان ترجمه‌شده صفحه — الزام دسترسی‌پذیری
+  useDocumentTitle(t.documentTitle(locale === "fa" ? item.fa : item.en));
 
   return (
     <div className="flex min-h-screen w-full">
-      {/* نوار کناری دسکتاپ — در RTL سمت راست قرار می‌گیرد */}
+      {/* نوار کناری دسکتاپ — در RTL سمت راست، در LTR سمت چپ قرار می‌گیرد */}
       <aside
-        aria-label="نوار کناری"
+        aria-label={t.sidebarAria}
         className="sticky top-0 hidden h-screen w-72 shrink-0 flex-col border-e border-border/60 bg-sidebar lg:flex"
       >
         <SidebarContent />
       </aside>
 
-      {/* منوی کشویی موبایل */}
+      {/* منوی کشویی موبایل — همیشه از سمت نوار کناری دسکتاپ باز می‌شود:
+          در RTL راست و در LTR چپ */}
       <Sheet open={mobileNavOpen} onOpenChange={setMobileNavOpen}>
         <SheetContent
-          side="right"
+          side={dir === "rtl" ? "right" : "left"}
           className="w-80 border-border/60 bg-sidebar p-0 sm:max-w-80"
         >
-          <SheetTitle className="sr-only">منوی ناوبری اصلی</SheetTitle>
+          <SheetTitle className="sr-only">{t.mainNavMenuAria}</SheetTitle>
           <SidebarContent />
         </SheetContent>
       </Sheet>
@@ -126,10 +138,11 @@ export function AppShell() {
         <footer className="pb-safe mt-auto border-t border-border/60 px-4 py-4 md:px-8">
           <div className="mx-auto flex max-w-7xl flex-col items-center justify-between gap-1.5 text-center sm:flex-row sm:text-start">
             <p className="text-[11px] font-medium text-muted-foreground">
-              <span dir="ltr" className="font-bold">AI Fitness Coach</span> — مربی هوشمند تناسب اندام
+              <span dir="ltr" className="font-bold">AI Fitness Coach</span>
+              {t.footerBrand}
             </p>
             <p className="text-[10px] text-muted-foreground/70">
-              محصول در فاز توسعه است؛ هر مرحله پس از تأیید شما تکمیل می‌شود
+              {t.footerStageNote}
             </p>
           </div>
         </footer>

@@ -8,15 +8,12 @@ import {
   Dumbbell,
   UserRoundCog,
   Sparkles,
-  CloudCheck,
   CircleCheck,
   Play,
   Scale,
   Ruler,
   Target,
-  ClipboardList,
   UserRound,
-  BookOpenText,
   Compass,
 } from "lucide-react";
 import { toast } from "sonner";
@@ -33,16 +30,19 @@ import {
 import { useAppStore } from "@/store/app-store";
 import { useJourneyStore } from "@/store/journey-store";
 import { useSessionData } from "../session-context";
-import { faDigits, labelOf, GOAL_OPTIONS, EXPERIENCE_OPTIONS } from "@/lib/profile";
-import { jalaliFullLabel, latestWeightEntry } from "@/lib/weight";
+import { latestWeightEntry } from "@/lib/weight";
 import { useWeightEntries, type UseWeightEntriesResult } from "@/hooks/use-weight-entries";
 import { useWorkoutPlans } from "@/hooks/use-workout-plans";
 import { useNutritionPlans } from "@/hooks/use-nutrition-plans";
 import { usePlanDetail } from "@/hooks/use-plan-detail";
 import { useActiveSession, useWorkoutStats } from "@/hooks/use-workout-sessions";
 import { cn } from "@/lib/utils";
-import { EmptyState } from "../shared/empty-state";
-import { RealBadge, StageBadge } from "../shared/badges";
+import { useLocale } from "@/lib/i18n/locale";
+import { useStrings } from "@/lib/i18n/use-strings";
+import { localeNumber, localeFullLabel } from "@/lib/i18n/format";
+import { dashboardStrings } from "@/lib/i18n/sections/dashboard";
+import { sharedStrings } from "@/lib/i18n/sections/shared";
+import { RealBadge } from "../shared/badges";
 import { WeightLogCard } from "../shared/weight-log-card";
 import { TodaySessionCard } from "../shared/today-session-card";
 import { NutritionSummaryCard } from "../shared/nutrition-summary-card";
@@ -90,9 +90,10 @@ function LiveBadge() {
 
 /** نشان «ثبت نشده» — داده کاربر هنوز وارد نشده (نه قابلیت ساخته‌نشده) */
 function NotRecordedBadge() {
+  const t = useStrings(dashboardStrings);
   return (
     <span className="inline-flex items-center rounded-md border border-border/50 bg-secondary/40 px-2 py-0.5 text-[10px] font-medium text-muted-foreground">
-      ثبت نشده
+      {t.notRecordedBadge}
     </span>
   );
 }
@@ -103,7 +104,11 @@ const QUICK_LINKS: ViewId[] = ["coach3d", "library", "workout", "nutrition"];
 
 function QuickLinkRow({ item }: { item: NavItem }) {
   const setActiveView = useAppStore((s) => s.setActiveView);
+  const locale = useLocale();
   const Icon = item.icon;
+  // عنوان اصلی به زبان رابط؛ زیرعنوان زبان دیگر (فارسی: لاتین با dir=ltr، انگلیسی: فارسی)
+  const mainTitle = locale === "fa" ? item.fa : item.en;
+  const subTitle = locale === "fa" ? item.en : item.fa;
   return (
     <button
       type="button"
@@ -114,13 +119,14 @@ function QuickLinkRow({ item }: { item: NavItem }) {
         <Icon className="size-4" strokeWidth={2.1} aria-hidden="true" />
       </span>
       <span className="min-w-0 flex-1">
-        <span className="block truncate text-[13px] font-bold text-foreground">{item.fa}</span>
-        <span dir="ltr" className="block text-[10px] text-muted-foreground/70">
-          {item.en}
+        <span className="block truncate text-[13px] font-bold text-foreground">{mainTitle}</span>
+        <span dir={locale === "fa" ? "ltr" : "rtl"} className="block text-[10px] text-muted-foreground/70">
+          {subTitle}
         </span>
       </span>
+      {/* آیکن جهت‌دار «جلو» — ظاهر فعلی RTL حفظ می‌شود؛ در LTR آینه می‌شود */}
       <ChevronLeft
-        className="size-4 shrink-0 text-muted-foreground/40 transition-all group-hover:-translate-x-0.5 group-hover:text-primary"
+        className="size-4 shrink-0 text-muted-foreground/40 transition-all group-hover:-translate-x-0.5 group-hover:text-primary ltr:rotate-180"
         aria-hidden="true"
       />
     </button>
@@ -139,6 +145,8 @@ interface JourneyStep {
 
 function JourneyStepRow({ step, index }: { step: JourneyStep; index: number }) {
   const setActiveView = useAppStore((s) => s.setActiveView);
+  const t = useStrings(dashboardStrings);
+  const locale = useLocale();
   const Icon = step.icon;
 
   return (
@@ -159,7 +167,7 @@ function JourneyStepRow({ step, index }: { step: JourneyStep; index: number }) {
         )}
         aria-hidden="true"
       >
-        {step.done ? <CircleCheck className="size-4" /> : faDigits(index + 1)}
+        {step.done ? <CircleCheck className="size-4" /> : localeNumber(index + 1, locale)}
       </span>
       <div className="min-w-0 flex-1">
         <p className={cn("text-xs font-bold leading-6", step.done ? "text-primary" : "text-foreground")}>
@@ -174,8 +182,9 @@ function JourneyStepRow({ step, index }: { step: JourneyStep; index: number }) {
             className="mt-2 h-7 border-border/70 px-2.5 text-[11px] font-semibold hover:border-primary/40 hover:text-primary"
           >
             <Icon className="size-3.5" aria-hidden="true" />
-            انجام این گام
-            <ChevronLeft className="size-3.5" aria-hidden="true" />
+            {t.journeyStepDoThis}
+            {/* آیکن جهت‌دار «جلو» — ظاهر فعلی RTL حفظ می‌شود؛ در LTR آینه می‌شود */}
+            <ChevronLeft className="size-3.5 ltr:rotate-180" aria-hidden="true" />
           </Button>
         )}
       </div>
@@ -187,7 +196,7 @@ function JourneyStepRow({ step, index }: { step: JourneyStep; index: number }) {
             : "border border-border/50 bg-secondary/40 text-muted-foreground"
         )}
       >
-        {step.done ? "انجام شد" : "در انتظار"}
+        {step.done ? t.journeyDoneBadge : t.journeyPendingBadge}
       </span>
     </li>
   );
@@ -196,6 +205,8 @@ function JourneyStepRow({ step, index }: { step: JourneyStep; index: number }) {
 function JourneyCard({ hasActivePlan }: { hasActivePlan: boolean }) {
   const { user, profile } = useSessionData();
   const visited = useJourneyStore((s) => s.visited);
+  const t = useStrings(dashboardStrings);
+  const locale = useLocale();
 
   if (!user) return null;
 
@@ -203,29 +214,29 @@ function JourneyCard({ hasActivePlan }: { hasActivePlan: boolean }) {
   const steps: JourneyStep[] = [
     {
       icon: UserRound,
-      title: "تکمیل پروفایل بدنی",
-      description: "قد، وزن، سن و مشخصات اصلی در پایگاه داده سرور",
+      title: t.journeyStepProfileTitle,
+      description: t.journeyStepProfileDesc,
       done: Boolean(profile?.complete),
       target: "profile",
     },
     {
       icon: Target,
-      title: "تعیین هدف تناسب اندام",
-      description: "هدف ثبت‌شده مبنای برنامه‌ها و پیشنهادها خواهد بود",
+      title: t.journeyStepGoalTitle,
+      description: t.journeyStepGoalDesc,
       done: goalSet,
       target: "profile",
     },
     {
       icon: Box,
-      title: "آشنایی با کتابخانه حرکات و مربی سه‌بعدی",
-      description: "بازدید واقعی هر دو بخش روی همین دستگاه ثبت می‌شود",
+      title: t.journeyStepLibraryTitle,
+      description: t.journeyStepLibraryDesc,
       done: Boolean(visited.library && visited.coach3d),
       target: !visited.coach3d ? "coach3d" : "library",
     },
     {
       icon: CalendarCheck2,
-      title: "ساخت برنامه تمرینی شخصی",
-      description: "برنامه‌ساز فعال است؛ برنامه مبتنی بر هدف، سطح و تجهیزات شما می‌سازد و ذخیره می‌کند",
+      title: t.journeyStepPlanTitle,
+      description: t.journeyStepPlanDesc,
       done: Boolean(visited.workout) || hasActivePlan,
       target: "workout",
     },
@@ -242,20 +253,18 @@ function JourneyCard({ hasActivePlan }: { hasActivePlan: boolean }) {
             <Compass className="size-4" aria-hidden="true" />
           </span>
           <div className="flex flex-col">
-            <h3 className="text-sm font-bold">شروع مسیر تناسب اندام</h3>
-            <p className="text-[11px] text-muted-foreground">
-              وضعیت گام‌ها فقط بر اساس اطلاعات واقعی شماست
-            </p>
+            <h3 className="text-sm font-bold">{t.journeyTitle}</h3>
+            <p className="text-[11px] text-muted-foreground">{t.journeySubtitle}</p>
           </div>
         </div>
 
         <div className="mt-4 flex items-center justify-between text-[11px] font-bold">
           <span className="text-foreground">
-            {faDigits(doneCount)} از {faDigits(steps.length)} گام کامل شد
+            {t.journeyProgress(localeNumber(doneCount, locale), localeNumber(steps.length, locale))}
           </span>
-          <span className="text-primary">{faDigits(percent)}٪</span>
+          <span className="text-primary">{t.percentLabel(localeNumber(percent, locale))}</span>
         </div>
-        <Progress value={percent} className="mt-1.5 h-1.5" aria-label="پیشرفت مسیر شروع" />
+        <Progress value={percent} className="mt-1.5 h-1.5" aria-label={t.journeyProgressAria} />
 
         <ol className="mt-4 flex flex-col gap-2.5">
           {steps.map((step, index) => (
@@ -266,12 +275,11 @@ function JourneyCard({ hasActivePlan }: { hasActivePlan: boolean }) {
         {doneCount === steps.length ? (
           <p className="mt-auto flex items-start gap-1.5 pt-4 text-[10px] leading-5 text-primary">
             <CircleCheck className="mt-0.5 size-3.5 shrink-0" aria-hidden="true" />
-            همه گام‌های آغازین کامل شد — برای شروع، جلسه اول برنامه فعال را اجرا کنید.
+            {t.journeyAllDone}
           </p>
         ) : (
           <p className="mt-auto pt-4 text-[10px] leading-5 text-muted-foreground/70">
-            گام‌های ۱ و ۲ از پایگاه داده سرور خوانده می‌شوند؛ گام‌های ۳ و ۴ بر اساس بازدید
-            واقعی شما روی همین دستگاه ثبت می‌شوند.
+            {t.journeySourceNote}
           </p>
         )}
       </div>
@@ -282,6 +290,8 @@ function JourneyCard({ hasActivePlan }: { hasActivePlan: boolean }) {
 /* --------------------------------- نقشه راه --------------------------------- */
 
 function StageRow({ index, title, current }: { index: number; title: string; current: boolean }) {
+  const t = useStrings(dashboardStrings);
+  const locale = useLocale();
   return (
     <li className="flex items-center gap-3 py-1">
       {current ? (
@@ -299,13 +309,13 @@ function StageRow({ index, title, current }: { index: number; title: string; cur
         )}
       >
         <span className="me-2 inline-block min-w-5 text-[10px] font-bold text-primary/70">
-          {index.toLocaleString("fa-IR")}
+          {localeNumber(index, locale)}
         </span>
         {title}
       </span>
       {current && (
         <span className="ms-auto shrink-0 rounded-md border border-primary/30 bg-primary/10 px-2 py-0.5 text-[10px] font-bold text-primary">
-          جاری
+          {t.roadmapCurrentBadge}
         </span>
       )}
     </li>
@@ -313,6 +323,8 @@ function StageRow({ index, title, current }: { index: number; title: string; cur
 }
 
 function RoadmapCard() {
+  const t = useStrings(dashboardStrings);
+  const locale = useLocale();
   return (
     <div className="rounded-2xl border border-border/60 bg-card p-5 md:p-6">
       <div className="flex items-center gap-2.5">
@@ -320,10 +332,8 @@ function RoadmapCard() {
           <Sparkles className="size-4" aria-hidden="true" />
         </span>
         <div className="flex flex-col">
-          <h3 className="text-sm font-bold">نقشه راه توسعه محصول</h3>
-          <p className="text-[11px] text-muted-foreground">
-            هر مرحله پس از تأیید شما آغاز می‌شود؛ این کارت در نسخه نهایی حذف خواهد شد
-          </p>
+          <h3 className="text-sm font-bold">{t.roadmapTitle}</h3>
+          <p className="text-[11px] text-muted-foreground">{t.roadmapSubtitle}</p>
         </div>
       </div>
       <ul className="mt-4 grid gap-x-8 sm:grid-cols-2">
@@ -331,7 +341,7 @@ function RoadmapCard() {
           <StageRow
             key={stage.index}
             index={stage.index}
-            title={stage.title}
+            title={locale === "fa" ? stage.title : stage.titleEn}
             current={stage.index === CURRENT_STAGE}
           />
         ))}
@@ -346,6 +356,9 @@ export function DashboardView() {
   const setActiveView = useAppStore((s) => s.setActiveView);
   const profileNavItem = getNavItem("profile");
   const { user, profile: fitnessProfile } = useSessionData();
+  const t = useStrings(dashboardStrings);
+  const sh = useStrings(sharedStrings);
+  const locale = useLocale();
 
   // داده وزن یک‌بار در داشبورد خوانده می‌شود و به کارت روند وزن پاس داده می‌شود
   const weightData: UseWeightEntriesResult = useWeightEntries();
@@ -373,21 +386,22 @@ export function DashboardView() {
       const result = await sessionCtrl.startSession({ planDayId: dayId });
       if (result.ok) {
         if (result.data.existing) {
-          toast.info("جلسه دیگری در حال انجام است؛ همان ادامه یافت");
+          toast.info(t.toastSessionExists);
         } else {
-          toast.success("جلسه تمرین شروع شد — رکوردر در بخش برنامه تمرینی آماده است");
+          toast.success(t.toastSessionStarted);
         }
       } else {
         toast.error(result.message);
       }
     },
-    [sessionCtrl]
+    [sessionCtrl, t]
   );
 
   const displayName = fitnessProfile?.displayName ?? user?.name ?? "";
-  const goalLabel = fitnessProfile?.goal ? labelOf(GOAL_OPTIONS, fitnessProfile.goal) : null;
+  // برچسب نمایشی هدف/سطح — نقشه نمایشی دوزبانه روی value پایدار پروفایل
+  const goalLabel = fitnessProfile?.goal ? sh.goalLabel(fitnessProfile.goal) : null;
   const experienceLabel = fitnessProfile?.experience
-    ? labelOf(EXPERIENCE_OPTIONS, fitnessProfile.experience)
+    ? sh.experienceLabel(fitnessProfile.experience)
     : null;
 
   return (
@@ -403,42 +417,43 @@ export function DashboardView() {
           <div className="max-w-xl">
             <span className="inline-flex items-center gap-1.5 rounded-full border border-primary/25 bg-primary/10 px-3 py-1 text-[11px] font-bold text-primary">
               <Sparkles className="size-3" aria-hidden="true" />
-              مرکز مسیر تناسب اندام شما
+              {t.welcomeBadge}
             </span>
             <h2 id="welcome-heading" className="mt-4 text-2xl font-extrabold leading-snug md:text-3xl">
-              سلام <span className="text-primary text-glow">{displayName || "ورزشکار"}؛</span>
-              {" "}خوش برگشتی
+              {t.welcomeGreetingPrefix}{" "}
+              <span className="text-primary text-glow">
+                {displayName || t.defaultAthlete}
+                {t.welcomeGreetingSuffix}
+              </span>{" "}
+              {t.welcomeBack}
             </h2>
-            <p className="mt-3 text-sm leading-7 text-muted-foreground">
-              این داشبورد به حساب واقعی شما متصل است؛ همه اطلاعات از پایگاه داده سرور خوانده
-              می‌شود و پس از هر تغییر در پروفایل، بلافاصله به‌روز می‌شود.
-            </p>
+            <p className="mt-3 text-sm leading-7 text-muted-foreground">{t.welcomeConnected}</p>
 
             {/* مشخصات واقعی پروفایل — فقط مقادیر ثبت‌شده نمایش داده می‌شوند */}
             <div className="mt-5 flex flex-wrap items-center gap-2">
               <span className="inline-flex items-center gap-1.5 rounded-full border border-border/60 bg-secondary/40 px-3 py-1.5 text-[11px] font-bold text-foreground/90">
                 <Target className="size-3.5 text-primary" aria-hidden="true" />
-                هدف:
+                {t.goalChipLabel}
                 {goalLabel ? (
                   <span className="text-primary">{goalLabel}</span>
                 ) : (
-                  <span className="font-medium text-muted-foreground">ثبت نشده</span>
+                  <span className="font-medium text-muted-foreground">{t.notRecordedBadge}</span>
                 )}
               </span>
               <span className="inline-flex items-center gap-1.5 rounded-full border border-border/60 bg-secondary/40 px-3 py-1.5 text-[11px] font-bold text-foreground/90">
                 <Dumbbell className="size-3.5 text-primary" aria-hidden="true" />
-                سطح تجربه:
+                {t.experienceChipLabel}
                 {experienceLabel ? (
                   <span className="text-primary">{experienceLabel}</span>
                 ) : (
-                  <span className="font-medium text-muted-foreground">ثبت نشده</span>
+                  <span className="font-medium text-muted-foreground">{t.notRecordedBadge}</span>
                 )}
               </span>
               <span className="inline-flex items-center gap-1.5 rounded-full border border-border/60 bg-secondary/40 px-3 py-1.5 text-[11px] font-bold text-foreground/90">
                 <CircleCheck className="size-3.5 text-primary" aria-hidden="true" />
-                تکمیل پروفایل:
+                {t.completionChipLabel}
                 <span className="text-primary">
-                  {faDigits(fitnessProfile?.completionPercent ?? 0)}٪
+                  {t.percentLabel(localeNumber(fitnessProfile?.completionPercent ?? 0, locale))}
                 </span>
               </span>
             </div>
@@ -449,14 +464,14 @@ export function DashboardView() {
                 className="font-bold text-primary-foreground glow-lime-sm"
               >
                 <UserRoundCog className="size-4" aria-hidden="true" />
-                {fitnessProfile?.complete ? "ویرایش پروفایل" : "تکمیل پروفایل"}
+                {fitnessProfile?.complete ? t.editProfile : t.completeProfile}
               </Button>
               <Button
                 variant="outline"
                 onClick={() => setActiveView("coach3d")}
                 className="border-border/70 font-semibold hover:border-primary/40 hover:text-primary"
               >
-                آشنایی با مربی سه‌بعدی
+                {t.tryCoach3d}
               </Button>
             </div>
           </div>
@@ -466,7 +481,7 @@ export function DashboardView() {
               <div className="absolute inset-3 rounded-2xl border border-dashed border-primary/15" />
               <Dumbbell className="size-14 text-primary/70" strokeWidth={1.4} />
               <span className="absolute -bottom-3 rounded-full border border-primary/30 bg-background px-3 py-1 text-[10px] font-bold text-primary">
-                متصل به پایگاه داده سرور
+                {t.connectedToServerDb}
               </span>
             </div>
           </div>
@@ -474,65 +489,71 @@ export function DashboardView() {
       </motion.section>
 
       {/* کارت‌های آماری — فقط داده واقعی؛ برای داده ثبت‌نشده مقدار جعلی نمایش داده نمی‌شود */}
-      <motion.section variants={fadeUp} aria-label="خلاصه آمار شما">
+      <motion.section variants={fadeUp} aria-label={t.statsAria}>
         <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
           {/* وزن فعلی — وزن اعلامی پروفایل کاربر (ویرایش پروفایل بلافاصله منعکس می‌شود)؛
               روند تغییرات فقط از اندازه‌گیری‌های تاریخ‌دار در کارت «روند وزن» */}
           <StatCard
-            label="وزن فعلی"
+            label={t.statWeightLabel}
             value={
               fitnessProfile?.weightKg
-                ? `${faDigits(fitnessProfile.weightKg)} کیلوگرم`
+                ? `${localeNumber(fitnessProfile.weightKg, locale)} ${t.kilogramUnit}`
                 : latestWeight
-                  ? `${faDigits(latestWeight.weightKg)} کیلوگرم`
-                  : "—"
+                  ? `${localeNumber(latestWeight.weightKg, locale)} ${t.kilogramUnit}`
+                  : t.emptyValue
             }
             note={
               fitnessProfile?.weightKg
                 ? latestWeight
-                  ? `وزن پروفایل شما؛ آخرین اندازه‌گیری ثبت‌شده: ${faDigits(latestWeight.weightKg)} در ${jalaliFullLabel(latestWeight.recordedAt)}`
-                  : "وزن ثبت‌شده در پروفایل شما؛ برای روند تغییرات، وزن دوره‌ای ثبت کنید"
+                  ? t.statWeightNoteProfileWithLatest(
+                      localeNumber(latestWeight.weightKg, locale),
+                      localeFullLabel(latestWeight.recordedAt, locale)
+                    )
+                  : t.statWeightNoteProfileOnly
                 : latestWeight
-                  ? `آخرین اندازه‌گیری: ${jalaliFullLabel(latestWeight.recordedAt)}`
-                  : "وزن شما هنوز ثبت نشده است؛ از پروفایل یا کارت روند وزن ثبت کنید"
+                  ? t.statWeightNoteLatest(localeFullLabel(latestWeight.recordedAt, locale))
+                  : t.statWeightNoteEmpty
             }
             icon={Scale}
             badge={fitnessProfile?.weightKg || latestWeight ? <LiveBadge /> : <NotRecordedBadge />}
           />
           {/* قد */}
           <StatCard
-            label="قد"
-            value={fitnessProfile?.heightCm ? `${faDigits(fitnessProfile.heightCm)} سانتی‌متر` : "—"}
+            label={t.statHeightLabel}
+            value={fitnessProfile?.heightCm ? `${localeNumber(fitnessProfile.heightCm, locale)} ${t.centimeterUnit}` : t.emptyValue}
             note={
               fitnessProfile?.heightCm
-                ? "قد ثبت‌شده در پروفایل شما"
-                : "قد شما هنوز در پروفایل ثبت نشده است"
+                ? t.statHeightNoteSet
+                : t.statHeightNoteEmpty
             }
             icon={Ruler}
             badge={fitnessProfile?.heightCm ? <LiveBadge /> : <NotRecordedBadge />}
           />
           {/* هدف فعلی */}
           <StatCard
-            label="هدف تمرینی"
-            value={goalLabel ?? "—"}
+            label={t.statGoalLabel}
+            value={goalLabel ?? t.emptyValue}
             note={
               goalLabel
-                ? "هدف انتخابی شما مبنای برنامه‌های مراحل بعد خواهد بود"
-                : "هدف تمرینی هنوز انتخاب نشده؛ از پروفایل قابل تنظیم است"
+                ? t.statGoalNoteSet
+                : t.statGoalNoteEmpty
             }
             icon={Target}
             badge={goalLabel ? <LiveBadge /> : <NotRecordedBadge />}
           />
           {/* جلسات تکمیل‌شده این هفته — فقط جلسات واقعی پایان‌یافته؛ بدون جلسه صفر صادقانه */}
           <StatCard
-            label="جلسات تکمیل‌شده این هفته"
-            value={statsLoading ? "…" : faDigits(workoutStats?.thisWeek.completedSessions ?? 0)}
+            label={t.statSessionsLabel}
+            value={statsLoading ? t.statsLoadingValue : localeNumber(workoutStats?.thisWeek.completedSessions ?? 0, locale)}
             note={
               statsLoading
-                ? "در حال خواندن آمار واقعی…"
+                ? t.statSessionsNoteLoading
                 : (workoutStats?.thisWeek.completedSessions ?? 0) === 0
-                  ? "این هفته هنوز جلسه تکمیل‌شده‌ای ندارید؛ جلسه فقط با «پایان تمرین» صریح تکمیل می‌شود"
-                  : `مجموع ${faDigits(workoutStats!.thisWeek.setsCompleted)} ست و ${faDigits(workoutStats!.thisWeek.repsTotal)} تکرار ثبت‌شده واقعی`
+                  ? t.statSessionsNoteZero
+                  : t.statSessionsNoteSummary(
+                      localeNumber(workoutStats!.thisWeek.setsCompleted, locale),
+                      localeNumber(workoutStats!.thisWeek.repsTotal, locale)
+                    )
             }
             icon={CalendarCheck2}
             badge={<LiveBadge />}
@@ -546,7 +567,7 @@ export function DashboardView() {
         {hasActiveSession && activeWorkout && (
           <motion.section
             variants={fadeUp}
-            aria-label="جلسه در حال انجام"
+            aria-label={t.activeSessionAria}
             className="rounded-2xl border border-primary/30 bg-primary/5 p-5 md:p-6 lg:col-span-3"
           >
             <div className="flex flex-wrap items-center gap-3">
@@ -555,10 +576,9 @@ export function DashboardView() {
                 <span className="relative inline-flex size-2.5 rounded-full bg-primary" />
               </span>
               <div className="min-w-0 flex-1">
-                <h3 className="text-sm font-bold">جلسه در حال انجام: {activeWorkout.title}</h3>
+                <h3 className="text-sm font-bold">{t.activeSessionTitle(activeWorkout.title)}</h3>
                 <p className="mt-0.5 text-[10px] leading-5 text-muted-foreground">
-                  در پایگاه داده سرور ثبت شده و پس از رفرش هم بازیابی می‌شود — ست‌ها را در
-                  رکوردر ثبت کنید.
+                  {t.activeSessionNote}
                 </p>
               </div>
               <Button
@@ -566,7 +586,7 @@ export function DashboardView() {
                 className="font-bold text-primary-foreground glow-lime-sm"
               >
                 <Play className="size-4" aria-hidden="true" />
-                ادامه جلسه
+                {t.continueSession}
               </Button>
             </div>
           </motion.section>
@@ -575,14 +595,14 @@ export function DashboardView() {
         {/* برنامه امروز — فقط برنامه واقعی ذخیره‌شده کاربر */}
         <motion.section
           variants={fadeUp}
-          aria-label="برنامه امروز"
+          aria-label={t.todayPlanAria}
           className="rounded-2xl border border-border/60 bg-card p-5 md:p-6 lg:col-span-2"
         >
           <div className="mb-4 flex items-center gap-2.5">
             <span className="flex size-9 items-center justify-center rounded-lg border border-border/50 bg-secondary/40 text-muted-foreground">
               <CalendarCheck2 className="size-4" aria-hidden="true" />
             </span>
-            <h3 className="text-sm font-bold">برنامه امروز</h3>
+            <h3 className="text-sm font-bold">{t.todayPlanTitle}</h3>
             {activePlan && <RealBadge className="ms-auto" />}
           </div>
           {plansLoading ? (
@@ -597,27 +617,27 @@ export function DashboardView() {
         </motion.section>
 
         {/* شروع مسیر تناسب اندام — ۴ گام با وضعیت واقعی */}
-        <motion.section variants={fadeUp} aria-label="شروع مسیر تناسب اندام" className="lg:col-span-1">
+        <motion.section variants={fadeUp} aria-label={t.journeyAria} className="lg:col-span-1">
           <JourneyCard hasActivePlan={Boolean(activePlan)} />
         </motion.section>
 
         {/* روند وزن — فقط از اندازه‌گیری‌های واقعی کاربر */}
-        <motion.section variants={fadeUp} aria-label="روند وزن شما" className="lg:col-span-2">
+        <motion.section variants={fadeUp} aria-label={t.weightTrendAria} className="lg:col-span-2">
           <WeightLogCard variant="dashboard" data={weightData} />
         </motion.section>
 
         {/* برنامه غذایی فعال — خلاصه واقعی؛ بدون کالری مصرف‌شده جعلی */}
-        <motion.section variants={fadeUp} aria-label="برنامه غذایی" className="lg:col-span-1">
+        <motion.section variants={fadeUp} aria-label={t.nutritionAria} className="lg:col-span-1">
           <NutritionSummaryCard plan={activeNutritionPlan} loading={nutritionLoading} />
         </motion.section>
 
         {/* دسترسی سریع */}
         <motion.section
           variants={fadeUp}
-          aria-label="دسترسی سریع"
+          aria-label={t.quickAccessAria}
           className="rounded-2xl border border-border/60 bg-card p-5 md:p-6 lg:col-span-1"
         >
-          <h3 className="mb-3 text-sm font-bold">دسترسی سریع</h3>
+          <h3 className="mb-3 text-sm font-bold">{t.quickAccessTitle}</h3>
           <div className="flex flex-col gap-1">
             {QUICK_LINKS.map((id) => {
               const item = getNavItem(id);
@@ -625,13 +645,13 @@ export function DashboardView() {
             })}
           </div>
           <p className="mt-3 border-t border-border/50 pt-3 text-[10px] leading-5 text-muted-foreground/70">
-            دسترسی به همه هشت بخش از طریق نوار کناری در دسترس است.
+            {t.quickAccessNote}
           </p>
         </motion.section>
       </div>
 
       {/* نقشه راه توسعه */}
-      <motion.section variants={fadeUp} aria-label="نقشه راه توسعه">
+      <motion.section variants={fadeUp} aria-label={t.roadmapAria}>
         <RoadmapCard />
       </motion.section>
     </motion.div>

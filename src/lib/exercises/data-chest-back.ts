@@ -36,6 +36,26 @@ export const CHEST_BACK_EXERCISES: LibraryExercise[] = [
       "در وزنه‌های سنگین همیشه از پایه‌های ایمنی یا یک همراه استفاده کنید.",
       "اگر احساس فشار یا درد در جلوی شانه دارید، دامنه حرکت را کوتاه‌تر و وزنه را کمتر کنید.",
     ],
+    enContent: {
+      summary: "The foundational horizontal barbell press for building chest strength and size.",
+      steps: [
+        "Lie on your back on the bench; feet firmly on the floor and hips in contact with the bench.",
+        "Retract and tuck your shoulders back (shoulder blades toward each other and down) to create a stable base.",
+        "Unrack the barbell with a grip slightly wider than shoulder width and hold it straight above your chest.",
+        "Lower the barbell with control to just above mid-chest; elbows at roughly 45–70 degrees relative to the torso.",
+        "Drive the barbell back up over your chest along a short, controlled path by pressing with the chest.",
+      ],
+      breathing: "Inhale deeply as you lower the barbell and exhale as you press upward.",
+      mistakes: [
+        "Hips or head lifting off the bench while pressing",
+        "Lowering too fast and bouncing the barbell off the chest",
+        "Fully extending and violently locking out the elbows on every rep",
+      ],
+      safety: [
+        "With heavy loads, always use safety pins or a spotter.",
+        "If you feel pressure or pain in the front of the shoulder, shorten the range of motion and reduce the load.",
+      ],
+    },
   },
   {
     id: "bench-press-dumbbell",
@@ -65,6 +85,25 @@ export const CHEST_BACK_EXERCISES: LibraryExercise[] = [
       "برای بلند و گذاشتن دمبل‌های سنگین، آن‌ها را با چرخش مچ به سمت ران هدایت کنید یا کمک بگیرید.",
       "وزنه‌ای انتخاب کنید که بتوانید کنترل آن را در تمام دامنه حفظ کنید.",
     ],
+    enContent: {
+      summary: "Flat dumbbell press with a longer range of motion and an even load split between both sides of the body.",
+      steps: [
+        "Seated, rest the dumbbells on your thighs and lean back with them to reach the lying position.",
+        "Hold the dumbbells above your chest; palms facing forward and wrists straight.",
+        "Lower the dumbbells with control to the sides of your chest; elbows at about 45 degrees to the torso.",
+        "Press the dumbbells up with your chest and bring them close together at the top without clashing.",
+      ],
+      breathing: "Inhale as you lower the dumbbells and exhale during the upward pressing phase.",
+      mistakes: [
+        "Kicking the dumbbells up at the start of the set instead of lifting them in control",
+        "The two arms drifting into separate paths and moving up and down out of sync",
+        "Lowering too far and straining the front shoulder capsule",
+      ],
+      safety: [
+        "To lift and set down heavy dumbbells, guide them toward your thighs with a wrist turn or ask for help.",
+        "Choose a weight you can control through the entire range of motion.",
+      ],
+    },
   },
   {
     id: "pushup",
@@ -95,6 +134,25 @@ export const CHEST_BACK_EXERCISES: LibraryExercise[] = [
       "اگر فشار روی مچ دست آزاردهنده است، از دسته‌های شنا یا اجرا روی مشت استفاده کنید.",
       "نسخه ساده‌تر: اجرا با زانو روی زمین یا دست‌ها روی لبه بلند و پایدار.",
     ],
+    enContent: {
+      summary: "Pressing your body weight up from the floor; the most fundamental horizontal push without equipment.",
+      steps: [
+        "Palms slightly wider than shoulder width on the floor with toes on the ground; body in a straight line from head to heels.",
+        "Brace your abs and glutes so the hips do not sag during the movement.",
+        "With elbows at about 45 degrees to the torso, lower your body until it is close to the floor.",
+        "Push the floor away with your palms and return to the starting position.",
+      ],
+      breathing: "Inhale as you lower and exhale as you press up.",
+      mistakes: [
+        "Hips piked up or lower back sagging during the movement",
+        "Breaking the head-to-heels line and letting the head reach the floor before the chest",
+        "Elbows flaring far out and loading the shoulders",
+      ],
+      safety: [
+        "If wrist pressure is uncomfortable, use push-up handles or perform on fists.",
+        "Easier version: perform with knees on the floor or hands on a raised, stable edge.",
+      ],
+    },
   },
   {
     id: "incline-bench-press",
@@ -124,6 +182,25 @@ export const CHEST_BACK_EXERCISES: LibraryExercise[] = [
       "در وزنه‌های سنگین از همراه یا پایه ایمنی استفاده کنید.",
       "کمترین شیب مؤثر را انتخاب کنید تا مشارکت بیش از حد سرشانه رخ ندهد.",
     ],
+    enContent: {
+      summary: "A press at a 30–45 degree incline to emphasize the upper chest and front delts.",
+      steps: [
+        "Set the bench back to a 30–45 degree incline and position the barbell in the high-rack position.",
+        "Lie back with feet fixed on the floor and shoulder blades retracted and down.",
+        "Unrack the barbell with a grip slightly wider than shoulder width and hold it above the upper chest.",
+        "Lower the barbell with control to just above the upper chest, then press it back up.",
+      ],
+      breathing: "Inhale as you lower the barbell and exhale as you press up.",
+      mistakes: [
+        "Setting the incline too steep, turning the exercise into a shoulder press",
+        "Bouncing the barbell off the chest to generate momentum",
+        "Hips lifting off the bench with heavy loads",
+      ],
+      safety: [
+        "Use a spotter or safety pins with heavy loads.",
+        "Choose the smallest effective incline so the shoulders do not take over.",
+      ],
+    },
   },
   {
     id: "cable-crossover",
@@ -153,6 +230,25 @@ export const CHEST_BACK_EXERCISES: LibraryExercise[] = [
       "دستگیره‌ها را بدون رها کردن ناگهانی کنترل کنید تا کشش به شانه بازگشت نکند.",
       "انقباض سینه هدف است، نه جابه‌جا کردن بیشترین وزنه.",
     ],
+    enContent: {
+      summary: "Bringing the arms together across the body with cables for continuous chest tension through the full range.",
+      steps: [
+        "Set the pulleys above shoulder height and grab the handles; stand with one foot forward for stability.",
+        "Lean the torso slightly forward and keep the elbows in a fixed, gentle bend.",
+        "Sweep the hands together and down in a gentle arc until the handles meet in front of your body.",
+        "With control, return the hands along the same arc to the start while keeping the chest stretched.",
+      ],
+      breathing: "Exhale as you bring the hands together and inhale on the way back.",
+      mistakes: [
+        "Bending and straightening the elbows too much, turning the movement into a press",
+        "Using a heavy weight while jerking the torso",
+        "Standing misaligned with the pulleys and losing even tension",
+      ],
+      safety: [
+        "Control the handles without letting them snap back, so the stretch does not jerk the shoulder.",
+        "The goal is chest contraction, not moving the heaviest stack.",
+      ],
+    },
   },
   {
     id: "pushup-diamond",
@@ -182,6 +278,25 @@ export const CHEST_BACK_EXERCISES: LibraryExercise[] = [
       "این نسخه فشار بیشتری به مچ دست می‌آورد؛ در صورت آزار مچ از دسته استفاده کنید.",
       "اگر اجرای کامل سخت است، ابتدا شنا معمولی را مسلط شوید.",
     ],
+    enContent: {
+      summary: "A push-up with hands tucked together under mid-chest; extra emphasis on the triceps and mid-chest.",
+      steps: [
+        "Place your palms under mid-chest, close together, so the thumbs and index fingers of both hands form a triangle.",
+        "Keep the body in a straight line from head to heels with the core braced.",
+        "Keep the elbows close to the torso and lower your body until it nears your hands.",
+        "Press back to the start using the triceps and chest.",
+      ],
+      breathing: "Inhale on the way down and exhale as you press your body up.",
+      mistakes: [
+        "Elbows flaring out instead of staying close to the torso",
+        "Hips piked up, breaking the body line",
+        "Lowering the head instead of lowering the whole body",
+      ],
+      safety: [
+        "This version loads the wrists more; use handles if your wrists complain.",
+        "If the full version is hard, master the regular push-up first.",
+      ],
+    },
   },
 
   /* ============================ پشت و زیربغل ============================ */
@@ -213,6 +328,25 @@ export const CHEST_BACK_EXERCISES: LibraryExercise[] = [
       "اگر اجرای کامل ممکن نیست، با کش کمکی، دستگاه اسیست یا نسخه لات پول‌داون شروع کنید.",
       "پایین آمدن سریع و رها شدن ناگهانی بدن، شانه‌ها را تحت کشش شدید قرار می‌دهد؛ کنترل را حفظ کنید.",
     ],
+    enContent: {
+      summary: "Pulling your body weight up to a horizontal bar; one of the most effective exercises for back width and strength.",
+      steps: [
+        "Grip the bar slightly wider than shoulder width with palms facing forward.",
+        "Before pulling, depress and retract your shoulders to switch the lats on.",
+        "Lead with the elbows driving down and pull until your chin passes the bar.",
+        "Lower with control until the arms are fully extended, keeping the lat stretch.",
+      ],
+      breathing: "Exhale as you pull your body up and inhale during the controlled descent.",
+      mistakes: [
+        "Starting the pull with the arms without engaging the shoulders and lats",
+        "Kicking the legs and kipping the body for momentum",
+        "Falling short of full range at the bottom or the top",
+      ],
+      safety: [
+        "If full reps are not possible yet, start with an assistance band, an assisted machine, or the lat pulldown.",
+        "Dropping fast and letting the body fall suddenly puts the shoulders under extreme stretch; keep control.",
+      ],
+    },
   },
   {
     id: "lat-pulldown",
@@ -242,6 +376,25 @@ export const CHEST_BACK_EXERCISES: LibraryExercise[] = [
       "میله را همیشه از جلو تا بالای سینه بکشید؛ نسخه پشت گردن مزیت آموزشی ندارد.",
       "ران‌ها ثابت زیر رول بمانند تا پایه پایدار بماند.",
     ],
+    enContent: {
+      summary: "Seated pulling of a cable bar from overhead to the chest; a controlled pull-up substitute for building the lats.",
+      steps: [
+        "Secure your thighs under the machine's pads and grip the bar wider than shoulder width.",
+        "Lean the torso back slightly (about 10–15 degrees) and keep the chest open.",
+        "Pull the bar to your upper chest, leading with the elbows down and back.",
+        "With control, let the bar rise until the lats are fully stretched.",
+      ],
+      breathing: "Exhale as you pull the bar down and inhale on the controlled return.",
+      mistakes: [
+        "Pulling the bar behind the neck, placing the shoulders and neck in a poor position",
+        "Leaning back too far, turning the pull into a bodyweight row",
+        "Releasing the bar quickly and letting the stack slam at the end of the range",
+      ],
+      safety: [
+        "Always pull the bar from the front to your upper chest; the behind-the-neck version offers no training advantage.",
+        "Keep the thighs fixed under the pads so your base stays stable.",
+      ],
+    },
   },
   {
     id: "barbell-row",
@@ -271,6 +424,25 @@ export const CHEST_BACK_EXERCISES: LibraryExercise[] = [
       "اگر حفظ خم بدون گرد شدن کمر ممکن نیست، نسخه سیم‌کش نشسته یا زیربغل تک‌دست دمبل جایگزین مناسبی است.",
       "وزنه‌ای انتخاب کنید که تنه در تمام تکرارها ثابت بماند.",
     ],
+    enContent: {
+      summary: "Rowing the barbell toward the belly from a fixed hinge; builds back thickness and strengthens the spinal erectors.",
+      steps: [
+        "Feet hip-width apart; hip hinge until the torso is bent to about 45 degrees or more, keeping the back neutral.",
+        "Grip the barbell at shoulder width and let it hang below the shoulders.",
+        "Lead with the elbows up and back to row the bar toward your belly.",
+        "Pause briefly at the top and lower with control until the arms are fully extended.",
+      ],
+      breathing: "Inhale and brace your abs before each rep; exhale as you row the bar.",
+      mistakes: [
+        "Rounding the lower back during the set",
+        "Gradually standing up and raising the torso as the set continues",
+        "Pulling with the hands instead of leading with the elbows",
+      ],
+      safety: [
+        "If you cannot hold the hinge without rounding your back, the seated cable row or a single-arm dumbbell row is a suitable substitute.",
+        "Choose a weight that keeps the torso fixed through every rep.",
+      ],
+    },
   },
   {
     id: "dumbbell-row-single",
@@ -300,6 +472,25 @@ export const CHEST_BACK_EXERCISES: LibraryExercise[] = [
       "وزنه را در انتهای ست کنترل‌شده روی زمین بگذارید، نه با رها کردن.",
       "گردن را در امتداد ستون فقرات نگه دارید و رو به پایین نگاه کنید.",
     ],
+    enContent: {
+      summary: "One-arm row supported on a bench; more stability and focused work for each side of the back.",
+      steps: [
+        "Place one hand and the same-side knee on the bench; the other foot on the floor and the dumbbell in the opposite hand.",
+        "Keep the back neutral and the torso nearly parallel to the floor.",
+        "Lead with the elbow up and back to row the dumbbell toward your hip.",
+        "Pause briefly at the top and lower with control until the lat is fully stretched.",
+      ],
+      breathing: "Exhale as you row the dumbbell up and inhale as you lower it.",
+      mistakes: [
+        "Twisting the torso and shoulder to lift the weight easier",
+        "Rowing the dumbbell toward the chest instead of toward the hip",
+        "Letting the shoulder slump forward at the bottom of the range",
+      ],
+      safety: [
+        "Set the weight down with control at the end of the set, not by dropping it.",
+        "Keep the neck in line with the spine and look down.",
+      ],
+    },
   },
   {
     id: "deadlift",
@@ -329,6 +520,25 @@ export const CHEST_BACK_EXERCISES: LibraryExercise[] = [
       "تکنیک را با وزنه کم تثبیت کنید و سپس وزنه را تدریجی افزایش دهید.",
       "وقتی فرم در حال شکستن است ست را تمام کنید؛ ادامه دادن با فرم شکسته بیشترین ریسک این حرکت است.",
     ],
+    enContent: {
+      summary: "Lifting the barbell from the floor with a hip-hinge pattern; a full-body trainer for the posterior chain.",
+      steps: [
+        "Feet hip-width apart; the barbell on the floor close to the shins, over mid-foot.",
+        "Hip hinge with a soft knee bend to grip the bar; keep the spine neutral and the chest open.",
+        "Drive the feet into the floor and extend hips and knees together, pulling the bar up close to the body.",
+        "Pause at full standing without extra lower-back arch, then lower the bar back to the floor with control along the same path.",
+      ],
+      breathing: "Inhale deeply and brace the abs before lifting; exhale after passing the hardest point of the lift.",
+      mistakes: [
+        "Rounding the back while setting up and lifting the bar",
+        "The bar drifting away from the shins during the lift",
+        "Initiating the lift with the upper body instead of driving the feet into the floor",
+      ],
+      safety: [
+        "Lock in the technique with light loads, then increase the weight gradually.",
+        "End the set the moment form starts breaking down; continuing with broken form is this lift's biggest risk.",
+      ],
+    },
   },
   {
     id: "seated-cable-row",
@@ -358,5 +568,24 @@ export const CHEST_BACK_EXERCISES: LibraryExercise[] = [
       "وزنه را در انتهای ست با کنترل روی جایگاهش برگردانید.",
       "زانوها را کامل صاف نکنید تا مفصل زانو در وضعیت راحت بماند.",
     ],
+    enContent: {
+      summary: "Seated pulling of a cable handle toward the belly; a controlled range for back thickness.",
+      steps: [
+        "Sit on the machine with knees slightly bent and feet fixed on the footplate.",
+        "Grab the handle and keep the spine straight and the chest open.",
+        "Row the handle toward your belly, leading with the elbows back, and squeeze the shoulder blades together.",
+        "With control, let the arms extend forward until the back is stretched; keep the torso still.",
+      ],
+      breathing: "Exhale as you pull the handle and inhale on the controlled return forward.",
+      mistakes: [
+        "Swinging the torso back and forth to assist the movement",
+        "Pulling with the hands instead of leading with the elbows",
+        "Shoulders creeping up toward the ears during the set",
+      ],
+      safety: [
+        "Return the weight to the stack with control at the end of the set.",
+        "Do not lock the knees fully so the knee joints stay comfortable.",
+      ],
+    },
   },
 ];

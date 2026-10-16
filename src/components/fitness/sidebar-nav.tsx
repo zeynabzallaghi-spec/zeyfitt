@@ -5,9 +5,13 @@ import { useAppStore } from "@/store/app-store";
 import { cn } from "@/lib/utils";
 import { Progress } from "@/components/ui/progress";
 import { Dumbbell, Sparkles } from "lucide-react";
+import { useStrings } from "@/lib/i18n/use-strings";
+import { shellStrings } from "@/lib/i18n/sections/shell";
+import { useUiLang } from "@/lib/i18n/locale";
 
 /** لوگو و نام برند — استفاده در نوار کناری و منوی موبایل */
 export function BrandMark({ className }: { className?: string }) {
+  const t = useStrings(shellStrings);
   return (
     <div className={cn("flex items-center gap-3", className)}>
       <span
@@ -21,7 +25,7 @@ export function BrandMark({ className }: { className?: string }) {
           AI Fitness Coach
         </span>
         <span className="text-[11px] font-medium text-muted-foreground">
-          مربی هوشمند تناسب اندام
+          {t.tagline}
         </span>
       </span>
     </div>
@@ -32,15 +36,19 @@ export function BrandMark({ className }: { className?: string }) {
 export function SidebarNav() {
   const activeView = useAppStore((s) => s.activeView);
   const setActiveView = useAppStore((s) => s.setActiveView);
+  const t = useStrings(shellStrings);
+  const { locale } = useUiLang();
 
   return (
-    <nav aria-label="ناوبری اصلی" className="flex flex-col gap-1">
+    <nav aria-label={t.navAria} className="flex flex-col gap-1">
       <p className="px-3 pb-2 text-[10px] font-bold tracking-wide text-muted-foreground/60">
-        بخش‌های پنل
+        {t.sectionsLabel}
       </p>
       {NAV_ITEMS.map((item) => {
         const Icon = item.icon;
         const active = activeView === item.id;
+        const primary = locale === "fa" ? item.fa : item.en;
+        const secondary = locale === "fa" ? item.en : item.fa;
         return (
           <button
             key={item.id}
@@ -54,7 +62,7 @@ export function SidebarNav() {
                 : "text-muted-foreground hover:bg-secondary/50 hover:text-foreground"
             )}
           >
-            {/* نشانگر بخش فعال — لبه شروع (راست در RTL) */}
+            {/* نشانگر بخش فعال — لبه شروع (راست در RTL، چپ در LTR) */}
             <span
               className={cn(
                 "absolute inset-y-2.5 start-0 w-[3px] rounded-full transition-all duration-200",
@@ -75,9 +83,12 @@ export function SidebarNav() {
               <Icon className="size-4" strokeWidth={2.2} aria-hidden="true" />
             </span>
             <span className="flex min-w-0 flex-col items-start gap-0">
-              <span className="truncate text-sm font-semibold leading-6">{item.fa}</span>
-              <span dir="ltr" className="truncate text-[10px] font-medium leading-3 opacity-70">
-                {item.en}
+              <span className="truncate text-sm font-semibold leading-6">{primary}</span>
+              <span
+                dir={locale === "fa" ? "ltr" : "rtl"}
+                className="truncate text-[10px] font-medium leading-3 opacity-70"
+              >
+                {secondary}
               </span>
             </span>
             {active && (
@@ -95,31 +106,28 @@ export function SidebarNav() {
 
 /** کارت وضعیت توسعه — شفافیت درباره مرحله جاری محصول */
 export function DevStatusCard() {
-  const stageStatus: Record<number, string> = {
-    3: "حساب کاربری، ورود امن و ذخیره‌سازی دائمی پروفایل با پایگاه داده واقعی فعال است.",
-    4: "داشبورد شخصی به داده واقعی حساب شما متصل شد؛ روند وزن با ثبت اندازه‌گیری فعال است.",
-    7: "سیستم تغذیه فعال شد: برآورد انرژی، برنامه وعده‌ها با جایگزینی و فهرست خرید.",
-    8: "دستیار هوشمند با اتصال واقعی به مدل زبانی فعال شد: چت دوزبانه فارسی/انگلیسی با مکالمه‌های ذخیره‌شده و پاسخ بر اساس داده واقعی حساب شما.",
-  };
+  const t = useStrings(shellStrings);
+  const status = t.statusForStage(CURRENT_STAGE) || t.devGenericStatus;
+
   return (
     <div className="rounded-xl border border-border/60 bg-card/70 p-3.5">
       <div className="flex items-center justify-between gap-2">
         <span className="flex items-center gap-1.5 text-xs font-semibold text-foreground">
           <Sparkles className="size-3.5 text-primary" aria-hidden="true" />
-          وضعیت توسعه
+          {t.devStatusTitle}
         </span>
         <span className="rounded-md border border-primary/30 bg-primary/10 px-2 py-0.5 text-[10px] font-bold text-primary">
-          مرحله {CURRENT_STAGE.toLocaleString("fa-IR")} از ۱۳
+          {t.stageOf(CURRENT_STAGE, 13)}
         </span>
       </div>
       <Progress
         value={Math.round((CURRENT_STAGE / 13) * 100)}
         className="mt-3 h-1.5"
-        aria-label="پیشرفت کل مراحل توسعه"
+        aria-label={t.overallProgressAria}
       />
       <p className="mt-2.5 text-[10px] leading-relaxed text-muted-foreground">
-        {stageStatus[CURRENT_STAGE] ?? "محصول در حال توسعه است."} مرحله بعد پس از تأیید شما
-        آغاز می‌شود.
+        {status}
+        {t.nextStageNote}
       </p>
     </div>
   );

@@ -34,6 +34,25 @@ export const GLUTES_CALVES_FULLBODY_EXERCISES: LibraryExercise[] = [
       "یک بالشتک یا حوله لوله‌شده دور میله بگذارید تا فشار روی لگن کاهش پیدا کند.",
       "در بالای حرکت انقباض سرینی کافی است؛ نیازی به قوس اضافه کمر نیست.",
     ],
+    enContent: {
+      summary: "Driving the hips up with the upper back supported on a bench; one of the most effective direct loaded glute exercises.",
+      steps: [
+        "Rest your upper back on the bench edge; the bar, padded, sits over the hip crease.",
+        "Feet shoulder-width apart on the floor; knees bent and shins nearly vertical at the top.",
+        "Press through the heels to drive the hips up until the torso and thighs line up.",
+        "Keep the glute contraction at the top and lower the hips with control.",
+      ],
+      breathing: "Exhale as you drive the hips up and inhale during the controlled lowering.",
+      mistakes: [
+        "Arching the lower back and pushing the hips above the torso-and-thigh line",
+        "Pressing through the toes instead of the heels",
+        "The bench shifting during the set",
+      ],
+      safety: [
+        "Put a pad or a rolled towel around the bar to reduce the pressure on the hips.",
+        "The glute contraction at the top is enough; no extra lower-back arch is needed.",
+      ],
+    },
   },
   {
     id: "glute-bridge",
@@ -63,6 +82,25 @@ export const GLUTES_CALVES_FULLBODY_EXERCISES: LibraryExercise[] = [
       "دور کف پا یک کش مقاومتی بگذارید تا نسخه مقاومت‌دار اجرا شود.",
       "تمرکز بر انقباض سرینی مهم‌تر از ارتفاع بالاتر است.",
     ],
+    enContent: {
+      summary: "Lifting the hips from a lying position; a glute-activation exercise that needs no equipment at all.",
+      steps: [
+        "Lie on your back; knees bent, feet hip-width apart, heels close to the hips.",
+        "Hands at your sides on the floor and abs braced.",
+        "Press through the heels to lift the hips until the shoulders-to-knees line is straight.",
+        "Hold a short pause on the glute contraction at the top, then lower with control.",
+      ],
+      breathing: "Exhale as you lift the hips and inhale as you lower them.",
+      mistakes: [
+        "Pressing through the toes instead of the heels",
+        "Arching the lower back and pushing the hips above the shoulder-to-knee line",
+        "Heels lifting off the floor",
+      ],
+      safety: [
+        "Loop a resistance band above the knees for a banded version.",
+        "Focusing on the glute contraction matters more than lifting higher.",
+      ],
+    },
   },
   {
     id: "cable-kickback",
@@ -92,6 +130,25 @@ export const GLUTES_CALVES_FULLBODY_EXERCISES: LibraryExercise[] = [
       "دامنه بالا رفتن پا محدود است؛ دامنه بزرگ‌تر با قوس کمر به‌دست می‌آید، نه با سرینی.",
       "پای تکیه‌گاه را کمی خم نگه دارید تا تعادل حفظ شود.",
     ],
+    enContent: {
+      summary: "Pulling the leg back against cable resistance; a single-joint glute exercise with continuous tension.",
+      steps: [
+        "Fasten the cable cuff around the ankle of the free leg and set the pulley to the lowest position.",
+        "Hands on the machine's support; torso slightly leaned forward with a neutral spine.",
+        "Pull the free leg back and up — about 30–45 degrees — with glute contraction.",
+        "Return the leg with control beside the support leg and switch sides after the set.",
+      ],
+      breathing: "Exhale as you pull the leg back and inhale on the controlled return.",
+      mistakes: [
+        "Arching the lower back to lift the leg higher",
+        "Twisting the torso to assist the movement",
+        "Using a heavy weight at high speed",
+      ],
+      safety: [
+        "The leg's lifting range is limited; a bigger range comes from arching the back, not from the glutes.",
+        "Keep the support leg slightly bent to preserve balance.",
+      ],
+    },
   },
 
   /* ================================ ساق پا ================================ */
@@ -123,6 +180,25 @@ export const GLUTES_CALVES_FULLBODY_EXERCISES: LibraryExercise[] = [
       "برای بار اضافه می‌توانید یک دمبل در دست بگیرید؛ تعادل را پیش از افزودن وزنه تثبیت کنید.",
       "تکیه‌گاه ثابت برای دست در همه تکرارها داشته باشید.",
     ],
+    enContent: {
+      summary: "Rising onto the toes from a standing position through a full range; the foundational calf exercise.",
+      steps: [
+        "Place the balls of the feet on the edge of a step or stable plate; heels in the air and hands on a fixed support.",
+        "Lower the heels to a comfortable stretch.",
+        "Rise onto the toes as high as possible.",
+        "Lower the heels with control and take a brief pause at the bottom before the next rep.",
+      ],
+      breathing: "Exhale as you rise onto the toes and inhale as you lower the heels.",
+      mistakes: [
+        "Fast, bouncy reps without the full range",
+        "Skipping the bottom range and losing the calf stretch",
+        "Bending the knees to help the lift",
+      ],
+      safety: [
+        "For extra load you can hold a dumbbell; stabilize your balance before adding weight.",
+        "Keep a fixed hand support for every rep.",
+      ],
+    },
   },
   {
     id: "calf-raise-seated",
@@ -152,6 +228,25 @@ export const GLUTES_CALVES_FULLBODY_EXERCISES: LibraryExercise[] = [
       "بالشتک را روی ران — نه روی زانو — تنظیم کنید.",
       "وزنه را در پایان ست با کنترل برگردانید.",
     ],
+    enContent: {
+      summary: "Raising the heels from a seated position with weight on the knees; extra emphasis on the deeper calf muscle (soleus).",
+      steps: [
+        "Sit on the machine; balls of the feet on the plate and the pad on the thighs near the knees.",
+        "Lower the heels to a comfortable stretch.",
+        "Raise the heels as high as possible by pressing with the balls of the feet.",
+        "Lower with control and keep the full range on every rep.",
+      ],
+      breathing: "Exhale as you raise the heels and inhale as you lower them.",
+      mistakes: [
+        "Kicking the weight up with hand help at the start of each rep",
+        "A short range covering only the top part of the movement",
+        "Balls of the feet lifting off the plate at the bottom",
+      ],
+      safety: [
+        "Set the pad on the thighs — not on the knees.",
+        "Return the weight with control at the end of the set.",
+      ],
+    },
   },
   {
     id: "calf-press",
@@ -181,6 +276,25 @@ export const GLUTES_CALVES_FULLBODY_EXERCISES: LibraryExercise[] = [
       "زانوها را در طول ست تقریباً ثابت نگه دارید؛ حرکت فقط از مچ پا است.",
       "پاها را هرگز کاملاً قفل نکنید و صفحه را با کنترل برگردانید.",
     ],
+    enContent: {
+      summary: "Pressing the plate with the balls of the feet on the leg-press machine; progressive calf loading without spinal compression.",
+      steps: [
+        "Sit in the leg-press machine and place only the balls of the feet on the bottom edge of the plate so the heels hang free.",
+        "Keep the knees almost straight — without a hard lock.",
+        "Lower the heels to a comfortable stretch.",
+        "Press the plate forward and up with the balls of the feet and take a brief pause at the bottom after every rep.",
+      ],
+      breathing: "Exhale as you press the plate and inhale as you lower the heels.",
+      mistakes: [
+        "Rapid knee bending and straightening during the rep",
+        "Incomplete bottom range without the calf stretch",
+        "Hips lifting off the seat while pressing",
+      ],
+      safety: [
+        "Keep the knees nearly fixed through the set; the movement comes only from the ankles.",
+        "Never lock the legs completely and return the plate with control.",
+      ],
+    },
   },
 
   /* ========================= حرکات ترکیبی تمام بدن ========================= */
@@ -212,6 +326,25 @@ export const GLUTES_CALVES_FULLBODY_EXERCISES: LibraryExercise[] = [
       "برای شروع، نسخه بدون شنا و با قدم به عقب به‌جای پرت کردن پاها ساده‌تر است.",
       "نسخه بدون پرش (برخی ایستادن) برای فرودهای حساس مناسب‌تر است.",
     ],
+    enContent: {
+      summary: "Combining a squat, a push-up, and a jump in one continuous movement; a full-body cardiovascular and muscular challenge at once.",
+      steps: [
+        "From standing, squat down and place the hands on the floor.",
+        "Shoot the legs back into a plank position.",
+        "Perform one full push-up and then bring the feet back toward the hands.",
+        "Explode up from the squat with the arms overhead; land softly on the balls of the feet.",
+      ],
+      breathing: "Keep a steady rhythm: exhale on the push-up press and the jump, inhale on the return to the squat.",
+      mistakes: [
+        "Lower back sagging in the plank position",
+        "Landing hard with straight knees",
+        "Buying speed at the cost of form",
+      ],
+      safety: [
+        "To start, the no-push-up version with stepping back instead of shooting the legs is easier.",
+        "The no-jump version (stand up instead) is more suitable for sensitive landings.",
+      ],
+    },
   },
   {
     id: "farmers-walk",
@@ -241,6 +374,25 @@ export const GLUTES_CALVES_FULLBODY_EXERCISES: LibraryExercise[] = [
       "مسیر رفت‌وبرگشت را خالی و بدون موانع انتخاب کنید.",
       "گرفتن پیش از کم شدن قدرت خاتمه یابد؛ رها کردن ناگهانی وزنه روی زمین مجاور خطرناک است.",
     ],
+    enContent: {
+      summary: "Carrying heavy weights in both hands with controlled steps; builds grip, traps, and total-torso bracing.",
+      steps: [
+        "Lift the two dumbbells off the floor by hinging at the hips — not by rounding the back.",
+        "Stand tall; shoulders back and down, arms straight at the sides, grip firm.",
+        "Walk a marked route with short, controlled steps.",
+        "At the end of the route, set the weights down with control by hinging at the hips.",
+      ],
+      breathing: "Normal, continuous breathing along the route; keep the abs braced.",
+      mistakes: [
+        "Upper body leaning forward while walking",
+        "Shoulders slumping and the traps releasing",
+        "Fast, unsteady steps",
+      ],
+      safety: [
+        "Choose a clear, obstacle-free route for the walk.",
+        "End the carry before grip strength fades; suddenly dropping weights near your feet is dangerous.",
+      ],
+    },
   },
   {
     id: "thruster",
@@ -270,5 +422,24 @@ export const GLUTES_CALVES_FULLBODY_EXERCISES: LibraryExercise[] = [
       "الگو را با وزنه بسیار سبک تا هماهنگ شدن اجرا کنید.",
       "این حرکت انرژی زیادی می‌گیرد؛ با خستگی زیاد و فرم شکند اجرا نکنید.",
     ],
+    enContent: {
+      summary: "Linking a front squat to an overhead press in one continuous, powerful movement with dumbbells.",
+      steps: [
+        "Hold the two dumbbells at the shoulders; elbows forward and in, wrists straight.",
+        "Perform a full squat keeping the lower back neutral.",
+        "As you rise from the squat, channel the leg drive into the press and straighten the dumbbells overhead.",
+        "In the same flow, bring the dumbbells back to the shoulders and enter the next squat.",
+      ],
+      breathing: "Inhale in the squat and exhale continuously on the way up and through the press.",
+      mistakes: [
+        "Starting the press before the squat ascent is finished",
+        "Arching the lower back while pressing up",
+        "Wrists tilting and the dumbbells drifting behind the body line",
+      ],
+      safety: [
+        "Learn the pattern with a very light load until it is coordinated.",
+        "This exercise is highly demanding; do not perform it heavily fatigued with broken form.",
+      ],
+    },
   },
 ];

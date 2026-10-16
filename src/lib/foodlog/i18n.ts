@@ -108,6 +108,18 @@ export interface FoodLogStrings {
   dashboardProtein: string;
   dashboardEntries: string;
   dashboardGoToLog: string;
+  // کارت خلاصه برنامه غذایی فعال (داشبورد)
+  planCardTitle: string;
+  planGoalLine: (goal: string, meals: string) => string;
+  planCaution: string;
+  planTargetEnergy: (kcal: string) => string;
+  planTransparencyNote: string;
+  planEmptyBody: string;
+  planCreateCta: string;
+  planViewMeals: string;
+  // دکمه‌های کوتاه
+  logShort: string;
+  retry: string;
   // ایمنی
   safetyNote: string;
 }
@@ -199,6 +211,18 @@ const FA: FoodLogStrings = {
   successUpdated: "ثبت به‌روزرسانی شد و جمع روز دوباره محاسبه شد",
   successDeleted: "ثبت حذف شد",
   dashboardTodayTitle: "مصرف واقعی امروز",
+  planCardTitle: "برنامه غذایی",
+  planGoalLine: (goal, meals) => `هدف: ${goal} — ${meals} وعده در روز`,
+  planCaution: "حالت احتیاط — بدون هدف کالری شخصی",
+  planTargetEnergy: (kcal) => `هدف انرژی روزانه: ${kcal} کیلوکالری (تخمینی)`,
+  planTransparencyNote:
+    "این هدف برنامهٔ پیشنهادی است؛ غذای واقعی خورده‌شده در بخش «مصرف واقعی غذا» ثبت و با همین هدف مقایسه می‌شود.",
+  planEmptyBody:
+    "برنامه غذایی فعالی ندارید. برنامه‌ساز بر اساس پروفایل و آلرژی‌های شما وعده‌ها را با مقدار گرم هر ماده پیشنهاد می‌دهد.",
+  planCreateCta: "ساخت برنامه غذایی",
+  planViewMeals: "مشاهده وعده‌ها",
+  logShort: "ثبت مصرف",
+  retry: "تلاش مجدد",
   dashboardNoLogs: "امروز ثبت مصرفی ندارید",
   dashboardNoLogsHint: "آنچه خورده‌اید را در بخش تغذیه ثبت کنید تا جمع واقعی روز دیده شود.",
   dashboardEnergy: "انرژی تخمینی",
@@ -299,6 +323,18 @@ const EN: FoodLogStrings = {
   successUpdated: "Entry updated and daily totals recomputed",
   successDeleted: "Entry deleted",
   dashboardTodayTitle: "Today's real intake",
+  planCardTitle: "Nutrition plan",
+  planGoalLine: (goal, meals) => `Goal: ${goal} — ${meals} meals per day`,
+  planCaution: "Caution mode — no personal calorie target",
+  planTargetEnergy: (kcal) => `Daily energy target: ${kcal} kcal (estimated)`,
+  planTransparencyNote:
+    "This is the suggested plan's target; real food intake is logged in the \"Real food intake\" section and compared against it.",
+  planEmptyBody:
+    "You have no active nutrition plan. The plan builder suggests meals with per-item gram amounts based on your profile and allergies.",
+  planCreateCta: "Create a nutrition plan",
+  planViewMeals: "View meals",
+  logShort: "Log intake",
+  retry: "Retry",
   dashboardNoLogs: "No intake logged today",
   dashboardNoLogsHint: "Log what you eat in the nutrition section to see real daily totals.",
   dashboardEnergy: "Estimated energy",

@@ -26,10 +26,14 @@ import {
 } from "@/components/ui/collapsible";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
-import { faDigits, normalizeDigits } from "@/lib/profile";
+import { normalizeDigits } from "@/lib/profile";
 import { cn } from "@/lib/utils";
 import { recomputeItemFromSnapshot } from "@/lib/nutrition-engine/engine";
-import { NUTRITION_GOAL_LABELS } from "@/lib/nutrition-engine/types";
+import { useLocale } from "@/lib/i18n/locale";
+import { useStrings } from "@/lib/i18n/use-strings";
+import { nutritionStrings } from "@/lib/i18n/sections/nutrition";
+import { sharedStrings } from "@/lib/i18n/sections/shared";
+import { localeNumber, localeDecimal } from "@/lib/i18n/format";
 import type { NutritionMealItemClient, NutritionPlanClient } from "@/lib/nutrition-storage";
 import { ReplaceItemDialog } from "./replace-dialog";
 import { ShoppingListDialog } from "./shopping-dialog";
@@ -47,12 +51,14 @@ interface Props {
 type PatchTarget = { dayOrder: number; mealOrder: number; itemOrder: number; item: NutritionMealItemClient };
 
 function MacroRow({ kcal, protein, carb, fat, bold }: { kcal: number; protein: number; carb: number; fat: number; bold?: boolean }) {
+  const t = useStrings(nutritionStrings);
+  const locale = useLocale();
   return (
     <div className={cn("flex flex-wrap items-center gap-x-4 gap-y-1 font-semibold text-muted-foreground", bold ? "text-[11px]" : "text-[10px]")}>
-      <span className="text-primary">{faDigits(kcal)} کیلوکالری</span>
-      <span>پروتئین {faDigits(protein)} گرم</span>
-      <span>کربوهیدرات {faDigits(carb)} گرم</span>
-      <span>چربی {faDigits(fat)} گرم</span>
+      <span className="text-primary">{localeNumber(kcal, locale)} {t.kcalUnit}</span>
+      <span>{t.proteinLabel} {localeDecimal(protein, 1, locale)} {t.gramsUnit}</span>
+      <span>{t.carbLabel} {localeDecimal(carb, 1, locale)} {t.gramsUnit}</span>
+      <span>{t.fatLabel} {localeDecimal(fat, 1, locale)} {t.gramsUnit}</span>
     </div>
   );
 }
@@ -64,6 +70,9 @@ export function NutritionPlanDetail({ plan, onChanged }: Props) {
   const [replaceTarget, setReplaceTarget] = useState<PatchTarget | null>(null);
   const [shoppingOpen, setShoppingOpen] = useState(false);
   const [patching, setPatching] = useState(false);
+  const t = useStrings(nutritionStrings);
+  const sh = useStrings(sharedStrings);
+  const locale = useLocale();
   // ثبت مصرف واقعی از قلم برنامه — پیش‌پر با مقدار برنامه، ثبت فقط با تأیید
   const logLang = useFoodLogUiLang();
   const logStrings = foodLogStrings(logLang);
@@ -107,7 +116,7 @@ export function NutritionPlanDetail({ plan, onChanged }: Props) {
         toast.success(successMessage);
         return true;
       }
-      let message = "تغییر ممکن نشد؛ دوباره تلاش کنید.";
+      let message = t.patchFailedToast;
       try {
         const data = (await response.json()) as { message?: string };
         if (data.message) message = data.message;
@@ -117,7 +126,7 @@ export function NutritionPlanDetail({ plan, onChanged }: Props) {
       toast.error(message);
       return false;
     } catch {
-      toast.error("ارتباط با سرور برقرار نشد.");
+      toast.error(t.networkToast);
       return false;
     } finally {
       setPatching(false);
@@ -134,7 +143,7 @@ export function NutritionPlanDetail({ plan, onChanged }: Props) {
         itemOrder: patchTarget.itemOrder,
         grams: gramsPreview.grams,
       },
-      "مقدار به‌روزرسانی و مجموع‌ها دوباره محاسبه شد"
+      t.gramsUpdatedToast
     );
     if (ok) {
       setPatchTarget(null);
@@ -152,23 +161,26 @@ export function NutritionPlanDetail({ plan, onChanged }: Props) {
         itemOrder: replaceTarget.itemOrder,
         newFoodId,
       },
-      "ماده جایگزین شد و مجموع‌ها دوباره محاسبه شد"
+      t.replacedToast
     );
   };
 
   const { calc } = plan;
   const dayAvg = plan.days.length > 0 ? Math.round(plan.days.reduce((s, d) => s + d.kcal, 0) / plan.days.length) : 0;
+  const itemName = (item: { faName: string; enName: string }) => (locale === "fa" ? item.faName : item.enName);
+  const num = (value: number) => localeNumber(value, locale);
+  const dec = (value: number) => localeDecimal(value, 1, locale);
 
   return (
     <div className="flex flex-col gap-4">
       {/* خلاصه برنامه ذخیره‌شده */}
-      <section aria-label="خلاصه برنامه غذایی" className="rounded-2xl border border-primary/25 bg-primary/5 p-5">
+      <section aria-label={t.planSummaryAria} className="rounded-2xl border border-primary/25 bg-primary/5 p-5">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div className="min-w-0">
             <h3 className="text-sm font-bold">{plan.title}</h3>
             <p className="mt-1 text-[11px] leading-5 text-muted-foreground">
-              هدف: {NUTRITION_GOAL_LABELS[plan.goal]} — {faDigits(plan.mealsPerDay)} وعده در روز —{" "}
-              {plan.days.length > 1 ? `${faDigits(plan.days.length)} روز با تنوع` : "یک‌روزه"}
+              {t.goalPrefix}{t.goalLabel(plan.goal)} — {t.mealsPerDayUnit(num(plan.mealsPerDay))} —{" "}
+              {plan.days.length > 1 ? t.daysWithVariety(num(plan.days.length)) : t.oneDayPlan}
             </p>
           </div>
           <Button
@@ -178,7 +190,7 @@ export function NutritionPlanDetail({ plan, onChanged }: Props) {
             className="h-8 border-border/70 px-3 text-[11px] font-semibold hover:border-primary/40 hover:text-primary"
           >
             <ShoppingBasket className="size-3.5" aria-hidden="true" />
-            فهرست خرید
+            {t.shoppingListButton}
           </Button>
         </div>
 
@@ -186,28 +198,32 @@ export function NutritionPlanDetail({ plan, onChanged }: Props) {
           <>
             <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
               <div className="rounded-xl border border-border/50 bg-card p-3 text-center">
-                <p className="text-[10px] text-muted-foreground">هدف کالری روزانه</p>
-                <p className="mt-1 text-sm font-extrabold">{faDigits(calc.targetKcal)}</p>
+                <p className="text-[10px] text-muted-foreground">{t.dailyKcalTargetCard}</p>
+                <p className="mt-1 text-sm font-extrabold">{num(calc.targetKcal)}</p>
               </div>
               <div className="rounded-xl border border-primary/40 bg-primary/10 p-3 text-center">
-                <p className="text-[10px] text-primary">میانگین روزهای برنامه</p>
-                <p className="mt-1 text-sm font-extrabold text-primary">{faDigits(dayAvg)}</p>
+                <p className="text-[10px] text-primary">{t.planDaysAvgCard}</p>
+                <p className="mt-1 text-sm font-extrabold text-primary">{num(dayAvg)}</p>
               </div>
               <div className="rounded-xl border border-border/50 bg-card p-3 text-center">
-                <p className="text-[10px] text-muted-foreground">پروتئین هدف</p>
-                <p className="mt-1 text-sm font-extrabold">{faDigits(calc.macros?.proteinG ?? "—")} گرم</p>
-              </div>
-              <div className="rounded-xl border border-border/50 bg-card p-3 text-center">
-                <p className="text-[10px] text-muted-foreground">BMR / TDEE تخمینی</p>
+                <p className="text-[10px] text-muted-foreground">{t.proteinTargetCard}</p>
                 <p className="mt-1 text-sm font-extrabold">
-                  {faDigits(calc.bmr ?? "—")} / {faDigits(calc.tdee ?? "—")}
+                  {calc.macros != null ? num(calc.macros.proteinG) : sh.unknownValue} {t.gramsUnit}
+                </p>
+              </div>
+              <div className="rounded-xl border border-border/50 bg-card p-3 text-center">
+                <p className="text-[10px] text-muted-foreground">{t.bmrTdeeCard}</p>
+                <p className="mt-1 text-sm font-extrabold">
+                  {calc.bmr != null ? num(calc.bmr) : sh.unknownValue} / {calc.tdee != null ? num(calc.tdee) : sh.unknownValue}
                 </p>
               </div>
             </div>
             {calc.macros && Math.abs(dayAvg - calc.targetKcal) > calc.targetKcal * 0.05 && (
               <p className="mt-3 text-[10px] leading-5 text-amber-200/90">
-                میانگین انرژی روزهای برنامه با هدف {Math.abs(dayAvg - calc.targetKcal) > 0 ? (dayAvg > calc.targetKcal ? "حدود" : "حدود") : ""}{" "}
-                {faDigits(Math.abs(dayAvg - calc.targetKcal))} کیلوکالری اختلاف دارد — نتیجه واقعی اجزای برنامه است و برای تطبیق ظاهری دستکاری نشده است.
+                {t.kcalDiffNote(
+                  Math.abs(dayAvg - calc.targetKcal) > 0 ? (dayAvg > calc.targetKcal ? t.approxWord : t.approxWord) : "",
+                  num(Math.abs(dayAvg - calc.targetKcal))
+                )}
               </p>
             )}
           </>
@@ -215,17 +231,17 @@ export function NutritionPlanDetail({ plan, onChanged }: Props) {
         {calc.caution && (
           <p className="mt-3 flex items-start gap-2 text-[11px] leading-5 text-amber-200">
             <CircleAlert className="mt-0.5 size-3.5 shrink-0 text-amber-300" aria-hidden="true" />
-            این برنامه در حالت احتیاط و بر پایه حفظ وزن ساخته شده است؛ برای تغییر هدف با متخصص مشورت کنید.
+            {t.cautionNote}
           </p>
         )}
         <p className="mt-3 flex items-center gap-1.5 text-[10px] text-muted-foreground/80">
           <Calculator className="size-3" aria-hidden="true" />
-          محاسبات با موتور قانون‌محور نسخه {plan.engineVersion} و بانک مواد نسخه {plan.foodsVersion} تولید شده است.
+          {t.engineNote(t.versionLabel(plan.engineVersion), t.versionLabel(plan.foodsVersion))}
         </p>
       </section>
 
       {/* روزها و وعده‌ها */}
-      <section aria-label="وعده‌های برنامه" className="flex flex-col gap-2.5">
+      <section aria-label={t.mealsSectionAria} className="flex flex-col gap-2.5">
         {plan.days.map((day) => {
           const isOpen = openDays.includes(day.order);
           return (
@@ -238,7 +254,7 @@ export function NutritionPlanDetail({ plan, onChanged }: Props) {
               <CollapsibleTrigger className="flex w-full items-center justify-between gap-3 p-4 text-start">
                 <div>
                   <p className="text-xs font-bold">
-                    {plan.days.length > 1 ? `روز ${faDigits(day.order)}` : "برنامه روز"}
+                    {plan.days.length > 1 ? t.dayLabel(num(day.order)) : t.dayPlanLabel}
                   </p>
                   <div className="mt-1">
                     <MacroRow kcal={day.kcal} protein={day.protein} carb={day.carb} fat={day.fat} />
@@ -256,7 +272,7 @@ export function NutritionPlanDetail({ plan, onChanged }: Props) {
                       <div className="flex flex-wrap items-center justify-between gap-2">
                         <p className="text-xs font-bold text-primary">{meal.title}</p>
                         <span className="text-[10px] font-bold text-muted-foreground">
-                          {faDigits(meal.kcal)} کیلوکالری
+                          {num(meal.kcal)} {t.kcalUnit}
                         </span>
                       </div>
                       <ul className="mt-2.5 flex flex-col gap-2">
@@ -267,14 +283,14 @@ export function NutritionPlanDetail({ plan, onChanged }: Props) {
                           >
                             <div className="min-w-0 flex-1">
                               <p className="text-[11px] font-bold text-foreground/90">
-                                {item.faName}
+                                {itemName(item)}
                                 <span className="ms-2 text-[10px] font-medium text-muted-foreground">
-                                  {faDigits(item.grams)} گرم — {faDigits(item.kcal)} کیلوکالری
+                                  {num(item.grams)} {t.gramsUnit} — {num(item.kcal)} {t.kcalUnit}
                                 </span>
                               </p>
                               <p className="mt-0.5 text-[9px] text-muted-foreground/70">
-                                سهم متداول: {item.servingHint} — پروتئین {faDigits(item.protein)} / کربوهیدرات{" "}
-                                {faDigits(item.carb)} / چربی {faDigits(item.fat)} گرم
+                                {t.servingPrefix}{item.servingHint} — {t.proteinLabel} {dec(item.protein)} / {t.carbLabel} {" "}
+                                {dec(item.carb)} / {t.fatLabel} {dec(item.fat)} {t.gramsUnit}
                               </p>
                             </div>
                             <div className="flex shrink-0 items-center gap-1">
@@ -293,11 +309,11 @@ export function NutritionPlanDetail({ plan, onChanged }: Props) {
                                   setLogOpen(true);
                                 }}
                                 className="h-7 border-primary/40 bg-primary/10 px-2 text-[10px] font-bold text-primary hover:bg-primary/20"
-                                aria-label={logLang === "en" ? "Log intake" : "ثبت مصرف"}
+                                aria-label={logStrings.logShort}
                               >
                                 <Utensils className="size-3" aria-hidden="true" />
                                 <span className="hidden sm:inline">
-                                  {logLang === "en" ? "Log" : "ثبت مصرف"}
+                                  {logStrings.logShort}
                                 </span>
                               </Button>
                               <Button
@@ -311,7 +327,7 @@ export function NutritionPlanDetail({ plan, onChanged }: Props) {
                                 className="h-7 border-border/60 px-2 text-[10px] font-semibold hover:border-primary/40 hover:text-primary"
                               >
                                 <Pencil className="size-3" aria-hidden="true" />
-                                مقدار
+                                {t.amountButton}
                               </Button>
                               <Button
                                 size="sm"
@@ -323,7 +339,7 @@ export function NutritionPlanDetail({ plan, onChanged }: Props) {
                                 className="h-7 border-border/60 px-2 text-[10px] font-semibold hover:border-primary/40 hover:text-primary"
                               >
                                 <Repeat2 className="size-3" aria-hidden="true" />
-                                جایگزین
+                                {t.swapButton}
                               </Button>
                             </div>
                           </li>
@@ -343,8 +359,8 @@ export function NutritionPlanDetail({ plan, onChanged }: Props) {
 
       {/* یادداشت‌های برنامه */}
       {plan.notes.length > 0 && (
-        <section aria-label="یادداشت‌ها" className="rounded-2xl border border-border/60 bg-card p-5">
-          <h3 className="text-sm font-bold">یادداشت‌های مهم</h3>
+        <section aria-label={t.notesSectionAria} className="rounded-2xl border border-border/60 bg-card p-5">
+          <h3 className="text-sm font-bold">{t.importantNotesHeading}</h3>
           <ul className="mt-3 flex flex-col gap-2">
             {plan.notes.map((note, index) => (
               <li key={index} className="flex items-start gap-2.5 text-[11px] leading-6 text-muted-foreground">
@@ -363,10 +379,9 @@ export function NutritionPlanDetail({ plan, onChanged }: Props) {
             className="w-full max-w-sm rounded-2xl border border-border/60 bg-card p-5"
             onClick={(e) => e.stopPropagation()}
           >
-            <h3 className="text-sm font-bold">تغییر مقدار «{patchTarget.item.faName}»</h3>
+            <h3 className="text-sm font-bold">{t.gramsDialogTitle(itemName(patchTarget.item))}</h3>
             <p className="mt-1 text-[11px] leading-5 text-muted-foreground">
-              مقدار فعلی: {faDigits(patchTarget.item.grams)} گرم. مقدار جدید را وارد کنید و نتیجه
-              را پیش از ذخیره ببینید.
+              {t.gramsDialogHint(num(patchTarget.item.grams))}
             </p>
             <div className="mt-3 flex items-center gap-2">
               <Input
@@ -378,22 +393,22 @@ export function NutritionPlanDetail({ plan, onChanged }: Props) {
                   if (e.key === "Enter" && gramsPreview) void confirmGrams();
                 }}
                 className="h-9 flex-1 text-sm"
-                aria-label="مقدار جدید به گرم"
+                aria-label={t.gramsInputAria}
               />
-              <span className="text-xs text-muted-foreground">گرم</span>
+              <span className="text-xs text-muted-foreground">{t.gramsUnit}</span>
             </div>
             {gramsDraft.trim() && !gramsPreview && (
               <p className="mt-2 text-[10px] text-rose-300">
-                مقدار باید عددی بین ۱۰ تا ۱۵۰۰ گرم باشد.
+                {t.gramsInvalid}
               </p>
             )}
             {gramsPreview && (
               <div className="mt-3 rounded-xl border border-primary/25 bg-primary/5 p-3">
-                <p className="text-[10px] font-bold text-primary">پیش‌نمایش پس از ذخیره:</p>
+                <p className="text-[10px] font-bold text-primary">{t.previewAfterSaveLabel}</p>
                 <p className="mt-1 text-[11px] leading-5 text-foreground/90">
-                  {faDigits(gramsPreview.grams)} گرم — {faDigits(gramsPreview.kcal)} کیلوکالری — پروتئین{" "}
-                  {faDigits(gramsPreview.protein)} / کربوهیدرات {faDigits(gramsPreview.carb)} / چربی{" "}
-                  {faDigits(gramsPreview.fat)} گرم
+                  {num(gramsPreview.grams)} {t.gramsUnit} — {num(gramsPreview.kcal)} {t.kcalUnit} — {t.proteinLabel} {" "}
+                  {dec(gramsPreview.protein)} / {t.carbLabel} {dec(gramsPreview.carb)} / {t.fatLabel} {" "}
+                  {dec(gramsPreview.fat)} {t.gramsUnit}
                 </p>
               </div>
             )}
@@ -404,7 +419,7 @@ export function NutritionPlanDetail({ plan, onChanged }: Props) {
                 className="flex-1 font-bold text-primary-foreground"
               >
                 {patching ? <Loader2 className="size-4 animate-spin" aria-hidden="true" /> : null}
-                ذخیره تغییر
+                {t.saveChangeButton}
               </Button>
               <Button
                 variant="outline"
@@ -412,7 +427,7 @@ export function NutritionPlanDetail({ plan, onChanged }: Props) {
                 disabled={patching}
                 className="border-border/70 font-semibold"
               >
-                انصراف
+                {t.cancel}
               </Button>
             </div>
           </div>
@@ -454,11 +469,7 @@ export function NutritionPlanDetail({ plan, onChanged }: Props) {
           bumpFoodLogSync();
         }}
         onAuthError={() => {
-          toast.error(
-            logLang === "en"
-              ? "Your session has expired; please sign in again."
-              : "نشست شما منقضی شده است؛ دوباره وارد شوید."
-          );
+          toast.error(logStrings.errorAuth);
         }}
       />
     </div>

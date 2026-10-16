@@ -27,7 +27,7 @@ check() { # name expected actual
 code_of() { curl -s -o "$OUT" -w "%{http_code}" "$@"; }
 
 # سربرگ احراز هویت از set-cookie (شبیه‌سازی دقیق مسیر HTTPS مرورگر)
-auth_hdr() { rg -o '__Secure-fitcoach\.session_token=[^;]+' "$1" | head -1; }
+auth_hdr() { rg -o '(?:__Secure-)?fitcoach\.session_token=[^;]+' "$1" | head -1; }
 
 # لحظه UTC معادل «ساعت محلی تهران» — همان قرارداد tehranInstantFromDayTime
 iso_of() { # day hh:mm

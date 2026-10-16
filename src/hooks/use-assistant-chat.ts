@@ -9,7 +9,8 @@ import type {
   LangChoice,
 } from "@/lib/assistant/types";
 import { detectMessageLang } from "@/lib/assistant/language";
-import { uiLangOf, type UiLang } from "@/lib/assistant/i18n";
+import type { UiLang } from "@/lib/assistant/i18n";
+import { useLocale } from "@/lib/i18n/locale";
 
 /**
  * هوک کلاینت چت دستیار — همه داده فقط از API متصل به نشست سرور خوانده و
@@ -117,6 +118,10 @@ export interface UseAssistantChatResult {
 
 export function useAssistantChat(): UseAssistantChatResult {
   /* ------------------------------ زبان رابط ------------------------------ */
+  // زبان رابط بخش دستیار از کلید سراسری FA/EN می‌آید (یک منبع واحد برای
+  // کل اپ)؛ انتخاب‌گر اختصاصی دستیار فقط «زبان پاسخ» را کنترل می‌کند.
+  const uiLang = useLocale();
+
   const [langChoice, setLangChoiceState] = useState<LangChoice>("auto");
 
   useEffect(() => {
@@ -138,8 +143,6 @@ export function useAssistantChat(): UseAssistantChatResult {
       // ذخیره ترجیح اختیاری است
     }
   }, []);
-
-  const uiLang = uiLangOf(langChoice);
 
   /* ------------------------------ وضعیت اتصال ------------------------------ */
   const [provider, setProvider] = useState<AssistantProviderStatusClient | null>(null);
@@ -355,7 +358,7 @@ export function useAssistantChat(): UseAssistantChatResult {
           {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ content, language }),
+            body: JSON.stringify({ content, language, uiLocale: uiLang }),
           }
         );
         if (!response.ok) {
@@ -392,7 +395,7 @@ export function useAssistantChat(): UseAssistantChatResult {
         setPending(false);
       }
     },
-    [createConversation, langChoice, pending, refreshConversations]
+    [createConversation, langChoice, pending, refreshConversations, uiLang]
   );
 
   /* ------------------------------ تلاش مجدد ------------------------------ */
@@ -411,7 +414,7 @@ export function useAssistantChat(): UseAssistantChatResult {
           {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ language }),
+            body: JSON.stringify({ language, uiLocale: uiLang }),
           }
         );
         if (!response.ok) {
@@ -442,7 +445,7 @@ export function useAssistantChat(): UseAssistantChatResult {
         setPending(false);
       }
     },
-    [applyConversationDetail, langChoice, pending, refreshConversations, transient]
+    [applyConversationDetail, langChoice, pending, refreshConversations, transient, uiLang]
   );
 
   /** آخرین پیام موثق از سرور بدون پاسخ → تلاش مجدد ممکن (مثلاً پس از رفرش) */

@@ -36,6 +36,12 @@ import {
   normalizeDigits,
 } from "@/lib/profile";
 import type { FitnessProfileClient } from "@/lib/profile";
+import { useStrings } from "@/lib/i18n/use-strings";
+import { onboardingStrings, type OnboardingStrings } from "@/lib/i18n/sections/onboarding";
+import { sharedStrings } from "@/lib/i18n/sections/shared";
+import { useLocale, useDocumentTitle } from "@/lib/i18n/locale";
+import { localeNumber } from "@/lib/i18n/format";
+import { UiLangSwitch } from "@/components/fitness/ui-lang-switch";
 import { useSessionData } from "../session-context";
 import { Field, ChipToggle } from "../shared/profile-fields";
 import { BrandMark } from "../sidebar-nav";
@@ -58,12 +64,7 @@ interface OnboardingForm {
   limitationNotes: string;
 }
 
-const STEPS = [
-  { title: "معرفی", icon: UserRound },
-  { title: "مشخصات بدنی", icon: Ruler },
-  { title: "هدف و سطح", icon: Target },
-  { title: "تجهیزات و محدودیت‌ها", icon: Dumbbell },
-] as const;
+const STEPS = [UserRound, Ruler, Target, Dumbbell] as const;
 
 /** بازه‌های مجاز فیلدهای عددی — مطابق اعتبارسنجی سرور */
 const RANGES = {
@@ -80,16 +81,27 @@ function parseNumber(value: string): number | null {
   return Number.isNaN(parsed) ? null : parsed;
 }
 
-function validateRange(value: string, [min, max]: readonly [number, number], label: string, required: boolean): string | null {
+/**
+ * اعتبارسنجی بازه — متن‌ها از دیکشنری می‌آیند. «wholeNumber» جایگزین
+ * مقایسه متنی برچسب قبلی است و دقیقاً همان رفتار را حفظ می‌کند (فقط سن).
+ */
+function validateRange(
+  value: string,
+  [min, max]: readonly [number, number],
+  label: string,
+  required: boolean,
+  wholeNumber: boolean,
+  t: OnboardingStrings
+): string | null {
   const parsed = parseNumber(value);
   if (parsed === null) {
-    return required ? `${label} را وارد کنید.` : null;
+    return required ? t.requiredMessage(label) : null;
   }
-  if (!Number.isInteger(parsed) && required && label === "سن") {
-    return `${label} باید عدد صحیح باشد.`;
+  if (!Number.isInteger(parsed) && required && wholeNumber) {
+    return t.integerMessage(label);
   }
   if (parsed < min || parsed > max) {
-    return `${label} باید بین ${min.toLocaleString("fa-IR")} و ${max.toLocaleString("fa-IR")} باشد.`;
+    return t.rangeMessage(label, min, max);
   }
   return null;
 }
@@ -99,6 +111,12 @@ function validateRange(value: string, [min, max]: readonly [number, number], lab
 export function OnboardingView() {
   const { user, setProfile } = useSessionData();
   const router = useRouter();
+  const t = useStrings(onboardingStrings);
+  const s = useStrings(sharedStrings);
+  const locale = useLocale();
+
+  // عنوان ترجمه‌شده صفحه — الزام دسترسی‌پذیری
+  useDocumentTitle(t.pageTitle);
 
   const [step, setStep] = useState(0);
   const [form, setForm] = useState<OnboardingForm>({
@@ -145,23 +163,51 @@ export function OnboardingView() {
     if (target >= 0) {
       const name = form.displayName.trim();
       if (name.length < 2 || name.length > 60) {
-        errors.displayName = "نام نمایشی باید بین ۲ تا ۶۰ کاراکتر باشد.";
+        errors.displayName = t.nameLengthError;
       }
     }
     if (target >= 1) {
-      const ageError = validateRange(form.age, RANGES.age, "سن", true);
+      const ageError = validateRange(form.age, RANGES.age, t.fieldLabels.age, true, true, t);
       if (ageError) errors.age = ageError;
-      const heightError = validateRange(form.heightCm, RANGES.heightCm, "قد (سانتی‌متر)", true);
+      const heightError = validateRange(
+        form.heightCm,
+        RANGES.heightCm,
+        t.fieldLabels.height,
+        true,
+        false,
+        t
+      );
       if (heightError) errors.heightCm = heightError;
-      const weightError = validateRange(form.weightKg, RANGES.weightKg, "وزن (کیلوگرم)", true);
+      const weightError = validateRange(
+        form.weightKg,
+        RANGES.weightKg,
+        t.fieldLabels.weight,
+        true,
+        false,
+        t
+      );
       if (weightError) errors.weightKg = weightError;
-      const bodyFatError = validateRange(form.bodyFat, RANGES.bodyFat, "درصد چربی بدن", false);
+      const bodyFatError = validateRange(
+        form.bodyFat,
+        RANGES.bodyFat,
+        t.fieldLabels.bodyFat,
+        false,
+        false,
+        t
+      );
       if (bodyFatError) errors.bodyFat = bodyFatError;
     }
     if (target >= 2) {
-      if (!form.goal) errors.goal = "هدف تمرینی را انتخاب کنید.";
-      if (!form.experience) errors.experience = "سطح تجربه را انتخاب کنید.";
-      const daysError = validateRange(form.trainingDaysPerWeek, [1, 7], "روزهای تمرین در هفته", true);
+      if (!form.goal) errors.goal = t.goalRequired;
+      if (!form.experience) errors.experience = t.experienceRequired;
+      const daysError = validateRange(
+        form.trainingDaysPerWeek,
+        [1, 7],
+        t.fieldLabels.days,
+        true,
+        false,
+        t
+      );
       if (daysError) errors.trainingDaysPerWeek = daysError;
     }
     setFieldError(errors);
@@ -219,7 +265,7 @@ export function OnboardingView() {
       }
 
       if (response.status === 401) {
-        setSubmitError("نشست شما منقضی شده است؛ لطفاً دوباره وارد شوید.");
+        setSubmitError(t.sessionExpired);
         router.refresh();
         return;
       }
@@ -227,22 +273,27 @@ export function OnboardingView() {
       if (response.status === 400) {
         const data = (await response.json()) as { fields?: Record<string, string> };
         const first = data.fields ? Object.values(data.fields)[0] : undefined;
-        setSubmitError(first ?? "اطلاعات واردشده معتبر نیست؛ فیلدها را بررسی کنید.");
+        setSubmitError(first != null ? t.serverFieldMessage(first) : t.invalidFields);
         return;
       }
 
-      setSubmitError("ذخیره اطلاعات انجام نشد؛ لطفاً دوباره تلاش کنید.");
+      setSubmitError(t.saveFailed);
     } catch {
-      setSubmitError("ارتباط با سرور برقرار نشد؛ اتصال اینترنت خود را بررسی کنید.");
+      setSubmitError(t.networkError);
     } finally {
       setSubmitting(false);
     }
   };
 
-  const StepIcon = STEPS[step].icon;
+  const StepIcon = STEPS[step];
 
   return (
     <div className="relative flex min-h-screen w-full flex-col items-center justify-center overflow-hidden bg-background px-4 py-10">
+      {/* کلید تغییر زبان رابط — گوشه بالای صفحه، بدون برخورد با محتوای مرکزی */}
+      <div className="absolute top-4 end-4 z-20">
+        <UiLangSwitch />
+      </div>
+
       <div className="pointer-events-none absolute inset-0 bg-grid-fade opacity-60" aria-hidden="true" />
       <div className="pointer-events-none absolute inset-0 bg-aura-lime opacity-70" aria-hidden="true" />
 
@@ -256,16 +307,16 @@ export function OnboardingView() {
           <div className="flex items-center justify-between gap-4">
             <BrandMark />
             <span className="hidden shrink-0 text-[11px] font-bold text-muted-foreground sm:block">
-              گام {(step + 1).toLocaleString("fa-IR")} از {STEPS.length.toLocaleString("fa-IR")}
+              {t.stepOf(step + 1, STEPS.length)}
             </span>
           </div>
 
           {/* نشانگر پیشرفت مراحل */}
           <div className="mt-6 flex flex-col gap-2.5">
             <div className="flex items-center gap-1.5" aria-hidden="true">
-              {STEPS.map((item, index) => (
+              {STEPS.map((_, index) => (
                 <div
-                  key={item.title}
+                  key={t.steps[index].title}
                   className={
                     index <= step
                       ? "h-1.5 flex-1 rounded-full bg-primary"
@@ -275,9 +326,9 @@ export function OnboardingView() {
               ))}
             </div>
             <div className="flex items-center justify-between gap-2">
-              {STEPS.map((item, index) => (
+              {STEPS.map((_, index) => (
                 <span
-                  key={item.title}
+                  key={t.steps[index].title}
                   className={
                     index === step
                       ? "text-[10px] font-bold text-primary"
@@ -286,14 +337,14 @@ export function OnboardingView() {
                         : "text-[10px] font-medium text-muted-foreground/50"
                   }
                 >
-                  {item.title}
+                  {t.steps[index].title}
                 </span>
               ))}
             </div>
             <Progress
               value={((step + 1) / STEPS.length) * 100}
               className="h-1"
-              aria-label="پیشرفت راه‌اندازی پروفایل"
+              aria-label={t.progressAria}
             />
           </div>
 
@@ -301,7 +352,7 @@ export function OnboardingView() {
             <span className="flex size-9 items-center justify-center rounded-lg border border-primary/25 bg-primary/10 text-primary">
               <StepIcon className="size-4" aria-hidden="true" />
             </span>
-            <h2 className="text-base font-extrabold text-foreground">{STEPS[step].title}</h2>
+            <h2 className="text-base font-extrabold text-foreground">{t.steps[step].title}</h2>
           </div>
 
           {submitError && (
@@ -318,23 +369,21 @@ export function OnboardingView() {
           {step === 0 && (
             <div className="mt-5 flex flex-col gap-5">
               <p className="text-xs leading-7 text-muted-foreground">
-                <span className="font-bold text-primary">سلام {form.displayName || " 👋"}</span>
+                <span className="font-bold text-primary">{t.greeting(form.displayName)}</span>
                 <br />
-                حساب کاربری شما ساخته شد. برای اینکه مربی بتواند در مراحل بعدی برنامه تمرینی و
-                غذایی متناسب با بدن و هدف شما بسازد، چند اطلاعات پایه لازم داریم؛ همه این
-                اطلاعات محرمانه است و فقط روی حساب خودتان ذخیره می‌شود.
+                {t.introBody}
               </p>
               <Field
                 id="onb-displayName"
-                label="نام نمایشی"
-                hint="همین نام در داشبورد نمایش داده می‌شود"
+                label={t.displayNameLabel}
+                hint={t.displayNameHint}
                 error={fieldError.displayName}
               >
                 <Input
                   id="onb-displayName"
                   value={form.displayName}
                   onChange={(event) => setField("displayName", event.target.value)}
-                  placeholder="مثلاً علی"
+                  placeholder={t.displayNamePlaceholder}
                   autoComplete="nickname"
                   aria-invalid={Boolean(fieldError.displayName)}
                 />
@@ -345,54 +394,64 @@ export function OnboardingView() {
           {/* گام ۲ — مشخصات بدنی */}
           {step === 1 && (
             <div className="mt-5 grid gap-4 sm:grid-cols-2">
-              <Field id="onb-age" label="سن" hint="سال" error={fieldError.age}>
+              <Field id="onb-age" label={t.ageLabel} hint={t.ageHint} error={fieldError.age}>
                 <Input
                   id="onb-age"
                   inputMode="numeric"
                   value={form.age}
                   onChange={(event) => setField("age", event.target.value)}
-                  placeholder="مثلاً ۲۷"
+                  placeholder={t.agePlaceholder}
                   aria-invalid={Boolean(fieldError.age)}
                 />
               </Field>
-              <Field id="onb-gender" label="جنسیت" hint="اختیاری — برای فرمول‌های آینده">
+              <Field id="onb-gender" label={t.genderLabel} hint={t.genderHint}>
                 <Select value={form.gender || ""} onValueChange={(value) => setField("gender", value)}>
-                  <SelectTrigger id="onb-gender" className="w-full" aria-label="انتخاب جنسیت">
-                    <SelectValue placeholder="انتخاب کنید" />
+                  <SelectTrigger id="onb-gender" className="w-full" aria-label={t.genderAria}>
+                    <SelectValue placeholder={t.selectPlaceholder} />
                   </SelectTrigger>
                   <SelectContent>
                     {GENDER_OPTIONS.map((option) => (
                       <SelectItem key={option.value} value={option.value}>
-                        {option.label}
+                        {s.genderLabel(option.value)}
                       </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
               </Field>
-              <Field id="onb-height" label="قد" hint="سانتی‌متر" error={fieldError.heightCm}>
+              <Field
+                id="onb-height"
+                label={t.heightLabel}
+                hint={t.heightHint}
+                error={fieldError.heightCm}
+              >
                 <Input
                   id="onb-height"
                   inputMode="decimal"
                   value={form.heightCm}
                   onChange={(event) => setField("heightCm", event.target.value)}
-                  placeholder="مثلاً ۱۷۸"
+                  placeholder={t.heightPlaceholder}
                   aria-invalid={Boolean(fieldError.heightCm)}
                 />
               </Field>
-              <Field id="onb-weight" label="وزن" hint="کیلوگرم" error={fieldError.weightKg}>
+              <Field
+                id="onb-weight"
+                label={t.weightLabel}
+                hint={t.weightHint}
+                error={fieldError.weightKg}
+              >
                 <Input
                   id="onb-weight"
                   inputMode="decimal"
                   value={form.weightKg}
                   onChange={(event) => setField("weightKg", event.target.value)}
-                  placeholder="مثلاً ۷۵٫۵"
+                  placeholder={t.weightPlaceholder}
                   aria-invalid={Boolean(fieldError.weightKg)}
                 />
               </Field>
               <Field
                 id="onb-bodyFat"
-                label="درصد چربی بدن"
-                hint="اختیاری — در صورت اطلاع"
+                label={t.bodyFatLabel}
+                hint={t.bodyFatHint}
                 error={fieldError.bodyFat}
               >
                 <Input
@@ -400,7 +459,7 @@ export function OnboardingView() {
                   inputMode="decimal"
                   value={form.bodyFat}
                   onChange={(event) => setField("bodyFat", event.target.value)}
-                  placeholder="مثلاً ۱۸"
+                  placeholder={t.bodyFatPlaceholder}
                   aria-invalid={Boolean(fieldError.bodyFat)}
                 />
               </Field>
@@ -410,70 +469,66 @@ export function OnboardingView() {
           {/* گام ۳ — هدف و سطح */}
           {step === 2 && (
             <div className="mt-5 grid gap-4 sm:grid-cols-2">
-              <Field id="onb-goal" label="هدف تمرینی" error={fieldError.goal}>
+              <Field id="onb-goal" label={t.goalLabel} error={fieldError.goal}>
                 <Select value={form.goal || ""} onValueChange={(value) => setField("goal", value)}>
-                  <SelectTrigger id="onb-goal" className="w-full" aria-label="انتخاب هدف تمرینی">
-                    <SelectValue placeholder="انتخاب کنید" />
+                  <SelectTrigger id="onb-goal" className="w-full" aria-label={t.goalAria}>
+                    <SelectValue placeholder={t.selectPlaceholder} />
                   </SelectTrigger>
                   <SelectContent>
                     {GOAL_OPTIONS.map((option) => (
                       <SelectItem key={option.value} value={option.value}>
-                        {option.label}
+                        {s.goalLabel(option.value)}
                       </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
               </Field>
-              <Field id="onb-experience" label="سطح تجربه" error={fieldError.experience}>
+              <Field id="onb-experience" label={t.experienceLabel} error={fieldError.experience}>
                 <Select
                   value={form.experience || ""}
                   onValueChange={(value) => setField("experience", value)}
                 >
-                  <SelectTrigger id="onb-experience" className="w-full" aria-label="انتخاب سطح تجربه">
-                    <SelectValue placeholder="انتخاب کنید" />
+                  <SelectTrigger id="onb-experience" className="w-full" aria-label={t.experienceAria}>
+                    <SelectValue placeholder={t.selectPlaceholder} />
                   </SelectTrigger>
                   <SelectContent>
                     {EXPERIENCE_OPTIONS.map((option) => (
                       <SelectItem key={option.value} value={option.value}>
-                        {option.label}
+                        {s.experienceLabel(option.value)}
                       </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
               </Field>
-              <Field
-                id="onb-days"
-                label="روزهای تمرین در هفته"
-                error={fieldError.trainingDaysPerWeek}
-              >
+              <Field id="onb-days" label={t.daysLabel} error={fieldError.trainingDaysPerWeek}>
                 <Select
                   value={form.trainingDaysPerWeek || ""}
                   onValueChange={(value) => setField("trainingDaysPerWeek", value)}
                 >
-                  <SelectTrigger id="onb-days" className="w-full" aria-label="انتخاب روزهای تمرین">
-                    <SelectValue placeholder="انتخاب کنید" />
+                  <SelectTrigger id="onb-days" className="w-full" aria-label={t.daysAria}>
+                    <SelectValue placeholder={t.selectPlaceholder} />
                   </SelectTrigger>
                   <SelectContent>
                     {[1, 2, 3, 4, 5, 6, 7].map((day) => (
                       <SelectItem key={day} value={String(day)}>
-                        {day.toLocaleString("fa-IR")} روز
+                        {localeNumber(day, locale)} {t.dayUnit}
                       </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
               </Field>
-              <Field id="onb-minutes" label="مدت هر جلسه" hint="اختیاری">
+              <Field id="onb-minutes" label={t.minutesLabel} hint={t.minutesHint}>
                 <Select
                   value={form.sessionMinutes || ""}
                   onValueChange={(value) => setField("sessionMinutes", value)}
                 >
-                  <SelectTrigger id="onb-minutes" className="w-full" aria-label="انتخاب مدت جلسه">
-                    <SelectValue placeholder="انتخاب کنید" />
+                  <SelectTrigger id="onb-minutes" className="w-full" aria-label={t.minutesAria}>
+                    <SelectValue placeholder={t.selectPlaceholder} />
                   </SelectTrigger>
                   <SelectContent>
                     {SESSION_MINUTES_OPTIONS.map((minutes) => (
                       <SelectItem key={minutes} value={String(minutes)}>
-                        {minutes.toLocaleString("fa-IR")} دقیقه
+                        {localeNumber(minutes, locale)} {t.minuteUnit}
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -487,9 +542,9 @@ export function OnboardingView() {
             <div className="mt-5 flex flex-col gap-6">
               <div>
                 <p className="mb-2.5 text-xs font-semibold text-foreground/90">
-                  تجهیزات در دسترس
+                  {t.equipmentTitle}
                   <span className="ms-1.5 font-normal text-muted-foreground/70">
-                    (برنامه‌ساز فقط حرکات قابل اجرا پیشنهاد می‌دهد)
+                    {t.equipmentNote}
                   </span>
                 </p>
                 <div className="flex flex-wrap gap-2">
@@ -499,15 +554,17 @@ export function OnboardingView() {
                       active={form.equipment.includes(option.value)}
                       onClick={() => toggleArrayField("equipment", option.value)}
                     >
-                      {option.label}
+                      {s.equipmentLabel(option.value)}
                     </ChipToggle>
                   ))}
                 </div>
               </div>
               <div>
                 <p className="mb-2.5 text-xs font-semibold text-foreground/90">
-                  محدودیت‌های حرکتی یا آسیب‌ها
-                  <span className="ms-1.5 font-normal text-muted-foreground/70">(اختیاری)</span>
+                  {t.limitationsTitle}
+                  <span className="ms-1.5 font-normal text-muted-foreground/70">
+                    {t.limitationsNote}
+                  </span>
                 </p>
                 <div className="flex flex-wrap gap-2">
                   {LIMITATION_OPTIONS.map((option) => (
@@ -516,31 +573,30 @@ export function OnboardingView() {
                       active={form.limitations.includes(option.value)}
                       onClick={() => toggleArrayField("limitations", option.value)}
                     >
-                      {option.label}
+                      {s.limitationLabel(option.value)}
                     </ChipToggle>
                   ))}
                 </div>
                 <div className="mt-4">
-                  <Field id="onb-limitationNotes" label="توضیح بیشتر" hint="اختیاری">
+                  <Field id="onb-limitationNotes" label={t.notesLabel} hint={t.notesHint}>
                     <Textarea
                       id="onb-limitationNotes"
                       rows={3}
                       value={form.limitationNotes}
                       onChange={(event) => setField("limitationNotes", event.target.value)}
-                      placeholder="مثلاً: هنگام اسکات عمیق، درد خفیف زانوی راست…"
+                      placeholder={t.notesPlaceholder}
                     />
                   </Field>
                 </div>
                 <p className="mt-3 flex items-start gap-1.5 text-[10px] leading-5 text-muted-foreground/70">
                   <ShieldCheck className="mt-0.5 size-3.5 shrink-0" aria-hidden="true" />
-                  این اطلاعات محرمانه تلقی می‌شود، فقط روی حساب شما ذخیره می‌شود و جایگزین
-                  تشخیص پزشکی نیست.
+                  {t.privacyNote}
                 </p>
               </div>
             </div>
           )}
 
-          {/* دکمه‌های ناوبری */}
+          {/* دکمه‌های ناوبری — آیکن‌های جهت‌دار در LTR قرینه می‌شوند */}
           <div className="mt-7 flex items-center justify-between gap-3 border-t border-border/50 pt-5">
             <Button
               type="button"
@@ -549,8 +605,8 @@ export function OnboardingView() {
               disabled={step === 0 || submitting}
               className="font-semibold"
             >
-              <ChevronRight className="size-4" aria-hidden="true" />
-              بازگشت
+              <ChevronLeft className="size-4 rtl:rotate-180" aria-hidden="true" />
+              {t.back}
             </Button>
             <Button
               type="button"
@@ -563,13 +619,15 @@ export function OnboardingView() {
               ) : (
                 <Sparkles className="size-4" aria-hidden="true" />
               )}
-              {step === STEPS.length - 1 ? "ثبت و پایان راه‌اندازی" : "ادامه"}
-              {step < STEPS.length - 1 && <ChevronLeft className="size-4" aria-hidden="true" />}
+              {step === STEPS.length - 1 ? t.finish : t.next}
+              {step < STEPS.length - 1 && (
+                <ChevronRight className="size-4 rtl:rotate-180" aria-hidden="true" />
+              )}
             </Button>
           </div>
 
           <p className="mt-4 text-center text-[10px] leading-5 text-muted-foreground/70">
-            بعداً می‌توانید همه این اطلاعات را از بخش «پروفایل و تنظیمات» ویرایش کنید.
+            {t.footerNote}
           </p>
         </div>
       </motion.div>

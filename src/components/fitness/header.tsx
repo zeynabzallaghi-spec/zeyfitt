@@ -14,27 +14,25 @@ import {
 import { useAppStore } from "@/store/app-store";
 import { useSessionData } from "./session-context";
 import { getNavItem } from "@/lib/nav";
-
-const jalaliFormatter = new Intl.DateTimeFormat("fa-IR", { dateStyle: "full" });
+import { useStrings } from "@/lib/i18n/use-strings";
+import { shellStrings } from "@/lib/i18n/sections/shell";
+import { useUiLang } from "@/lib/i18n/locale";
+import { localeTodayFull } from "@/lib/i18n/format";
+import { UiLangSwitch } from "./ui-lang-switch";
 
 /** مقدار فقط-کلاینت: سمت سرور null برمی‌گردد تا هیدراتیشن همیشه سازگار بماند */
 function subscribeToMinuteTick(onChange: () => void) {
   const id = setInterval(onChange, 60_000);
   return () => clearInterval(id);
 }
-function getJalaliClientSnapshot(): string {
-  return jalaliFormatter.format(new Date());
-}
-function getJalaliServerSnapshot(): string | null {
-  return null;
-}
 
-/** تاریخ شمسی امروز — بدون ناسازگاری هیدراتیشن */
-function JalaliToday() {
+/** تاریخ امروز — شمسی برای فارسی و گرگوری برای انگلیسی، بدون ناسازگاری هیدراتیشن */
+function TodayDate() {
+  const locale = useUiLang().locale;
   const today = useSyncExternalStore(
     subscribeToMinuteTick,
-    getJalaliClientSnapshot,
-    getJalaliServerSnapshot
+    () => localeTodayFull(locale),
+    () => null
   );
 
   return (
@@ -83,16 +81,18 @@ function HeaderQuickButton({
 function UserChip() {
   const { user, signOut } = useSessionData();
   const setActiveView = useAppStore((s) => s.setActiveView);
+  const t = useStrings(shellStrings);
+  const dir = useUiLang().dir;
 
   if (!user) return null;
   const initial = user.name.trim().charAt(0) || "؟";
 
   return (
-    <DropdownMenu dir="rtl">
+    <DropdownMenu dir={dir}>
       <DropdownMenuTrigger asChild>
         <button
           type="button"
-          aria-label="منوی حساب کاربری"
+          aria-label={t.accountMenuAria}
           className="flex items-center gap-2 rounded-full border border-border/60 bg-secondary/40 py-1 ps-1 pe-2.5 transition-colors outline-none focus-visible:ring-2 focus-visible:ring-ring/60 hover:border-primary/40"
         >
           <span
@@ -116,12 +116,12 @@ function UserChip() {
         <DropdownMenuSeparator />
         <DropdownMenuItem onClick={() => setActiveView("profile")}>
           <UserRoundCog className="size-4" aria-hidden="true" />
-          پروفایل و تنظیمات
+          {t.profileAndSettings}
         </DropdownMenuItem>
         <DropdownMenuSeparator />
         <DropdownMenuItem variant="destructive" onClick={() => void signOut()}>
           <LogOut className="size-4" aria-hidden="true" />
-          خروج از حساب
+          {t.signOut}
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>
@@ -131,6 +131,8 @@ function UserChip() {
 export function AppHeader() {
   const setMobileNavOpen = useAppStore((s) => s.setMobileNavOpen);
   const activeView = useAppStore((s) => s.activeView);
+  const t = useStrings(shellStrings);
+  const { locale } = useUiLang();
   const item = getNavItem(activeView);
   const Icon = item.icon;
 
@@ -142,32 +144,44 @@ export function AppHeader() {
         size="icon"
         className="shrink-0 lg:hidden"
         onClick={() => setMobileNavOpen(true)}
-        aria-label="باز کردن منوی ناوبری"
+        aria-label={t.openNavMenu}
       >
         <Menu className="size-5" />
       </Button>
 
-      {/* آیکون و عنوان بخش فعال */}
+      {/* آیکون و عنوان بخش فعال — عنوان به زبان رابط */}
       <div className="flex min-w-0 items-center gap-3">
         <span className="hidden size-9 shrink-0 items-center justify-center rounded-lg border border-primary/25 bg-primary/10 text-primary sm:flex">
           <Icon className="size-4" strokeWidth={2.1} aria-hidden="true" />
         </span>
         <div className="flex min-w-0 flex-col">
-          <h1 className="truncate text-base font-bold leading-6 md:text-lg">{item.fa}</h1>
+          <h1 className="truncate text-base font-bold leading-6 md:text-lg">
+            {locale === "fa" ? item.fa : item.en}
+          </h1>
           <span
-            dir="ltr"
+            dir={locale === "fa" ? "ltr" : "rtl"}
             className="hidden truncate text-[10px] font-medium text-muted-foreground sm:block"
           >
-            {item.en}
+            {locale === "fa" ? item.en : item.fa}
           </span>
         </div>
       </div>
 
       <div className="ms-auto flex items-center gap-1.5 md:gap-2">
-        <JalaliToday />
+        <TodayDate />
         <span className="mx-1 hidden h-5 w-px bg-border/60 md:block" aria-hidden="true" />
-        <HeaderQuickButton viewId="coach3d" label="مربی سه‌بعدی" icon={Box} />
-        <HeaderQuickButton viewId="assistant" label="دستیار هوشمند" icon={Bot} />
+        <HeaderQuickButton
+          viewId="coach3d"
+          label={locale === "fa" ? getNavItem("coach3d").fa : getNavItem("coach3d").en}
+          icon={Box}
+        />
+        <HeaderQuickButton
+          viewId="assistant"
+          label={locale === "fa" ? getNavItem("assistant").fa : getNavItem("assistant").en}
+          icon={Bot}
+        />
+        <span className="mx-1 hidden h-5 w-px bg-border/60 md:block" aria-hidden="true" />
+        <UiLangSwitch />
         <span className="mx-1 hidden h-5 w-px bg-border/60 md:block" aria-hidden="true" />
         <UserChip />
       </div>

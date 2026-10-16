@@ -1,31 +1,17 @@
 "use client";
 
 /**
- * زبان رابط بخش‌های دوزبانه ثبت مصرف واقعی — همان انتخاب کاربر که برای
- * رابط دستیار ذخیره شده است (یک منبع واحد، بدون شرط زبان پراکنده).
- * «خودکار» و «فارسی» → فارسی راست‌چین؛ English → انگلیسی چپ‌چین.
+ * زبان رابط بخش‌های دوزبانه ثبت مصرف واقعی غذا — از این مرحله به بعد
+ * همان کلید سراسری FA/EN اپ (UiLangProvider) است: فارسی → راست‌چین،
+ * English → چپ‌چین. یک منبع واحد برای کل اپ، بدون شرط زبان پراکنده.
  *
- * پیاده‌سازی با useSyncExternalStore: منبع واقعی localStorage است و
- * تغییر آن (حتی از تب دیگر) بی‌درنگ منعکس می‌شود؛ بدون setState در effect.
+ * نام قدیمی هوک حفظ شده تا نقاط مصرف (بخش ثبت غذا، کارت خلاصه داشبورد و
+ * دیالوگ ثبت) بدون تغییر باقی بمانند؛ انتقال زبان گفت‌وگوی دستیار را هم
+ * تحت تأثیر قرار نمی‌دهد (سابقه مکالمه دست‌نخورده می‌ماند).
  */
 
-import { useSyncExternalStore } from "react";
-
-const LANG_STORAGE_KEY = "fitcoach.assistant.lang";
-
-function subscribe(onChange: () => void): () => void {
-  window.addEventListener("storage", onChange);
-  return () => window.removeEventListener("storage", onChange);
-}
-
-function getSnapshot(): "fa" | "en" {
-  return window.localStorage.getItem(LANG_STORAGE_KEY) === "en" ? "en" : "fa";
-}
-
-function getServerSnapshot(): "fa" | "en" {
-  return "fa";
-}
+import { useLocale } from "@/lib/i18n/locale";
 
 export function useFoodLogUiLang(): "fa" | "en" {
-  return useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot);
+  return useLocale();
 }

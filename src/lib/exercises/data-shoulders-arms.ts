@@ -35,6 +35,25 @@ export const SHOULDERS_ARMS_EXERCISES: LibraryExercise[] = [
       "اگر پرس کامل باعث درد شانه می‌شود، دامنه بدون درد را انتخاب کنید و وزنه را کم کنید.",
       "برای شروع هر ست، دمبل‌ها را با کمک زانو به بالا بیاورید.",
     ],
+    enContent: {
+      summary: "Overhead dumbbell press for building shoulder size and strength, with each arm moving on its own path.",
+      steps: [
+        "Sit on a bench with a backrest and hold the dumbbells at ear level with elbows bent.",
+        "Keep your lower back against the backrest, feet fixed on the floor, and abs braced.",
+        "Press the dumbbells up along a vertical, slightly inward path until the elbows are nearly locked.",
+        "Lower the dumbbells with control back to ear level.",
+      ],
+      breathing: "Exhale as you press up and inhale as you lower the dumbbells.",
+      mistakes: [
+        "Excessive lower-back arch and the back peeling off the backrest",
+        "Pressing the dumbbells forward instead of on a nearly vertical path",
+        "Lowering the weight fast and without control",
+      ],
+      safety: [
+        "If the full press hurts your shoulder, choose a pain-free range and reduce the weight.",
+        "To start each set, kick the dumbbells up with help from your knees.",
+      ],
+    },
   },
   {
     id: "overhead-press-barbell",
@@ -64,6 +83,25 @@ export const SHOULDERS_ARMS_EXERCISES: LibraryExercise[] = [
       "اگر دامنه حرکت شانه در پرس کامل محدود است، تا محدوده بدون درد ادامه دهید.",
       "برای پرس پشت گردن جایگزینی معادل نیست؛ همان پرس از جلو امن‌تر است.",
     ],
+    enContent: {
+      summary: "Standing barbell overhead press; strengthens the shoulders while training core bracing and a stable base.",
+      steps: [
+        "Rack the barbell on your upper chest (clavicles); hands slightly wider than shoulder width and wrists straight.",
+        "Feet hip-width apart, weight over the whole foot, abs and glutes braced.",
+        "Press the bar up along a path close to your face and, at the top, bring your head forward between the arms.",
+        "With control, return the bar to the start on your clavicles.",
+      ],
+      breathing: "Inhale and brace the abs before pressing; exhale at the top of the movement.",
+      mistakes: [
+        "Arching the lower back and pushing the hips forward to assist the press",
+        "Pressing the bar forward instead of keeping it close to the body",
+        "Bending or jumping the legs to get the weight up",
+      ],
+      safety: [
+        "If shoulder range of motion limits the full press, continue within a pain-free range.",
+        "There is no equivalent substitute for the behind-the-neck press; the front press is the safer choice.",
+      ],
+    },
   },
   {
     id: "pushup-pike",
@@ -93,6 +131,25 @@ export const SHOULDERS_ARMS_EXERCISES: LibraryExercise[] = [
       "مچ‌های حساس‌تر با دسته شنا راحت‌تر اجرا می‌کنند.",
       "برای ساده‌تر کردن، زاویه V را کمتر و برای سخت‌تر کردن، پاها را روی لبه بلند بگذارید.",
     ],
+    enContent: {
+      summary: "A push-up with the body in a V shape; the bodyweight version of the vertical press for shoulders, no equipment needed.",
+      steps: [
+        "From the push-up position, walk the feet toward the hands until the body forms an inverted V; hips at the highest point.",
+        "Hands slightly wider than shoulder width and the head between the arms, facing the floor.",
+        "Lower the crown of your head toward a point between the hands by bending the elbows.",
+        "Press with the shoulders and return the body to the V position.",
+      ],
+      breathing: "Inhale as you lower your head and exhale as you press back up.",
+      mistakes: [
+        "Opening the hip angle and turning the move into a regular push-up",
+        "Lowering the head in front of the palms",
+        "Heels lifting and the base shifting during the set",
+      ],
+      safety: [
+        "Sensitive wrists are more comfortable with push-up handles.",
+        "To make it easier, reduce the V angle; to make it harder, put the feet on a raised edge.",
+      ],
+    },
   },
   {
     id: "lateral-raise",
@@ -123,6 +180,25 @@ export const SHOULDERS_ARMS_EXERCISES: LibraryExercise[] = [
       "این حرکت با وزنه سبک و کنترل بالا مؤثرتر است؛ وزنه سنگین فشار اضافه به مفصل شانه می‌آورد.",
       "مچ‌ها را صاف نگه دارید تا انگشتان نقش اصلی را نگیرند.",
     ],
+    enContent: {
+      summary: "Raising dumbbells out to the sides up to shoulder level; a targeted exercise for the lateral deltoid.",
+      steps: [
+        "Standing, hold a dumbbell in each hand at your sides with the elbows in a fixed, gentle bend.",
+        "Keep the shoulders down and back and do not lean on anything.",
+        "Raise the arms out to the sides, without bending the elbows further, up to shoulder level.",
+        "With control — about twice the lifting time — lower the dumbbells back down.",
+      ],
+      breathing: "Exhale as you raise the arms and inhale during the controlled lowering.",
+      mistakes: [
+        "Swinging the body and bouncing the weight with lower-back motion",
+        "Raising above shoulder level while the shoulders creep up",
+        "Choosing a heavy weight and losing control of the path",
+      ],
+      safety: [
+        "This exercise works better with a light weight and high control; a heavy load puts extra stress on the shoulder joint.",
+        "Keep the wrists straight so the fingers do not take over the work.",
+      ],
+    },
   },
   {
     id: "reverse-fly",
@@ -152,6 +228,25 @@ export const SHOULDERS_ARMS_EXERCISES: LibraryExercise[] = [
       "اگر حفظ وضعیت خمیده سخت است، نسخه نشسته با تکیه سینه روی ران یا نشر خم سیم‌کش جایگزین مناسبی است.",
       "دامنه را تا سطح شانه ادامه دهید؛ بالاتر از آن مشارکت کول بیشتر می‌شود.",
     ],
+    enContent: {
+      summary: "Opening the arms out wide from a bent-over position for the rear delts and upper back; helps balance shoulder posture.",
+      steps: [
+        "Hip hinge and bend the torso forward; knees slightly bent and back neutral.",
+        "Let the two dumbbells hang under the shoulders with palms facing each other.",
+        "With the elbows in a fixed, gentle bend, open the arms out to the sides and up.",
+        "Squeeze the shoulder blades together at the top and return to the start with control.",
+      ],
+      breathing: "Exhale as you open the arms and inhale on the return.",
+      mistakes: [
+        "Using a torso swing to lift the dumbbells",
+        "Shoulders creeping up toward the ears",
+        "Choosing a heavy weight that destroys control",
+      ],
+      safety: [
+        "If holding the bent-over position is hard, the seated version with the chest on the thighs or the cable reverse fly is a suitable substitute.",
+        "Continue the range only up to shoulder level; beyond that the traps take over.",
+      ],
+    },
   },
   {
     id: "face-pull-band",
@@ -181,6 +276,25 @@ export const SHOULDERS_ARMS_EXERCISES: LibraryExercise[] = [
       "کش را پیش از هر تمرین از نظر پارگی و گره بررسی کنید.",
       "نقطه اتصال باید پایدار باشد؛ کشیدن کش به خودتان با اتصال سست خطرناک است.",
     ],
+    enContent: {
+      summary: "Pulling a band toward the face with external shoulder rotation; a low-risk exercise for the rear delts and shoulder-posture health.",
+      steps: [
+        "Anchor the resistance band at face height or slightly above and grab both ends.",
+        "Step back so the band is slightly taut in the start position; hands facing forward.",
+        "Pull the band toward your face, leading with the elbows back and out.",
+        "At the end, palms facing up and elbows at shoulder level; then return with control.",
+      ],
+      breathing: "Exhale as you pull the band toward your face and inhale on the return.",
+      mistakes: [
+        "Pulling the band toward the chest instead of beside the face",
+        "Shoulders rising toward the ears at the end of the movement",
+        "Choosing a band so stiff that form breaks down",
+      ],
+      safety: [
+        "Inspect the band for tears and knots before every workout.",
+        "The anchor point must be stable; pulling a loosely anchored band toward yourself is dangerous.",
+      ],
+    },
   },
 
   /* =============================== جلو بازو =============================== */
@@ -213,6 +327,25 @@ export const SHOULDERS_ARMS_EXERCISES: LibraryExercise[] = [
       "در صورت درد مکرر در داخلی آرنج، دامنه حرکت را کاهش دهید و وزنه را سبک‌تر کنید.",
       "مچ‌ها صاف بمانند تا فشار روی مچ منتقل نشود.",
     ],
+    enContent: {
+      summary: "Bending the elbow with dumbbells; the most fundamental biceps isolation with each arm on its own free path.",
+      steps: [
+        "Standing with feet shoulder-width apart and a dumbbell in each hand; palms facing forward and elbows pinned to the torso.",
+        "Keep the shoulders back and down and stand without swinging the body.",
+        "Curl the dumbbell up toward the shoulder with biceps contraction; the elbow stays in place.",
+        "Pause briefly at the top and lower the dumbbell with control — about twice the lifting time.",
+      ],
+      breathing: "Exhale as you lift the weight and inhale as you lower it.",
+      mistakes: [
+        "Swinging the body and using lower-back motion",
+        "Elbows drifting forward during the movement",
+        "Dropping the weight quickly in the lowering phase",
+      ],
+      safety: [
+        "With recurring inner-elbow pain, reduce the range of motion and go lighter.",
+        "Keep the wrists straight so stress is not transferred to them.",
+      ],
+    },
   },
   {
     id: "biceps-curl-barbell",
@@ -242,6 +375,25 @@ export const SHOULDERS_ARMS_EXERCISES: LibraryExercise[] = [
       "اگر گرفتن میله صاف به مچ فشار می‌آورد، میله خم (EZ) جایگزین راحت‌تری است.",
       "وزنه‌ای انتخاب کنید که بدون تاب خوردن تنه قابل اجرا باشد.",
     ],
+    enContent: {
+      summary: "Bending the elbow with a barbell; allows heavier loading than dumbbells for building biceps size.",
+      steps: [
+        "Stand and grip the barbell with palms up at shoulder width.",
+        "Pin the elbows to the torso and pull the shoulders back.",
+        "Curl the bar toward the shoulders with biceps contraction; keep the torso upright and still.",
+        "Lower the bar with control until the elbows are fully extended.",
+      ],
+      breathing: "Exhale as you curl the bar up and inhale as you lower it.",
+      mistakes: [
+        "Leaning the torso back and using body English to raise the bar",
+        "Shortening the range at the bottom and losing the full stretch",
+        "Shoulders rising and the traps taking over",
+      ],
+      safety: [
+        "If the straight bar bothers your wrists, an EZ curl bar is a more comfortable alternative.",
+        "Choose a weight you can lift without swinging the torso.",
+      ],
+    },
   },
   {
     id: "hammer-curl",
@@ -271,6 +423,25 @@ export const SHOULDERS_ARMS_EXERCISES: LibraryExercise[] = [
       "این نسخه برای افرادی که گرفتن میله صاف برایشان آزار مچ دارد معمولاً راحت‌تر است.",
       "دستگاه یا هر دو دست را هم‌زمان یا یکی‌یکی می‌توانید اجرا کنید؛ کنترل مسیر مهم‌تر از وزنه است.",
     ],
+    enContent: {
+      summary: "Bending the elbow with a neutral (hammer) grip; extra emphasis on the forearms and the outer biceps.",
+      steps: [
+        "A dumbbell in each hand with palms facing each other (hammer position) and elbows at the torso.",
+        "Without rotating the wrist, curl the dumbbell up toward the shoulder.",
+        "Keep the contraction at the top and pause for a moment.",
+        "Lower the dumbbell with control until the elbow is fully extended.",
+      ],
+      breathing: "Exhale as you lift and inhale as you lower the dumbbell.",
+      mistakes: [
+        "Rotating the wrist mid-rep and changing the grip",
+        "Swinging the body to start the movement",
+        "Lowering fast and without control",
+      ],
+      safety: [
+        "This version is usually more comfortable for people whose wrists dislike a straight-bar grip.",
+        "You can use a machine and lift both arms together or one at a time; controlling the path matters more than the load.",
+      ],
+    },
   },
   {
     id: "biceps-curl-cable",
@@ -300,6 +471,25 @@ export const SHOULDERS_ARMS_EXERCISES: LibraryExercise[] = [
       "وزنه را در انتهای ست با کنترل برگردانید تا دستگیره با ضربه بالا نپرد.",
       "فاصله مناسب با دستگاه نگه دارید تا مسیر دستگیره آزاد باشد.",
     ],
+    enContent: {
+      summary: "Bending the elbow against cable resistance; continuous tension through the whole range, even at the bottom.",
+      steps: [
+        "Set the pulley to the lowest position and grab the handle; take two steps back.",
+        "Pin the elbows to the torso and keep the shoulders back.",
+        "Pull the handle up toward the shoulder with biceps contraction.",
+        "Lower the handle with control, without breaking the tension, until the elbows are fully extended.",
+      ],
+      breathing: "Exhale as you pull the handle up and inhale on the controlled return.",
+      mistakes: [
+        "Leaning the torso back to help the pull",
+        "Losing tension at the bottom by drifting back",
+        "Using an initial jerk to start every rep",
+      ],
+      safety: [
+        "Return the weight with control at the end of the set so the handle does not fly up.",
+        "Keep a proper distance from the machine so the handle's path stays clear.",
+      ],
+    },
   },
 
   /* =============================== پشت بازو =============================== */
@@ -331,6 +521,25 @@ export const SHOULDERS_ARMS_EXERCISES: LibraryExercise[] = [
       "در صورت آزار آرنج، مچ را خنثی نگه دارید و دستگیره طنابی را امتحان کنید.",
       "وزنه را در پایان ست کنترل‌شده برگردانید تا دستگیره با ضربه بالا نرود.",
     ],
+    enContent: {
+      summary: "Straightening the elbows from top to bottom against cable resistance; the main triceps isolation exercise.",
+      steps: [
+        "Set the pulley to the highest position and grab the handle at shoulder width.",
+        "Pin the elbows to the torso and slightly behind it; torso upright and abs braced.",
+        "Push the handle down by straightening the elbows until they are fully extended.",
+        "With control, let the handle rise back to chest level; the elbows stay in place.",
+      ],
+      breathing: "Exhale as you push down and inhale on the controlled return.",
+      mistakes: [
+        "Leaning forward and pressing with body weight instead of the triceps",
+        "Elbows drifting away from the torso during the movement",
+        "Failing to reach full elbow extension at the bottom",
+      ],
+      safety: [
+        "If the elbow complains, keep the wrists neutral and try the rope attachment.",
+        "Return the weight with control at the end of the set so the handle does not fly up.",
+      ],
+    },
   },
   {
     id: "bench-dip",
@@ -360,6 +569,25 @@ export const SHOULDERS_ARMS_EXERCISES: LibraryExercise[] = [
       "شانه‌ها را پایین نگه دارید و دامنه را تا جایی ادامه دهید که بدون درد شانه باشد.",
       "برای ساده‌تر کردن، زانوها را خم کنید و پاها را نزدیک‌تر بیاورید.",
     ],
+    enContent: {
+      summary: "Lowering and raising the body by bending the elbows from a bench edge; a triceps exercise without free loads.",
+      steps: [
+        "Place your hands shoulder-width apart on the bench edge with the feet forward on the floor or on another bench.",
+        "Keep the hips close to the bench and hold the body above the floor with the elbows extended.",
+        "Bend the elbows backward to lower the body to a comfortable shoulder angle.",
+        "Press with the triceps to bring the body back up.",
+      ],
+      breathing: "Inhale as you lower and exhale as you press the body up.",
+      mistakes: [
+        "Hips drifting away from the bench during the movement",
+        "Going too low and stressing the front of the shoulder",
+        "Elbows flaring out to the sides",
+      ],
+      safety: [
+        "Keep the shoulders down and continue the range only as far as it stays pain-free.",
+        "To make it easier, bend the knees and bring the feet closer.",
+      ],
+    },
   },
   {
     id: "overhead-triceps-extension",
@@ -389,6 +617,25 @@ export const SHOULDERS_ARMS_EXERCISES: LibraryExercise[] = [
       "دمبل را محکم بگیرید و نقطه گریز امن بالای سر داشته باشید.",
       "اگر دامنه شانه محدود است، دامنه را کوتاه‌تر و وزنه را سبک‌تر انتخاب کنید.",
     ],
+    enContent: {
+      summary: "Straightening the elbows from overhead with a dumbbell; stretches and strengthens the long head of the triceps.",
+      steps: [
+        "Seated or standing, hold one dumbbell overhead with both hands cupped under its upper end.",
+        "Keep the elbows close together, pointing forward.",
+        "Lower the dumbbell behind your head with control until you feel the triceps stretch.",
+        "Straighten the elbows to bring the dumbbell back up.",
+      ],
+      breathing: "Inhale as you lower the dumbbell behind the head and exhale as you straighten the elbows.",
+      mistakes: [
+        "Elbows flaring out during the movement",
+        "Arching the lower back and pushing the ribs forward",
+        "Lowering the weight fast behind the head",
+      ],
+      safety: [
+        "Grip the dumbbell firmly and keep a safe escape path overhead.",
+        "If shoulder range is limited, choose a shorter range and a lighter weight.",
+      ],
+    },
   },
   {
     id: "close-grip-bench-press",
@@ -418,5 +665,24 @@ export const SHOULDERS_ARMS_EXERCISES: LibraryExercise[] = [
       "در وزنه‌های سنگین از همراه یا پایه ایمنی استفاده کنید.",
       "عرض گرفتن میله را به‌اندازه‌ای انتخاب کنید که مچ صاف و بدون درد بماند.",
     ],
+    enContent: {
+      summary: "A bench press with a narrower-than-shoulder grip; combines pressing load with triceps emphasis.",
+      steps: [
+        "Lie on your back on the bench and grip the barbell at about shoulder width or slightly narrower.",
+        "Retract the shoulder blades and tuck them back; plant the feet firmly on the floor.",
+        "Lower the barbell to the lower chest, keeping the elbows close to the torso.",
+        "Press the barbell up using the triceps and chest.",
+      ],
+      breathing: "Inhale as you lower the barbell and exhale as you press up.",
+      mistakes: [
+        "Gripping too narrow and overloading the wrists",
+        "Elbows flaring out while lowering",
+        "Hips lifting off the bench to steal momentum",
+      ],
+      safety: [
+        "Use a spotter or safety pins with heavy loads.",
+        "Choose a grip width that keeps the wrists straight and pain-free.",
+      ],
+    },
   },
 ];

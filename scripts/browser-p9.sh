@@ -32,7 +32,9 @@ code=$(curl -s -c $CK -o /dev/null -w "%{http_code}" -X POST -H 'Content-Type: a
   -d "{\"name\":\"کاربر مرورگر۹\",\"email\":\"$EMAIL\",\"password\":\"test1234\"}" $BASE/api/auth/sign-up/email)
 check "ثبت‌نام کاربر مرورگر → 200" "200" "$code"
 # ممیزی مرحله ۱۱: در حالت production نام کوکی __Secure-fitcoach.session_token است
-TOKEN=$(rg "__Secure-fitcoach\.session_token" $CK | awk '{print $NF}')
+CKNAME=$(rg -o "(?:__Secure-)?fitcoach\.session_token" $CK | head -1)
+TOKEN=$(rg "(?:__Secure-)?fitcoach\.session_token" $CK | awk '{print $NF}')
+SECFLAG=$([ "${CKNAME#__Secure-}" != "$CKNAME" ] && echo "--secure" || echo "")
 check "کوکی نشست استخراج شد" "yes" "$([ -n "$TOKEN" ] && echo yes || echo no)"
 
 timeout 90 bun -e "
@@ -56,7 +58,7 @@ agent-browser open $BASE >/dev/null 2>&1
 # کوکی کهنه‌ای از کاربر دیگر باعث می‌شد سرور کاربر اشتباه را بشناسد
 # و مکالمه/ثبتِ seed شده هرگز در UI دیده نمی‌شد (شکست قطعی تست XSS).
 agent-browser cookies clear >/dev/null 2>&1 || true
-agent-browser cookies set "__Secure-fitcoach.session_token" "$TOKEN" --url http://localhost:3000 --secure --sameSite Lax --httpOnly >/dev/null 2>&1
+agent-browser cookies set "$CKNAME" "$TOKEN" --url http://localhost:3000 $SECFLAG --sameSite Lax --httpOnly >/dev/null 2>&1
 # محیط زبان خنثی — localStorage مرورگر ممکن است از اجرای قبلی زبان را نگه داشته باشد
 agent-browser storage local clear >/dev/null 2>&1
 agent-browser reload >/dev/null 2>&1
@@ -91,12 +93,15 @@ waitfor "
 check "پاسخ واقعی مدل در UI نمایش داده شد (≤۹۰s)" "YES" "$FAREPLY"
 agent-browser screenshot /home/z/my-project/download/p9-chat-fa.png >/dev/null 2>&1
 
-echo "== 4) تغییر زبان به English — رابط چپ‌چین =="
+echo "== 4) انتخاب زبان پاسخ English — رابط طبق زبان سراسری می‌ماند =="
+# (مرحله ۱۳) انتخاب‌گر دستیار فقط «زبان پاسخ» را کنترل می‌کند؛ متن و جهت رابط
+# از کلید سراسری زبان می‌آید که در این سوئیت فارسی/rtl است.
 ab "(() => { const btn = Array.from(document.querySelectorAll('button')).find(b => b.textContent.trim() === 'English'); if (btn) { btn.click(); return 'ok'; } return 'NOT FOUND'; })()"
-waitfor "document.querySelector('section[aria-label=\"AI Assistant\"]')?.getAttribute('dir') === 'ltr' ? 'YES' : 'NO'" 10 ENDIR
-check "چیدمان بخش چت در حالت انگلیسی ltr" "YES" "$ENDIR"
-entext=$(agent-browser eval "document.body.innerText.includes('New conversation')" 2>/dev/null | tr -d '"')
-check "متن‌های رابط انگلیسی شدند" "true" "$entext"
+sleep 1
+waitfor "document.querySelector('section[aria-label=\"دستیار هوشمند\"]')?.getAttribute('dir') === 'rtl' ? 'YES' : 'NO'" 10 ENDIR
+check "رابط چت با زبان سراسری فارسی می‌ماند (rtl)" "YES" "$ENDIR"
+entext=$(agent-browser eval "document.body.innerText.includes('مکالمه جدید')" 2>/dev/null | tr -d '"')
+check "متن‌های رابط همچنان فارسی‌اند" "true" "$entext"
 
 echo "== 5) پیام انگلیسی → پاسخ انگلیسی =="
 waitfor "(() => { const ta = document.querySelector('textarea'); return ta && !ta.disabled ? 'YES' : 'NO'; })()" 20 TA_READY2
@@ -109,7 +114,7 @@ ab "
   return 'filled';
 })()"
 sleep 1
-ab "(() => { const btn = Array.from(document.querySelectorAll('button[aria-label=\"Send\"]')).pop(); if (btn) { btn.click(); return 'clicked'; } return 'NO BUTTON'; })()"
+ab "(() => { const btn = Array.from(document.querySelectorAll('button[aria-label=\"ارسال\"]')).pop(); if (btn) { btn.click(); return 'clicked'; } return 'NO BUTTON'; })()"
 waitfor "
 (() => {
   const bubbles = Array.from(document.querySelectorAll('[role=\"status\"]'));
@@ -124,12 +129,12 @@ waitfor "
 check "پاسخ انگلیسی واقعی مدل در UI" "YES" "$ENREPLY"
 agent-browser screenshot /home/z/my-project/download/p9-chat-en.png >/dev/null 2>&1
 
-echo "== 6) ماندگاری زبان و تاریخچه پس از refresh =="
+echo "== 6) ماندگاری انتخاب زبان پاسخ و تاریخچه پس از refresh =="
 agent-browser reload >/dev/null 2>&1
 waitfor "document.body.innerText.includes('دستیار هوشمند')" 20 NAVREADY
 ab "(() => { const btn = Array.from(document.querySelectorAll('button')).find(b => b.textContent.includes('دستیار هوشمند')); btn?.click(); return 'ok'; })()"
-waitfor "document.body.innerText.includes('New conversation') ? 'YES' : 'NO'" 20 PERSIST
-check "انتخاب زبان پس از refresh حفظ شد (انگلیسی)" "YES" "$PERSIST"
+waitfor "(() => { const btn = Array.from(document.querySelectorAll('button')).find(b => b.textContent.trim() === 'English'); return btn && btn.getAttribute('aria-pressed') === 'true' ? 'YES' : 'NO'; })()" 20 PERSIST
+check "انتخاب زبان پاسخ پس از refresh حفظ شد (English فعال)" "YES" "$PERSIST"
 waitfor "document.querySelector('ul button') ? 'YES' : 'NO'" 20 LISTREADY
 ab "(() => { document.querySelector('ul button')?.click(); return 'ok'; })()"
 waitfor "document.querySelectorAll('[role=\"status\"]').length >= 1 ? 'YES' : 'NO'" 20 HIST

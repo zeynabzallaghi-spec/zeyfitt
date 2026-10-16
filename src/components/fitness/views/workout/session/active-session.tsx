@@ -50,14 +50,13 @@ import {
 import { toast } from "sonner";
 import { useAppStore } from "@/store/app-store";
 import { useCoach3DStore } from "@/store/coach3d-store";
+import { useLocale, useDir } from "@/lib/i18n/locale";
+import { useStrings } from "@/lib/i18n/use-strings";
+import { workoutStrings } from "@/lib/i18n/sections/workout";
+import { localeNumber, localeFullLabel } from "@/lib/i18n/format";
 import { cn } from "@/lib/utils";
-import { faDigits } from "@/lib/profile";
-import { jalaliFullLabel } from "@/lib/weight";
-import { categoryFa, getExerciseById, hasCoach3dAnimation } from "@/lib/exercises";
-import { muscleFa } from "@/lib/fitness3d/muscles";
-import type { MuscleGroupId } from "@/lib/fitness3d/types";
+import { getExerciseById, hasCoach3dAnimation } from "@/lib/exercises";
 import type { SessionExerciseClient, WorkoutSessionClient } from "@/lib/workout-session/types";
-import { WEIGHT_UNIT } from "@/lib/workout-session/types";
 import type { UseActiveSessionResult } from "@/hooks/use-workout-sessions";
 import { computeSessionSummary } from "@/lib/workout-session/stats";
 import { AddExerciseDialog } from "./add-exercise-dialog";
@@ -99,11 +98,12 @@ function SaveStatusChip({
   message: string | null;
   onRetry: () => void;
 }) {
+  const t = useStrings(workoutStrings);
   if (state === "saving") {
     return (
       <span className="inline-flex items-center gap-1.5 rounded-md border border-border/50 bg-secondary/40 px-2 py-1 text-[10px] font-bold text-muted-foreground">
         <CloudUpload className="size-3 animate-pulse" aria-hidden="true" />
-        در حال ذخیره…
+        {t.saving}
       </span>
     );
   }
@@ -111,7 +111,7 @@ function SaveStatusChip({
     return (
       <span className="inline-flex items-center gap-1.5 rounded-md border border-primary/30 bg-primary/10 px-2 py-1 text-[10px] font-bold text-primary">
         <CircleCheck className="size-3" aria-hidden="true" />
-        ذخیره شد در سرور
+        {t.savedToServer}
       </span>
     );
   }
@@ -119,14 +119,14 @@ function SaveStatusChip({
     return (
       <span className="inline-flex items-center gap-1.5 rounded-md border border-destructive/40 bg-destructive/10 px-2 py-1 text-[10px] font-bold text-rose-300">
         <CircleAlert className="size-3" aria-hidden="true" />
-        <span className="max-w-40 truncate">{message ?? "ذخیره نشد"}</span>
+        <span className="max-w-40 truncate">{message ?? t.notSaved}</span>
         <button
           type="button"
           onClick={onRetry}
           className="inline-flex items-center gap-1 rounded border border-destructive/40 px-1.5 py-0.5 hover:bg-destructive/20"
         >
           <RotateCcw className="size-3" aria-hidden="true" />
-          تلاش مجدد
+          {t.retry}
         </button>
       </span>
     );
@@ -169,6 +169,8 @@ function SetRow({
   deleting: boolean;
   disabled: boolean;
 }) {
+  const t = useStrings(workoutStrings);
+  const locale = useLocale();
   const key = setKey(sessionExerciseId, setNumber);
   const repsText = editValue?.reps ?? String(reps);
   const weightText = editValue?.weight ?? (weightKg === null ? "" : String(weightKg));
@@ -200,7 +202,7 @@ function SetRow({
     if (disabled) return false;
     const repsNum = parseNum(repsText);
     if (repsNum === null || repsNum < 1) {
-      toast.error(`تعداد تکرار ست ${faDigits(setNumber)} معتبر نیست`);
+      toast.error(t.repsInvalidSet(setNumber));
       return false;
     }
     let weight: number | null = null;
@@ -209,7 +211,7 @@ function SetRow({
       if (raw !== "") {
         const w = parseNum(raw);
         if (w === null || w < 0 || w > 500) {
-          toast.error(`وزنه ست ${faDigits(setNumber)} باید بین ۰ تا ۵۰۰ کیلوگرم باشد`);
+          toast.error(t.weightRangeSet(setNumber));
           return false;
         }
         weight = w;
@@ -231,10 +233,10 @@ function SetRow({
   return (
     <li className="flex flex-wrap items-center gap-2 rounded-xl border border-border/50 bg-background/40 p-2.5">
       <span className="flex size-7 shrink-0 items-center justify-center rounded-lg border border-border/50 bg-secondary/40 text-[10px] font-extrabold text-foreground/85">
-        {faDigits(setNumber)}
+        {localeNumber(setNumber, locale)}
       </span>
       <label className="flex min-w-0 flex-1 items-center gap-1.5">
-        <span className="shrink-0 text-[10px] font-medium text-muted-foreground">تکرار</span>
+        <span className="shrink-0 text-[10px] font-medium text-muted-foreground">{t.repsLabel}</span>
         <Input
           dir="ltr"
           inputMode="numeric"
@@ -244,13 +246,13 @@ function SetRow({
           onBlur={commitNow}
           onKeyDown={(e) => e.key === "Enter" && commitNow()}
           className="h-8 w-full min-w-14 text-center text-xs"
-          aria-label={`تعداد تکرار ست ${setNumber}`}
+          aria-label={t.setRepsAria(setNumber)}
         />
       </label>
       {!weightHidden ? (
         <label className="flex min-w-0 flex-1 items-center gap-1.5">
           <span className="shrink-0 text-[10px] font-medium text-muted-foreground">
-            {WEIGHT_UNIT}
+            {t.kilograms}
           </span>
           <Input
             dir="ltr"
@@ -262,20 +264,20 @@ function SetRow({
             onBlur={commitNow}
             onKeyDown={(e) => e.key === "Enter" && commitNow()}
             className="h-8 w-full min-w-14 text-center text-xs"
-            aria-label={`وزنه ست ${setNumber} به کیلوگرم — خالی یعنی بدون بار خارجی`}
+            aria-label={t.setWeightAria(setNumber)}
           />
         </label>
       ) : (
-        <span className="min-w-14 text-[10px] leading-5 text-muted-foreground/70">وزن بدن</span>
+        <span className="min-w-14 text-[10px] leading-5 text-muted-foreground/70">{t.bodyweightLabel}</span>
       )}
-      {dirty && <span className="text-[9px] font-bold text-amber-300/90">ذخیره نشده</span>}
+      {dirty && <span className="text-[9px] font-bold text-amber-300/90">{t.unsavedMark}</span>}
       <Button
         size="sm"
         variant="outline"
         disabled={disabled || deleting}
         onClick={onDelete}
         className="h-8 shrink-0 border-destructive/30 px-2 text-rose-300 hover:bg-destructive/10"
-        aria-label={`حذف ست ${setNumber}`}
+        aria-label={t.deleteSetAria(setNumber)}
       >
         <Trash2 className="size-3.5" aria-hidden="true" />
       </Button>
@@ -298,6 +300,9 @@ function SessionExerciseCard({
   queueSave: (payload: PendingEdit) => void;
   commitNow: (payload: PendingEdit, key: string) => boolean;
 }) {
+  const t = useStrings(workoutStrings);
+  const locale = useLocale();
+  const dir = useDir();
   const [edits, setEdits] = useState<Record<string, EditValue>>({});
   const [deletingSetId, setDeletingSetId] = useState<string | null>(null);
   const [draftOpen, setDraftOpen] = useState(false);
@@ -322,14 +327,14 @@ function SessionExerciseCard({
   const commitDraft = () => {
     const repsNum = parseNum(draftReps);
     if (repsNum === null || repsNum < 1) {
-      toast.error("تعداد تکرار ست جدید معتبر نیست");
+      toast.error(t.newSetRepsInvalid);
       return;
     }
     let weight: number | null = null;
     if (!bodyweightOnly && draftWeight.trim() !== "") {
       const w = parseNum(draftWeight);
       if (w === null || w < 0 || w > 500) {
-        toast.error("وزنه باید بین ۰ تا ۵۰۰ کیلوگرم باشد");
+        toast.error(t.weightRange);
         return;
       }
       weight = w;
@@ -343,7 +348,7 @@ function SessionExerciseCard({
       })
       .then((result) => {
         if (result.ok) {
-          toast.success(`ست ${faDigits(nextSetNumber)} «${ex.faName}» ثبت شد`);
+          toast.success(t.setLoggedToast(nextSetNumber, ex.faName));
           setDraftOpen(false);
           setDraftReps("");
           setDraftWeight("");
@@ -372,43 +377,47 @@ function SessionExerciseCard({
               {ex.enName}
             </span>
             <span className="rounded-md border border-border/50 bg-secondary/40 px-1.5 py-0.5 text-[9px] font-medium text-muted-foreground">
-              {categoryFa(ex.category as never)}
+              {t.categoryName(ex.category)}
             </span>
             {ex.status === "done" && (
               <span className="inline-flex items-center gap-1 rounded-md border border-primary/30 bg-primary/10 px-1.5 py-0.5 text-[9px] font-bold text-primary">
                 <CircleCheck className="size-3" aria-hidden="true" />
-                انجام شد
+                {t.doneLabel}
               </span>
             )}
             {ex.status === "skipped" && (
               <span className="inline-flex items-center gap-1 rounded-md border border-border/50 bg-secondary/40 px-1.5 py-0.5 text-[9px] font-bold text-muted-foreground">
                 <CircleOff className="size-3" aria-hidden="true" />
-                رد شد
+                {t.skippedLabel}
               </span>
             )}
           </div>
           <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-[10px] leading-5 text-muted-foreground">
             <span>
-              عضلات: {ex.primaryMuscles.map((m) => muscleFa(m as MuscleGroupId)).join("، ") || "—"}
+              {t.musclesLine(
+                ex.primaryMuscles.length > 0
+                  ? t.joinList(ex.primaryMuscles.map((m) => t.muscleName(m)))
+                  : "—"
+              )}
             </span>
             {ex.targetSets !== null && (
               <span>
-                هدف برنامه: {faDigits(ex.targetSets)} ست
+                {t.planTargetSets(ex.targetSets)}
                 {ex.targetRepsMin !== null && ex.targetRepsMax !== null
-                  ? ` × ${faDigits(ex.targetRepsMin)}–${faDigits(ex.targetRepsMax)} تکرار`
+                  ? t.planTargetReps(ex.targetRepsMin, ex.targetRepsMax)
                   : ""}
               </span>
             )}
             {ex.restSeconds !== null && (
               <span className="inline-flex items-center gap-1">
                 <Timer className="size-3" aria-hidden="true" />
-                استراحت پیشنهادی {faDigits(ex.restSeconds)} ثانیه
+                {t.suggestedRest(ex.restSeconds)}
               </span>
             )}
             {bodyweightOnly && (
               <span className="inline-flex items-center gap-1">
                 <Flame className="size-3" aria-hidden="true" />
-                وزن بدن — بدون بار خارجی
+                {t.bodyweightNoLoad}
               </span>
             )}
           </div>
@@ -431,12 +440,12 @@ function SessionExerciseCard({
               className="h-7 border-primary/40 bg-primary/10 px-2.5 text-[10px] font-bold text-primary hover:bg-primary/20"
             >
               <Box className="size-3" aria-hidden="true" />
-              مربی سه‌بعدی
+              {t.coach3d}
             </Button>
           ) : (
             <span className="inline-flex items-center gap-1 rounded-md border border-border/40 bg-secondary/20 px-2 py-1.5 text-[9px] text-muted-foreground/70">
               <Box className="size-3" aria-hidden="true" />
-              نمایش سه‌بعدی در دسترس نیست
+              {t.no3d}
             </span>
           )}
           <Button
@@ -445,7 +454,7 @@ function SessionExerciseCard({
             onClick={() => openLibraryExercise(ex.exerciseId)}
             className="h-7 border-border/70 px-2.5 text-[10px] font-semibold hover:border-primary/40 hover:text-primary"
           >
-            راهنما
+            {t.guide}
           </Button>
           {ex.status !== "done" && (
             <Button
@@ -459,7 +468,7 @@ function SessionExerciseCard({
               className="h-7 border-primary/40 px-2.5 text-[10px] font-bold text-primary hover:bg-primary/15"
             >
               <CircleCheck className="size-3" aria-hidden="true" />
-              انجام شد
+              {t.doneLabel}
             </Button>
           )}
           {ex.status !== "skipped" && (
@@ -474,7 +483,7 @@ function SessionExerciseCard({
               className="h-7 border-border/70 px-2.5 text-[10px] font-semibold text-muted-foreground hover:border-amber-400/40 hover:text-amber-300"
             >
               <CircleOff className="size-3" aria-hidden="true" />
-              رد کردن
+              {t.skipAction}
             </Button>
           )}
         </div>
@@ -511,7 +520,7 @@ function SessionExerciseCard({
           </ul>
         ) : (
           <p className="rounded-xl border border-dashed border-border/50 bg-secondary/20 px-3 py-2.5 text-center text-[10px] leading-5 text-muted-foreground/80">
-            هنوز ست‌ای از این حرکت ثبت نشده — اولین ست را با دکمه زیر اضافه کنید.
+            {t.noSetsYet}
           </p>
         )}
 
@@ -519,27 +528,27 @@ function SessionExerciseCard({
         {draftOpen ? (
           <div className="mt-2 flex flex-wrap items-center gap-2 rounded-xl border border-primary/30 bg-primary/5 p-2.5">
             <span className="flex size-7 shrink-0 items-center justify-center rounded-lg border border-primary/40 bg-primary/10 text-[10px] font-extrabold text-primary">
-              {faDigits(nextSetNumber)}
+              {localeNumber(nextSetNumber, locale)}
             </span>
             <Input
               dir="ltr"
               inputMode="numeric"
-              placeholder="تکرار"
+              placeholder={t.repsPlaceholder}
               value={draftReps}
               autoFocus
               onChange={(e) => setDraftReps(e.target.value)}
               className="h-8 min-w-16 flex-1 text-center text-xs"
-              aria-label="تعداد تکرار ست جدید"
+              aria-label={t.newSetRepsAria}
             />
             {!bodyweightOnly && (
               <Input
                 dir="ltr"
                 inputMode="decimal"
-                placeholder={`${WEIGHT_UNIT} (اختیاری)`}
+                placeholder={t.optionalWeightPlaceholder(t.kilograms)}
                 value={draftWeight}
                 onChange={(e) => setDraftWeight(e.target.value)}
                 className="h-8 min-w-20 flex-1 text-center text-xs"
-                aria-label="وزنه ست جدید به کیلوگرم — خالی یعنی بدون بار خارجی"
+                aria-label={t.newSetWeightAria}
               />
             )}
             <Button
@@ -547,7 +556,7 @@ function SessionExerciseCard({
               className="h-8 bg-primary/15 px-3 text-[10px] font-bold text-primary hover:bg-primary/25"
               onClick={commitDraft}
             >
-              ثبت ست
+              {t.logSet}
             </Button>
             <Button
               size="sm"
@@ -560,7 +569,7 @@ function SessionExerciseCard({
               }}
             >
               <X className="size-3.5" aria-hidden="true" />
-              انصراف
+              {t.cancel}
             </Button>
           </div>
         ) : (
@@ -571,7 +580,7 @@ function SessionExerciseCard({
             className="mt-2 h-8 w-full border-dashed border-border/60 text-[10px] font-bold hover:border-primary/40 hover:text-primary"
           >
             <Plus className="size-3.5" aria-hidden="true" />
-            افزودن ست {ex.sets.length > 0 ? faDigits(nextSetNumber) : ""}
+            {t.addSet(ex.sets.length > 0 ? localeNumber(nextSetNumber, locale) : "")}
           </Button>
         )}
       </div>
@@ -581,15 +590,15 @@ function SessionExerciseCard({
         open={deletingSetId !== null}
         onOpenChange={(open) => !open && setDeletingSetId(null)}
       >
-        <AlertDialogContent dir="rtl">
+        <AlertDialogContent dir={dir}>
           <AlertDialogHeader>
-            <AlertDialogTitle className="text-start">حذف ست ثبت‌شده</AlertDialogTitle>
+            <AlertDialogTitle className="text-start">{t.deleteSetDialogTitle}</AlertDialogTitle>
             <AlertDialogDescription className="text-start leading-7">
-              این ست از رکورد جلسه حذف می‌شود. حذف یعنی این ست واقعاً انجام‌نشده حساب خواهد شد.
+              {t.deleteSetDialogDescription}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter className="gap-2">
-            <AlertDialogCancel>انصراف</AlertDialogCancel>
+            <AlertDialogCancel>{t.cancel}</AlertDialogCancel>
             <AlertDialogAction
               onClick={() => {
                 if (deletingSetId) {
@@ -601,7 +610,7 @@ function SessionExerciseCard({
               }}
               className="bg-destructive text-white hover:bg-destructive/90"
             >
-              حذف ست
+              {t.deleteSetAction}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -615,6 +624,9 @@ function SessionExerciseCard({
 const AUTO_SAVE_DELAY_MS = 800;
 
 export function ActiveSessionRecorder({ ctrl }: { ctrl: UseActiveSessionResult }) {
+  const t = useStrings(workoutStrings);
+  const locale = useLocale();
+  const dir = useDir();
   const session = ctrl.session;
   const [saveState, setSaveState] = useState<SaveState>("idle");
   const [saveError, setSaveError] = useState<string | null>(null);
@@ -727,10 +739,11 @@ export function ActiveSessionRecorder({ ctrl }: { ctrl: UseActiveSessionResult }
     return (
       <div className="rounded-2xl border border-border/60 bg-card p-6 text-center">
         <CircleCheck className="mx-auto size-6 text-primary" aria-hidden="true" />
-        <p className="mt-3 text-sm font-bold">جلسه «{session.title}» بسته شد</p>
+        <p className="mt-3 text-sm font-bold">{t.sessionClosedTitle(session.title)}</p>
         <p className="mt-1 text-[11px] leading-6 text-muted-foreground">
-          وضعیت: {session.status === "completed" ? "تکمیل‌شده" : "رهاشده"} — تاریخچه و آمار در
-          بخش «پیشرفت من» به‌روز شد.
+          {t.closedStatusLine(
+            session.status === "completed" ? t.statusLabel("completed") : t.statusLabel("abandoned")
+          )}
         </p>
       </div>
     );
@@ -752,9 +765,9 @@ export function ActiveSessionRecorder({ ctrl }: { ctrl: UseActiveSessionResult }
     if (result.ok) {
       setFinishOpen(false);
       if (finishAction === "complete") {
-        toast.success("تمرین تکمیل شد و در تاریخچه ثبت گردید");
+        toast.success(t.workoutCompleteToast);
       } else {
-        toast.info("جلسه به‌عنوان «رهاشده» ثبت شد");
+        toast.info(t.abandonedToast);
       }
       await ctrl.refresh();
     } else {
@@ -763,7 +776,7 @@ export function ActiveSessionRecorder({ ctrl }: { ctrl: UseActiveSessionResult }
   };
 
   return (
-    <section aria-label="جلسه در حال انجام" className="flex flex-col gap-4">
+    <section aria-label={t.recorderAria} className="flex flex-col gap-4">
       {/* هدر جلسه */}
       <div className="rounded-2xl border border-primary/30 bg-primary/5 p-4 md:p-5">
         <div className="flex flex-wrap items-center gap-2.5">
@@ -771,9 +784,9 @@ export function ActiveSessionRecorder({ ctrl }: { ctrl: UseActiveSessionResult }
             <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-primary/60" />
             <span className="relative inline-flex size-2.5 rounded-full bg-primary" />
           </span>
-          <h3 className="text-sm font-bold">جلسه در حال انجام: {session.title}</h3>
+          <h3 className="text-sm font-bold">{t.recorderHeading(session.title)}</h3>
           <span className="rounded-md border border-primary/30 bg-primary/10 px-2 py-0.5 text-[10px] font-bold text-primary">
-            در حال انجام
+            {t.statusLabel("in_progress")}
           </span>
           <div className="ms-auto flex flex-wrap items-center gap-2">
             <SaveStatusChip state={saveState} message={saveError} onRetry={retrySave} />
@@ -783,26 +796,24 @@ export function ActiveSessionRecorder({ ctrl }: { ctrl: UseActiveSessionResult }
               className="h-8 bg-primary/15 px-3 text-[10px] font-bold text-primary hover:bg-primary/25"
             >
               <CircleCheck className="size-3.5" aria-hidden="true" />
-              پایان تمرین
+              {t.finishWorkout}
             </Button>
           </div>
         </div>
         <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 text-[10px] leading-5 text-muted-foreground">
-          <span>شروع: {jalaliFullLabel(session.startedAt)}</span>
+          <span>{t.startedAtLine(localeFullLabel(session.startedAt, locale))}</span>
           <span className="inline-flex items-center gap-1">
             <Timer className="size-3" aria-hidden="true" />
-            مدت تا این لحظه: {faDigits(elapsedMinutes)} دقیقه (از زمان شروع ثبت‌شده در سرور)
+            {t.elapsedLine(elapsedMinutes)}
           </span>
           {summary && (
             <span>
-              {faDigits(summary.exercisesDone)} از {faDigits(summary.exercisesTotal)} حرکت —{" "}
-              {faDigits(summary.setsCompleted)} ست
+              {t.progressLine(summary.exercisesDone, summary.exercisesTotal, summary.setsCompleted)}
             </span>
           )}
         </div>
         <p className="mt-2 text-[10px] leading-5 text-muted-foreground/70">
-          این جلسه واقعاً در پایگاه داده سرور ثبت شده است؛ با رفرش صفحه یا بستن مرورگر از بین
-          نمی‌رود و دوباره همین‌جا بازیابی می‌شود.
+          {t.persistedNote}
         </p>
       </div>
 
@@ -810,8 +821,7 @@ export function ActiveSessionRecorder({ ctrl }: { ctrl: UseActiveSessionResult }
       {saveState === "error" && (
         <div className="flex flex-wrap items-center gap-2 rounded-xl border border-destructive/40 bg-destructive/10 p-3 text-[11px] leading-6 text-rose-200">
           <TriangleAlert className="size-4 shrink-0" aria-hidden="true" />
-          ذخیره برخی ست‌ها ناموفق بود؛ داده‌ها حذف نشده و هیچ موفقیتی جعل نشده است. پس از
-          بازگشت اتصال، «تلاش مجدد» را بزنید.
+          {t.saveErrorBanner}
         </div>
       )}
 
@@ -836,14 +846,13 @@ export function ActiveSessionRecorder({ ctrl }: { ctrl: UseActiveSessionResult }
         className="border-dashed border-border/60 font-semibold hover:border-primary/40 hover:text-primary"
       >
         <ListPlus className="size-4" aria-hidden="true" />
-        افزودن حرکت از کتابخانه
+        {t.addFromLibrary}
       </Button>
 
       {/* رهاکردن جلسه */}
       <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-border/50 bg-secondary/20 p-3">
         <p className="text-[10px] leading-5 text-muted-foreground">
-          اگر امروز ادامه ندادید، جلسه را «رهاکردن» کنید؛ رهاشده با تکمیل‌شده یکی نیست و در
-          تاریخچه و آمار جدا شمرده می‌شود.
+          {t.abandonHint}
         </p>
         <Button
           size="sm"
@@ -852,7 +861,7 @@ export function ActiveSessionRecorder({ ctrl }: { ctrl: UseActiveSessionResult }
           className="h-8 shrink-0 border-border/70 px-3 text-[10px] font-semibold text-muted-foreground hover:border-rose-400/40 hover:text-rose-300"
         >
           <X className="size-3.5" aria-hidden="true" />
-          رهاکردن جلسه
+          {t.abandonAction}
         </Button>
       </div>
 
@@ -861,59 +870,53 @@ export function ActiveSessionRecorder({ ctrl }: { ctrl: UseActiveSessionResult }
         open={finishOpen}
         onOpenChange={(open) => !open && !finishing && setFinishOpen(false)}
       >
-        <AlertDialogContent dir="rtl" className="max-h-[85vh] overflow-y-auto">
+        <AlertDialogContent dir={dir} className="max-h-[85vh] overflow-y-auto">
           <AlertDialogHeader>
             <AlertDialogTitle className="text-start">
-              {finishAction === "complete" ? "پایان و تکمیل تمرین" : "رهاکردن جلسه"}
+              {finishAction === "complete" ? t.finishCompleteTitle : t.abandonAction}
             </AlertDialogTitle>
             <AlertDialogDescription className="text-start leading-7">
-              {finishAction === "complete"
-                ? "جلسه با وضعیت «تکمیل‌شده» ثبت می‌شود؛ حتی اگر همه حرکات انجام نشده باشند، موارد ناقص صادقانه در همان حالت می‌مانند."
-                : "جلسه با وضعیت «رهاشده» ثبت می‌شود و در آمار «جلسات تکمیل‌شده» شمرده نمی‌شود."}
+              {finishAction === "complete" ? t.finishCompleteDesc : t.finishAbandonDesc}
             </AlertDialogDescription>
           </AlertDialogHeader>
 
           {summary && (
             <div className="rounded-xl border border-border/60 bg-secondary/20 p-3 text-[11px] leading-6">
-              <p className="font-bold text-foreground">خلاصه این جلسه</p>
+              <p className="font-bold text-foreground">{t.summaryTitle}</p>
               <ul className="mt-1.5 space-y-0.5 text-muted-foreground">
                 <li>
-                  حرکات: {faDigits(summary.exercisesDone)} انجام‌شده از{" "}
-                  {faDigits(summary.exercisesTotal)}
+                  {t.summaryExercisesLine(summary.exercisesDone, summary.exercisesTotal)}
                   {summary.exercisesSkipped > 0
-                    ? ` — ${faDigits(summary.exercisesSkipped)} ردشده`
+                    ? t.summarySkippedSuffix(summary.exercisesSkipped)
                     : ""}
                 </li>
-                <li>ست‌های ثبت‌شده واقعی: {faDigits(summary.setsCompleted)}</li>
-                <li>مجموع تکرارها: {faDigits(summary.repsTotal)}</li>
-                <li>مدت تا این لحظه: {faDigits(elapsedMinutes)} دقیقه</li>
+                <li>{t.summarySetsLine(summary.setsCompleted)}</li>
+                <li>{t.summaryRepsLine(summary.repsTotal)}</li>
+                <li>{t.summaryDurationLine(elapsedMinutes)}</li>
                 {summary.volumeKg > 0 && (
-                  <li>
-                    حجم ثبت‌شده (فقط ست‌های با بار خارجی): {faDigits(summary.volumeKg)} کیلوگرم
-                  </li>
+                  <li>{t.summaryVolumeLine(summary.volumeKg)}</li>
                 )}
               </ul>
               {summary.exercisesDone < summary.exercisesTotal && (
                 <p className="mt-2 flex items-start gap-1.5 text-[10px] leading-5 text-amber-300/90">
                   <TriangleAlert className="mt-0.5 size-3 shrink-0" aria-hidden="true" />
-                  {faDigits(summary.exercisesTotal - summary.exercisesDone)} حرکت بدون ثبت ست
-                  باقی مانده است.
+                  {t.unloggedWarning(summary.exercisesTotal - summary.exercisesDone)}
                 </p>
               )}
             </div>
           )}
 
           <Textarea
-            placeholder="یادداشت اختیاری درباره این جلسه (حداکثر ۵۰۰ کاراکتر)"
+            placeholder={t.finishNotesPlaceholder}
             value={finishNotes}
             onChange={(e) => setFinishNotes(e.target.value)}
             maxLength={500}
             className="min-h-16 text-xs"
-            aria-label="یادداشت پایان جلسه"
+            aria-label={t.finishNotesAria}
           />
 
           <AlertDialogFooter className="gap-2">
-            <AlertDialogCancel disabled={finishing}>بازگشت به جلسه</AlertDialogCancel>
+            <AlertDialogCancel disabled={finishing}>{t.backToSession}</AlertDialogCancel>
             <AlertDialogAction
               disabled={finishing}
               onClick={(e) => {
@@ -927,10 +930,10 @@ export function ActiveSessionRecorder({ ctrl }: { ctrl: UseActiveSessionResult }
               )}
             >
               {finishing
-                ? "در حال ثبت…"
+                ? t.recording
                 : finishAction === "complete"
-                  ? "تکمیل تمرین"
-                  : "ثبت به‌عنوان رهاشده"}
+                  ? t.completeAction
+                  : t.abandonConfirmAction}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -944,7 +947,7 @@ export function ActiveSessionRecorder({ ctrl }: { ctrl: UseActiveSessionResult }
         onPick={(exerciseId) =>
           ctrl.addExercise(session.id, exerciseId).then((r) => {
             if (r.ok) {
-              toast.success("حرکت به جلسه اضافه شد");
+              toast.success(t.exerciseAddedToast);
               return true;
             }
             toast.error(r.message);

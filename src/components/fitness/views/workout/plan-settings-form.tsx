@@ -9,7 +9,7 @@
 import { useMemo, useState } from "react";
 import { motion } from "framer-motion";
 import {
-  ArrowLeft,
+  ArrowRight,
   ChartNoAxesColumn,
   CalendarDays,
   Dumbbell,
@@ -40,19 +40,18 @@ import {
   firstPlanSettingsError,
 } from "@/lib/plan-engine/schema";
 import { PROFILE_TO_LIBRARY_EQUIPMENT } from "@/lib/plan-engine/presets";
-import {
-  PLAN_GOAL_LABELS,
-  PLAN_EXPERIENCE_LABELS,
-  focusFa,
-  type PlanFocus,
-  type PlanGoal,
-  type PlanExperience,
-  type PlanSettings,
+import type {
+  PlanFocus,
+  PlanGoal,
+  PlanExperience,
+  PlanSettings,
 } from "@/lib/plan-engine/types";
-import { GOAL_OPTIONS, EXPERIENCE_OPTIONS, SESSION_MINUTES_OPTIONS, faDigits, normalizeDigits } from "@/lib/profile";
+import { GOAL_OPTIONS, EXPERIENCE_OPTIONS, SESSION_MINUTES_OPTIONS, normalizeDigits } from "@/lib/profile";
 import type { FitnessProfileClient } from "@/lib/profile";
-
-const WEEK_DAY_LABELS = ["شنبه", "یکشنبه", "دوشنبه", "سه‌شنبه", "چهارشنبه", "پنجشنبه", "جمعه"];
+import { useLocale } from "@/lib/i18n/locale";
+import { useStrings } from "@/lib/i18n/use-strings";
+import { workoutStrings } from "@/lib/i18n/sections/workout";
+import { sharedStrings } from "@/lib/i18n/sections/shared";
 
 function SectionCard({
   icon: Icon,
@@ -126,6 +125,10 @@ export function PlanSettingsForm({
   onSubmit,
   onCancel,
 }: PlanSettingsFormProps) {
+  const t = useStrings(workoutStrings);
+  const s = useStrings(sharedStrings);
+  const locale = useLocale();
+
   /* ------------------ مقداردهی اولیه از پروفایل واقعی ------------------ */
   const initialEquipment = useMemo<EquipmentId[]>(() => {
     const mapped = new Set<EquipmentId>();
@@ -206,11 +209,11 @@ export function PlanSettingsForm({
       transition={{ duration: 0.25 }}
       className="flex flex-col gap-4"
     >
-      <SectionCard icon={Target} title="هدف و سطح">
+      <SectionCard icon={Target} title={t.goalSection}>
         <div className="grid gap-4 sm:grid-cols-2">
           <div className="flex flex-col gap-2">
             <Label htmlFor="plan-goal" className="text-[11px] text-muted-foreground">
-              هدف تمرینی
+              {t.trainingGoalLabel}
             </Label>
             <Select value={goal} onValueChange={(v) => setGoal(v as PlanGoal)}>
               <SelectTrigger id="plan-goal" className="w-full">
@@ -219,7 +222,7 @@ export function PlanSettingsForm({
               <SelectContent>
                 {GOAL_OPTIONS.map((option) => (
                   <SelectItem key={option.value} value={option.value}>
-                    {PLAN_GOAL_LABELS[option.value as PlanGoal]}
+                    {s.goalLabel(option.value)}
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -227,7 +230,7 @@ export function PlanSettingsForm({
           </div>
           <div className="flex flex-col gap-2">
             <Label htmlFor="plan-exp" className="text-[11px] text-muted-foreground">
-              سطح تجربه
+              {t.experienceLevelLabel}
             </Label>
             <Select value={experience} onValueChange={(v) => setExperience(v as PlanExperience)}>
               <SelectTrigger id="plan-exp" className="w-full">
@@ -236,7 +239,7 @@ export function PlanSettingsForm({
               <SelectContent>
                 {EXPERIENCE_OPTIONS.map((option) => (
                   <SelectItem key={option.value} value={option.value}>
-                    {PLAN_EXPERIENCE_LABELS[option.value as PlanExperience]}
+                    {s.experienceLabel(option.value)}
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -244,14 +247,14 @@ export function PlanSettingsForm({
           </div>
         </div>
         <p className="mt-3 text-[10px] leading-5 text-muted-foreground/70">
-          مقادیر پیش‌فرض از پروفایل شما خوانده شده‌اند؛ می‌توانید فقط برای همین برنامه تغییرشان دهید.
+          {t.defaultsNote}
         </p>
       </SectionCard>
 
-      <SectionCard icon={CalendarDays} title="حجم هفتگی">
+      <SectionCard icon={CalendarDays} title={t.weeklyVolumeSection}>
         <div className="grid gap-4 sm:grid-cols-2">
           <div className="flex flex-col gap-2">
-            <Label className="text-[11px] text-muted-foreground">تعداد روز تمرین در هفته</Label>
+            <Label className="text-[11px] text-muted-foreground">{t.daysPerWeekLabel}</Label>
             <div className="flex flex-wrap gap-1.5">
               {[2, 3, 4, 5, 6].map((n) => (
                 <Chip
@@ -262,17 +265,17 @@ export function PlanSettingsForm({
                     setPreferredDays((prev) => prev.slice(0, n));
                   }}
                 >
-                  {faDigits(n)} روز
+                  {t.daysChip(n)}
                 </Chip>
               ))}
             </div>
           </div>
           <div className="flex flex-col gap-2">
-            <Label className="text-[11px] text-muted-foreground">مدت هر جلسه</Label>
+            <Label className="text-[11px] text-muted-foreground">{t.sessionMinutesLabel}</Label>
             <div className="flex flex-wrap gap-1.5">
               {SESSION_MINUTES_OPTIONS.map((m) => (
                 <Chip key={m} selected={sessionMinutes === m} onClick={() => setSessionMinutes(m)}>
-                  {faDigits(m)} دقیقه
+                  {t.minutesChip(m)}
                 </Chip>
               ))}
             </div>
@@ -280,10 +283,10 @@ export function PlanSettingsForm({
         </div>
         <div className="mt-4 flex flex-col gap-2">
           <Label className="text-[11px] text-muted-foreground">
-            روزهای ترجیحی (اختیاری — حداکثر {faDigits(daysPerWeek)} روز)
+            {t.preferredDaysLabel(daysPerWeek)}
           </Label>
           <div className="flex flex-wrap gap-1.5">
-            {WEEK_DAY_LABELS.map((label, index) => (
+            {t.weekDayLabels.map((label, index) => (
               <Chip
                 key={label}
                 selected={preferredDays.includes(index)}
@@ -297,7 +300,7 @@ export function PlanSettingsForm({
         </div>
       </SectionCard>
 
-      <SectionCard icon={Dumbbell} title="تجهیزات در دسترس">
+      <SectionCard icon={Dumbbell} title={t.equipmentSection}>
         <div className="flex flex-wrap gap-1.5">
           {EQUIPMENT_TYPES.map((eq) => (
             <Chip
@@ -305,40 +308,38 @@ export function PlanSettingsForm({
               selected={equipment.includes(eq.id)}
               onClick={() => setEquipment((prev) => toggle(prev, eq.id))}
             >
-              {eq.fa}
+              {locale === "fa" ? eq.fa : eq.en}
             </Chip>
           ))}
         </div>
         <p className="mt-3 text-[10px] leading-5 text-muted-foreground/70">
-          حرکتی فقط زمانی انتخاب می‌شود که همه تجهیزات لازمش را داشته باشید؛ اگر نیمکت در دسترس
-          دارید حتماً آن را هم انتخاب کنید.
+          {t.equipmentNote}
         </p>
         {hasKettlebellInProfile && (
           <p className="mt-2 text-[10px] leading-5 text-amber-300/90">
-            توجه: کتل‌بل در پروفایل شما ثبت شده اما فعلاً حرکت کتل‌بلی در بانک حرکات موجود نیست و
-            در برنامه لحاظ نمی‌شود.
+            {t.kettlebellNote}
           </p>
         )}
       </SectionCard>
 
-      <SectionCard icon={ChartNoAxesColumn} title="تمرکز برنامه (اختیاری)">
+      <SectionCard icon={ChartNoAxesColumn} title={t.focusSection}>
         <div className="flex flex-wrap gap-1.5">
           {(["all", "upper", "lower"] as const).map((f) => (
             <Chip key={f} selected={focus === f} onClick={() => setFocus(f)}>
-              {focusFa(f)}
+              {t.focusName(f)}
             </Chip>
           ))}
           {EXERCISE_CATEGORIES.map((cat) => (
             <Chip key={cat.id} selected={focus === cat.id} onClick={() => setFocus(cat.id)}>
-              {cat.fa}
+              {locale === "fa" ? cat.fa : cat.en}
             </Chip>
           ))}
         </div>
       </SectionCard>
 
-      <SectionCard icon={Ban} title="محدودیت‌ها (اختیاری)">
+      <SectionCard icon={Ban} title={t.limitationsSection}>
         <div className="flex flex-col gap-2">
-          <Label className="text-[11px] text-muted-foreground">دسته‌هایی که نمی‌خواهید در برنامه باشند</Label>
+          <Label className="text-[11px] text-muted-foreground">{t.excludedCategoriesLabel}</Label>
           <div className="flex flex-wrap gap-1.5">
             {EXERCISE_CATEGORIES.map((cat) => (
               <Chip
@@ -353,27 +354,26 @@ export function PlanSettingsForm({
                   })
                 }
               >
-                {cat.fa}
+                {locale === "fa" ? cat.fa : cat.en}
               </Chip>
             ))}
           </div>
         </div>
         <div className="mt-4 flex flex-col gap-2">
           <Label htmlFor="plan-limits" className="text-[11px] text-muted-foreground">
-            یادداشت احتیاطی (درد، آسیب یا نکته‌ای که مربی باید بداند)
+            {t.cautionNotesLabel}
           </Label>
           <Textarea
             id="plan-limits"
             value={limitationNotes}
             onChange={(e) => setLimitationNotes(e.target.value)}
-            placeholder="مثلاً: هنگام اسکوات زانویم اذیت می‌شود"
+            placeholder={t.cautionPlaceholder}
             className="min-h-20 resize-y"
             maxLength={500}
           />
           <p className="flex items-start gap-1.5 text-[10px] leading-5 text-amber-300/90">
             <TriangleAlert className="mt-0.5 size-3.5 shrink-0" aria-hidden="true" />
-            این یادداشت فقط به‌عنوان ورودی احتیاطی در برنامه نمایش داده می‌شود؛ تشخیص پزشکی یا
-            برنامه توان‌بخشی نیست. برای درد یا آسیب با پزشک یا فیزیوتراپیست واجد صلاحیت مشورت کنید.
+            {t.medicalDisclaimer}
           </p>
         </div>
       </SectionCard>
@@ -395,11 +395,11 @@ export function PlanSettingsForm({
           className="font-bold text-primary-foreground glow-lime-sm"
         >
           <Wand2 className="size-4" aria-hidden="true" />
-          {submitting ? "در حال ساخت پیش‌نمایش…" : "ساخت پیش‌نمایش برنامه"}
-          {!submitting && <ArrowLeft className="size-4" aria-hidden="true" />}
+          {submitting ? t.buildingPreview : t.buildPreview}
+          {!submitting && <ArrowRight className="size-4 rtl:rotate-180" aria-hidden="true" />}
         </Button>
         <Button variant="ghost" onClick={onCancel} disabled={submitting} className="font-semibold">
-          انصراف
+          {t.cancel}
         </Button>
       </div>
     </motion.div>

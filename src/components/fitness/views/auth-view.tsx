@@ -30,11 +30,16 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { authClient, authErrorToFa } from "@/lib/auth-client";
 import { EMAIL_PATTERN, normalizeEmail } from "@/lib/profile";
+import { useStrings } from "@/lib/i18n/use-strings";
+import { authStrings } from "@/lib/i18n/sections/auth";
+import { useDocumentTitle } from "@/lib/i18n/locale";
+import { UiLangSwitch } from "@/components/fitness/ui-lang-switch";
 import { BrandMark } from "../sidebar-nav";
 
 /* ------------------------------ متن شرایط استفاده ------------------------------ */
 
 function TermsDialog() {
+  const t = useStrings(authStrings);
   return (
     <Dialog>
       <DialogTrigger asChild>
@@ -42,52 +47,34 @@ function TermsDialog() {
           type="button"
           className="text-xs font-semibold text-primary underline-offset-4 hover:underline outline-none focus-visible:ring-2 focus-visible:ring-ring/60 rounded"
         >
-          شرایط استفاده و سیاست حریم خصوصی
+          {t.termsTitle}
         </button>
       </DialogTrigger>
       <DialogContent className="max-h-[85vh] overflow-y-auto sm:max-w-lg">
         <DialogHeader>
-          <DialogTitle className="text-start">شرایط استفاده و سیاست حریم خصوصی</DialogTitle>
-          <DialogDescription className="text-start">
-            خلاصه‌ای صادقانه از داده‌هایی که ذخیره می‌کنیم و نحوه محافظت از آن‌ها.
-          </DialogDescription>
+          <DialogTitle className="text-start">{t.termsTitle}</DialogTitle>
+          <DialogDescription className="text-start">{t.termsDescription}</DialogDescription>
         </DialogHeader>
         <div className="space-y-4 text-xs leading-6 text-muted-foreground">
-          <section aria-label="داده‌های ذخیره‌شده">
-            <h4 className="mb-1 font-bold text-foreground">داده‌های ذخیره‌شده</h4>
-            <p>
-              ایمیل، نام نمایشی و اطلاعات پروفایل تناسب اندام شما (سن، جنسیت اختیاری، قد، وزن،
-              هدف‌ها، تجهیزات، محدودیت‌های حرکتی اعلامی و ترجیحات غذایی) روی سرور ذخیره می‌شود.
-            </p>
+          <section aria-label={t.termsStoredTitle}>
+            <h4 className="mb-1 font-bold text-foreground">{t.termsStoredTitle}</h4>
+            <p>{t.termsStoredBody}</p>
           </section>
-          <section aria-label="امنیت">
-            <h4 className="mb-1 font-bold text-foreground">امنیت</h4>
-            <p>
-              رمز عبور هرگز به‌صورت متن ساده ذخیره نمی‌شود و با الگوریتم استاندارد bcrypt هش
-              می‌گردد. نشست شما با کوکی امن (HttpOnly) نگهداری می‌شود و از هر دستگاه می‌توانید
-              خارج شوید.
-            </p>
+          <section aria-label={t.termsSecurityTitle}>
+            <h4 className="mb-1 font-bold text-foreground">{t.termsSecurityTitle}</h4>
+            <p>{t.termsSecurityBody}</p>
           </section>
-          <section aria-label="محرمانگی اطلاعات سلامت">
-            <h4 className="mb-1 font-bold text-foreground">محرمانگی اطلاعات سلامت</h4>
-            <p>
-              اطلاعات بدنی و محدودیت‌های حرکتی شما محرمانه تلقی می‌شود، فقط به حساب خودتان
-              نمایش داده می‌شود و در اختیار هیچ شخص یا خدمات ثالث قرار نمی‌گیرد.
-            </p>
+          <section aria-label={t.termsHealthPrivacyTitle}>
+            <h4 className="mb-1 font-bold text-foreground">{t.termsHealthPrivacyTitle}</h4>
+            <p>{t.termsHealthPrivacyBody}</p>
           </section>
-          <section aria-label="حذف داده‌ها">
-            <h4 className="mb-1 font-bold text-foreground">حذف داده‌ها</h4>
-            <p>
-              با حذف حساب از بخش پروفایل، تمام اطلاعات وابسته به‌صورت کامل از پایگاه داده حذف
-              می‌شود.
-            </p>
+          <section aria-label={t.termsDeletionTitle}>
+            <h4 className="mb-1 font-bold text-foreground">{t.termsDeletionTitle}</h4>
+            <p>{t.termsDeletionBody}</p>
           </section>
-          <section aria-label="ماهیت محصول">
-            <h4 className="mb-1 font-bold text-foreground">ماهیت محصول</h4>
-            <p>
-              این محصول ابزار آموزشی تناسب اندام است و جایگزین تشخیص، درمان یا مشاوره پزشکی
-              نیست. در صورت آسیب یا بیماری با پزشک مشورت کنید.
-            </p>
+          <section aria-label={t.termsNatureTitle}>
+            <h4 className="mb-1 font-bold text-foreground">{t.termsNatureTitle}</h4>
+            <p>{t.termsNatureBody}</p>
           </section>
         </div>
       </DialogContent>
@@ -111,13 +98,14 @@ function PasswordInput({
   describedBy?: string;
 }) {
   const [visible, setVisible] = useState(false);
+  const t = useStrings(authStrings);
   return (
     <div className="relative">
       <Input
         id={id}
         type={visible ? "text" : "password"}
         dir="ltr"
-        className="pe-10 text-left"
+        className="pe-10 text-start"
         value={value}
         onChange={(event) => onChange(event.target.value)}
         autoComplete={autoComplete}
@@ -126,7 +114,7 @@ function PasswordInput({
       <button
         type="button"
         onClick={() => setVisible((v) => !v)}
-        aria-label={visible ? "پنهان‌کردن رمز" : "نمایش رمز"}
+        aria-label={visible ? t.hidePasswordAria : t.showPasswordAria}
         className="absolute end-2.5 top-1/2 -translate-y-1/2 text-muted-foreground transition-colors hover:text-foreground outline-none focus-visible:ring-2 focus-visible:ring-ring/60 rounded"
       >
         {visible ? <EyeOff className="size-4" aria-hidden="true" /> : <Eye className="size-4" aria-hidden="true" />}
@@ -153,6 +141,7 @@ function ErrorBanner({ message }: { message: string }) {
 
 function LoginForm() {
   const router = useRouter();
+  const t = useStrings(authStrings);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [submitting, setSubmitting] = useState(false);
@@ -165,10 +154,10 @@ function LoginForm() {
 
     const errors: typeof fieldError = {};
     if (!EMAIL_PATTERN.test(normalizeEmail(email))) {
-      errors.email = "ایمیل معتبر وارد کنید.";
+      errors.email = t.invalidEmail;
     }
     if (password.length === 0) {
-      errors.password = "رمز عبور را وارد کنید.";
+      errors.password = t.requiredPassword;
     }
     setFieldError(errors);
     if (Object.keys(errors).length > 0) return;
@@ -181,13 +170,13 @@ function LoginForm() {
         password,
       });
       if (authError) {
-        setError(authErrorToFa(authError.status ?? 0, authError.message ?? undefined));
+        setError(t.serverError(authErrorToFa(authError.status ?? 0, authError.message ?? undefined)));
         setSubmitting(false);
         return;
       }
       router.refresh();
     } catch {
-      setError("ارتباط با سرور برقرار نشد؛ اتصال اینترنت خود را بررسی کنید.");
+      setError(t.networkError);
       setSubmitting(false);
     }
   };
@@ -198,13 +187,13 @@ function LoginForm() {
 
       <div className="flex flex-col gap-1.5">
         <Label htmlFor="login-email" className="text-xs font-semibold text-foreground/90">
-          ایمیل
+          {t.emailLabel}
         </Label>
         <Input
           id="login-email"
           type="email"
           dir="ltr"
-          className="text-left"
+          className="text-start"
           placeholder="you@example.com"
           value={email}
           onChange={(event) => setEmail(event.target.value)}
@@ -221,7 +210,7 @@ function LoginForm() {
 
       <div className="flex flex-col gap-1.5">
         <Label htmlFor="login-password" className="text-xs font-semibold text-foreground/90">
-          رمز عبور
+          {t.passwordLabel}
         </Label>
         <PasswordInput
           id="login-password"
@@ -247,13 +236,12 @@ function LoginForm() {
         ) : (
           <LogIn className="size-4" aria-hidden="true" />
         )}
-        {submitting ? "در حال ورود…" : "ورود به حساب"}
+        {submitting ? t.loginSubmitting : t.loginSubmit}
       </Button>
 
       <p className="flex items-start gap-1.5 text-[10px] leading-5 text-muted-foreground/70">
         <ShieldCheck className="mt-0.5 size-3.5 shrink-0" aria-hidden="true" />
-        تأیید ایمیل و بازیابی رمز عبور هنوز فعال نیست و در مراحل بعدی اضافه می‌شود؛ در این
-        نسخه برای بازیابی دسترسی با پشتیبانی هماهنگ شوید.
+        {t.loginHint}
       </p>
     </form>
   );
@@ -263,6 +251,7 @@ function LoginForm() {
 
 function RegisterForm() {
   const router = useRouter();
+  const t = useStrings(authStrings);
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -278,21 +267,21 @@ function RegisterForm() {
 
     const errors: Record<string, string> = {};
     if (name.trim().length < 2 || name.trim().length > 60) {
-      errors.name = "نام نمایشی باید بین ۲ تا ۶۰ کاراکتر باشد.";
+      errors.name = t.nameLengthError;
     }
     if (!EMAIL_PATTERN.test(normalizeEmail(email))) {
-      errors.email = "ایمیل معتبر وارد کنید.";
+      errors.email = t.invalidEmail;
     }
     if (password.length < 8) {
-      errors.password = "رمز عبور باید حداقل ۸ کاراکتر باشد.";
+      errors.password = t.passwordMinError;
     } else if (!(/[A-Za-z]/.test(password) && /[0-9]/.test(password))) {
-      errors.password = "رمز عبور باید حداقل یک حرف و یک رقم داشته باشد.";
+      errors.password = t.passwordCharError;
     }
     if (confirm !== password || confirm.length === 0) {
-      errors.confirm = "تکرار رمز عبور با رمز عبور یکسان نیست.";
+      errors.confirm = t.confirmMismatch;
     }
     if (!accepted) {
-      errors.accepted = "برای ساخت حساب، پذیرش شرایط الزامی است.";
+      errors.accepted = t.termsRequired;
     }
     setFieldError(errors);
     if (Object.keys(errors).length > 0) return;
@@ -306,13 +295,13 @@ function RegisterForm() {
         name: name.trim(),
       });
       if (authError) {
-        setError(authErrorToFa(authError.status ?? 0, authError.message ?? undefined));
+        setError(t.serverError(authErrorToFa(authError.status ?? 0, authError.message ?? undefined)));
         setSubmitting(false);
         return;
       }
       router.refresh(); // ورود خودکار پس از ثبت‌نام → مرحله راه‌اندازی پروفایل
     } catch {
-      setError("ارتباط با سرور برقرار نشد؛ اتصال اینترنت خود را بررسی کنید.");
+      setError(t.networkError);
       setSubmitting(false);
     }
   };
@@ -328,12 +317,12 @@ function RegisterForm() {
 
       <div className="flex flex-col gap-1.5">
         <Label htmlFor="register-name" className="text-xs font-semibold text-foreground/90">
-          نام نمایشی
+          {t.nameLabel}
         </Label>
         <Input
           id="register-name"
           type="text"
-          placeholder="مثلاً علی رضایی"
+          placeholder={t.namePlaceholder}
           value={name}
           onChange={(event) => setName(event.target.value)}
           autoComplete="name"
@@ -348,13 +337,13 @@ function RegisterForm() {
 
       <div className="flex flex-col gap-1.5">
         <Label htmlFor="register-email" className="text-xs font-semibold text-foreground/90">
-          ایمیل
+          {t.emailLabel}
         </Label>
         <Input
           id="register-email"
           type="email"
           dir="ltr"
-          className="text-left"
+          className="text-start"
           placeholder="you@example.com"
           value={email}
           onChange={(event) => setEmail(event.target.value)}
@@ -370,7 +359,7 @@ function RegisterForm() {
 
       <div className="flex flex-col gap-1.5">
         <Label htmlFor="register-password" className="text-xs font-semibold text-foreground/90">
-          رمز عبور
+          {t.passwordLabel}
         </Label>
         <PasswordInput
           id="register-password"
@@ -380,7 +369,7 @@ function RegisterForm() {
           describedBy="register-password-hint"
         />
         <p id="register-password-hint" className="text-[10px] leading-5 text-muted-foreground/70">
-          حداقل ۸ کاراکتر، شامل حداقل یک حرف و یک رقم.
+          {t.passwordHint}
         </p>
         {fieldError.password && (
           <p id="password-error" role="alert" className="text-[11px] font-medium text-destructive">
@@ -391,7 +380,7 @@ function RegisterForm() {
 
       <div className="flex flex-col gap-1.5">
         <Label htmlFor="register-confirm" className="text-xs font-semibold text-foreground/90">
-          تکرار رمز عبور
+          {t.confirmPasswordLabel}
         </Label>
         <PasswordInput
           id="register-confirm"
@@ -418,7 +407,9 @@ function RegisterForm() {
             className="mt-1"
           />
           <span>
-            <TermsDialog /> را خوانده‌ام و می‌پذیرم.
+            {t.termsAcceptPrefix}
+            <TermsDialog />
+            {t.termsAcceptSuffix}
           </span>
         </label>
         {fieldError.accepted && (
@@ -438,7 +429,7 @@ function RegisterForm() {
         ) : (
           <UserRoundPlus className="size-4" aria-hidden="true" />
         )}
-        {submitting ? "در حال ساخت حساب…" : "ساخت حساب کاربری"}
+        {submitting ? t.registerSubmitting : t.registerSubmit}
       </Button>
     </form>
   );
@@ -447,29 +438,24 @@ function RegisterForm() {
 /* --------------------------------- نمای اصلی --------------------------------- */
 
 const HIGHLIGHTS = [
-  {
-    icon: Box,
-    title: "مربی سه‌بعدی تعاملی",
-    text: "اجرای حرکات با مدل بدن و نمایش عضلات درگیر",
-    done: true,
-  },
-  {
-    icon: ShieldCheck,
-    title: "حساب کاربری شخصی",
-    text: "ذخیره امن پروفایل با هش رمز عبور و نشست قابل ابطال",
-    done: true,
-  },
-  {
-    icon: CalendarCheck2,
-    title: "برنامه تمرینی و غذایی",
-    text: "برنامه اختصاصی بر اساس پروفایل شما — در مراحل بعدی",
-    done: false,
-  },
-];
+  { icon: Box, done: true },
+  { icon: ShieldCheck, done: true },
+  { icon: CalendarCheck2, done: false },
+] as const;
 
 export function AuthView() {
+  const t = useStrings(authStrings);
+
+  // عنوان ترجمه‌شده صفحه — الزام دسترسی‌پذیری
+  useDocumentTitle(t.pageTitle);
+
   return (
     <div className="relative flex min-h-screen w-full flex-col items-center justify-center overflow-hidden bg-background px-4 py-10">
+      {/* کلید تغییر زبان رابط — گوشه بالای صفحه، بدون برخورد با محتوای مرکزی */}
+      <div className="absolute top-4 end-4 z-20">
+        <UiLangSwitch />
+      </div>
+
       {/* پس‌زمینه تزئینی هماهنگ با تم */}
       <div className="pointer-events-none absolute inset-0 bg-grid-fade opacity-60" aria-hidden="true" />
       <div className="pointer-events-none absolute inset-0 bg-aura-lime opacity-70" aria-hidden="true" />
@@ -479,17 +465,15 @@ export function AuthView() {
         <div className="hidden lg:block">
           <BrandMark />
           <h1 className="mt-8 text-3xl font-extrabold leading-snug text-foreground">
-            مسیر تناسب اندام شما،
+            {t.heroLine1}
             <br />
-            <span className="text-primary text-glow">با داده واقعی شما</span> ساخته می‌شود
+            <span className="text-primary text-glow">{t.heroHighlight}</span>
+            {t.heroSuffix}
           </h1>
-          <p className="mt-4 max-w-md text-sm leading-7 text-muted-foreground">
-            با ساخت حساب کاربری، پروفایل بدنی خود را ثبت کنید تا در مراحل بعدی، برنامه تمرینی
-            و غذایی اختصاصی بر اساس همین داده‌ها ساخته شود.
-          </p>
+          <p className="mt-4 max-w-md text-sm leading-7 text-muted-foreground">{t.heroSub}</p>
           <ul className="mt-8 flex flex-col gap-4">
-            {HIGHLIGHTS.map((item) => (
-              <li key={item.title} className="flex items-start gap-3">
+            {HIGHLIGHTS.map((item, index) => (
+              <li key={index} className="flex items-start gap-3">
                 <span
                   className={
                     item.done
@@ -501,14 +485,16 @@ export function AuthView() {
                 </span>
                 <span className="flex flex-col">
                   <span className="flex items-center gap-2 text-[13px] font-bold text-foreground">
-                    {item.title}
+                    {t.highlights[index].title}
                     {!item.done && (
                       <span className="rounded-md border border-border/60 px-1.5 py-0.5 text-[9px] font-bold text-muted-foreground">
-                        مراحل بعدی
+                        {t.upcomingBadge}
                       </span>
                     )}
                   </span>
-                  <span className="mt-0.5 text-xs leading-6 text-muted-foreground">{item.text}</span>
+                  <span className="mt-0.5 text-xs leading-6 text-muted-foreground">
+                    {t.highlights[index].text}
+                  </span>
                 </span>
               </li>
             ))}
@@ -526,20 +512,16 @@ export function AuthView() {
             <div className="mb-6 flex justify-center lg:hidden">
               <BrandMark />
             </div>
-            <h2 className="text-center text-lg font-extrabold text-foreground">
-              ورود یا ثبت‌نام
-            </h2>
-            <p className="mt-1.5 text-center text-xs text-muted-foreground">
-              برای دسترسی به پنل مربی، حساب کاربری بسازید یا وارد شوید.
-            </p>
+            <h2 className="text-center text-lg font-extrabold text-foreground">{t.cardTitle}</h2>
+            <p className="mt-1.5 text-center text-xs text-muted-foreground">{t.cardSubtitle}</p>
 
             <Tabs defaultValue="login" className="mt-6">
               <TabsList className="grid w-full grid-cols-2">
                 <TabsTrigger value="login" className="font-bold">
-                  ورود
+                  {t.tabLogin}
                 </TabsTrigger>
                 <TabsTrigger value="register" className="font-bold">
-                  ثبت‌نام
+                  {t.tabRegister}
                 </TabsTrigger>
               </TabsList>
               <TabsContent value="login" className="mt-6">
@@ -552,7 +534,7 @@ export function AuthView() {
 
             <p className="mt-6 flex items-center justify-center gap-1.5 border-t border-border/50 pt-4 text-center text-[10px] leading-5 text-muted-foreground/70">
               <FileText className="size-3.5 shrink-0" aria-hidden="true" />
-              اطلاعات شخصی شما فقط روی سرور این محصول ذخیره می‌شود و در اختیار ثالث قرار نمی‌گیرد.
+              {t.privacyNote}
             </p>
           </div>
         </motion.div>

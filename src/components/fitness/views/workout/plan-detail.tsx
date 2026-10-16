@@ -34,22 +34,22 @@ import {
 } from "@/components/ui/collapsible";
 import { useAppStore } from "@/store/app-store";
 import { useCoach3DStore } from "@/store/coach3d-store";
+import { useLocale } from "@/lib/i18n/locale";
+import { useStrings } from "@/lib/i18n/use-strings";
+import { workoutStrings } from "@/lib/i18n/sections/workout";
+import { localeNumber } from "@/lib/i18n/format";
 import { cn } from "@/lib/utils";
 import {
-  categoryFa,
-  equipmentFa,
   getExerciseById,
   hasCoach3dAnimation,
 } from "@/lib/exercises";
-import { faDigits } from "@/lib/profile";
 import type { PlannedDayClient, WorkoutPlanClient } from "@/lib/plan-storage";
 import type { PlannedExercise } from "@/lib/plan-engine/types";
-
-const WEEK_DAY_LABELS = ["شنبه", "یکشنبه", "دوشنبه", "سه‌شنبه", "چهارشنبه", "پنجشنبه", "جمعه"];
 
 /* ------------------------------ ردیف حرکت ------------------------------ */
 
 function ExerciseRow({ ex }: { ex: PlannedExercise & { id?: string } }) {
+  const t = useStrings(workoutStrings);
   const openLibraryExercise = useAppStore((s) => s.openLibraryExercise);
   const setCoachExercise = useCoach3DStore((s) => s.setExercise);
   const setActiveView = useAppStore((s) => s.setActiveView);
@@ -75,21 +75,21 @@ function ExerciseRow({ ex }: { ex: PlannedExercise & { id?: string } }) {
               {ex.enName}
             </span>
             <span className="rounded-md border border-border/50 bg-secondary/40 px-1.5 py-0.5 text-[9px] font-medium text-muted-foreground">
-              {categoryFa(ex.category)}
+              {t.categoryName(ex.category)}
             </span>
           </div>
           <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-[10px] leading-5 text-muted-foreground">
             <span className="inline-flex items-center gap-1">
               <Repeat2 className="size-3" aria-hidden="true" />
-              {faDigits(ex.sets)} ست × {faDigits(ex.repsMin)}–{faDigits(ex.repsMax)} تکرار
+              {t.setsRepsLine(ex.sets, ex.repsMin, ex.repsMax)}
             </span>
             <span className="inline-flex items-center gap-1">
               <Timer className="size-3" aria-hidden="true" />
-              استراحت {faDigits(ex.restSeconds)} ثانیه
+              {t.restSecondsLine(ex.restSeconds)}
             </span>
             <span className="inline-flex items-center gap-1">
               <Clock3 className="size-3" aria-hidden="true" />
-              ~{faDigits(ex.estimatedMinutes)} دقیقه
+              {t.approxMinutes(ex.estimatedMinutes)}
             </span>
           </div>
           {ex.note && (
@@ -100,13 +100,12 @@ function ExerciseRow({ ex }: { ex: PlannedExercise & { id?: string } }) {
           {live && live.mistakes.length > 0 && (
             <p className="mt-1.5 flex items-start gap-1 text-[10px] leading-5 text-rose-300/90">
               <CircleAlert className="mt-0.5 size-3 shrink-0" aria-hidden="true" />
-              خطای رایج: {live.mistakes[0]}
+              {t.commonMistake(live.mistakes[0])}
             </p>
           )}
           {!live && (
             <p className="mt-1.5 text-[10px] leading-5 text-amber-300/90">
-              این حرکت در نسخه فعلی بانک حرکات یافت نشد؛ اطلاعات از snapshot برنامه نمایش داده
-              می‌شود.
+              {t.snapshotWarning}
             </p>
           )}
         </div>
@@ -119,7 +118,7 @@ function ExerciseRow({ ex }: { ex: PlannedExercise & { id?: string } }) {
               className="h-7 border-primary/40 bg-primary/10 px-2.5 text-[10px] font-bold text-primary hover:bg-primary/20"
             >
               <Box className="size-3" aria-hidden="true" />
-              مربی سه‌بعدی
+              {t.coach3d}
             </Button>
           )}
           <Button
@@ -129,7 +128,7 @@ function ExerciseRow({ ex }: { ex: PlannedExercise & { id?: string } }) {
             className="h-7 border-border/70 px-2.5 text-[10px] font-semibold hover:border-primary/40 hover:text-primary"
           >
             <BookOpenText className="size-3" aria-hidden="true" />
-            جزئیات در کتابخانه
+            {t.libraryDetails}
           </Button>
         </div>
       </div>
@@ -151,6 +150,8 @@ function DayCard({
   startDisabled?: boolean;
   startingThisDay?: boolean;
 }) {
+  const t = useStrings(workoutStrings);
+  const locale = useLocale();
   const [open, setOpen] = useState(day.order === 1);
   const canStart = Boolean(onStartDay) && day.exercises.length > 0;
   return (
@@ -158,19 +159,19 @@ function DayCard({
       <div className="overflow-hidden rounded-2xl border border-border/60 bg-card">
         <CollapsibleTrigger className="flex w-full items-center gap-3 p-4 text-start outline-none focus-visible:ring-2 focus-visible:ring-ring/60">
           <span className="flex size-9 shrink-0 items-center justify-center rounded-lg border border-primary/30 bg-primary/10 text-xs font-extrabold text-primary">
-            {faDigits(day.order)}
+            {localeNumber(day.order, locale)}
           </span>
           <div className="min-w-0 flex-1">
             <p className="truncate text-xs font-bold text-foreground">{day.title}</p>
             <p className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-0.5 text-[10px] text-muted-foreground">
               <span>{day.focusLabel}</span>
               <span className="inline-flex items-center gap-1">
-                <Clock3 className="size-3" aria-hidden="true" />~{faDigits(day.estMinutes)} دقیقه
+                <Clock3 className="size-3" aria-hidden="true" />{t.approxMinutes(day.estMinutes)}
               </span>
-              <span>{faDigits(day.exercises.length)} حرکت</span>
+              <span>{t.exercisesCount(day.exercises.length)}</span>
               {day.weekday !== null && (
                 <span className="rounded-md border border-border/50 bg-secondary/40 px-1.5 py-0.5 font-bold text-foreground/80">
-                  {WEEK_DAY_LABELS[day.weekday] ?? "—"}
+                  {t.weekDayLabels[day.weekday] ?? "—"}
                 </span>
               )}
             </p>
@@ -198,13 +199,13 @@ function DayCard({
               >
                 <Play className="size-4" aria-hidden="true" />
                 {startDisabled
-                  ? "جلسه دیگری در حال انجام است"
+                  ? t.anotherSessionRunning
                   : startingThisDay
-                    ? "در حال شروع…"
-                    : "شروع تمرین این جلسه"}
+                    ? t.starting
+                    : t.startThisDay}
               </Button>
               <p className="mt-2 text-[9px] leading-5 text-muted-foreground/70">
-                شروع تمرین یک جلسه واقعی در سرور می‌سازد؛ بازدید از برنامه هرگز جلسه حساب نمی‌شود.
+                {t.startDayNote}
               </p>
             </div>
           )}
@@ -232,7 +233,8 @@ export function PlanDetail({
   startDisabled?: boolean;
   startingDayId?: string | null;
 }) {
-  const equipmentLabels = plan.equipment.map((e) => equipmentFa(e));
+  const t = useStrings(workoutStrings);
+  const equipmentLabels = plan.equipment.map((e) => t.equipmentName(e));
 
   return (
     <motion.div
@@ -246,20 +248,20 @@ export function PlanDetail({
         <div className="flex flex-wrap items-center gap-2 text-[11px]">
           <span className="inline-flex items-center gap-1.5 rounded-lg border border-primary/30 bg-primary/10 px-2.5 py-1 font-bold text-primary">
             <CalendarDays className="size-3.5" aria-hidden="true" />
-            {faDigits(plan.daysPerWeek)} روز در هفته
+            {t.daysPerWeekBadge(plan.daysPerWeek)}
           </span>
           <span className="inline-flex items-center gap-1.5 rounded-lg border border-border/60 bg-secondary/40 px-2.5 py-1 font-bold text-foreground/85">
             <Flame className="size-3.5 text-primary" aria-hidden="true" />
-            ~{faDigits(plan.sessionMinutes)} دقیقه هر جلسه
+            {t.minutesPerSession(plan.sessionMinutes)}
           </span>
           <span className="inline-flex items-center gap-1.5 rounded-lg border border-border/60 bg-secondary/40 px-2.5 py-1 font-bold text-foreground/85">
-            {equipmentLabels.join("، ")}
+            {t.joinList(equipmentLabels)}
           </span>
         </div>
         {plan.limitationNotes && variant === "full" && (
           <p className="mt-3 flex items-start gap-1.5 rounded-xl border border-amber-400/25 bg-amber-400/10 px-3 py-2 text-[10px] leading-5 text-amber-300/95">
             <TriangleAlert className="mt-0.5 size-3.5 shrink-0" aria-hidden="true" />
-            یادداشت احتیاطی شما: {plan.limitationNotes}
+            {t.cautionNotesLine(plan.limitationNotes)}
           </p>
         )}
       </div>
@@ -280,7 +282,7 @@ export function PlanDetail({
       {/* راهنمای عمومی — فقط در حالت کامل */}
       {variant === "full" && plan.notes.length > 0 && (
         <div className="rounded-2xl border border-border/60 bg-card p-4 md:p-5">
-          <h4 className="text-xs font-bold">راهنمای اجرای برنامه</h4>
+          <h4 className="text-xs font-bold">{t.guidanceTitle}</h4>
           <ul className="mt-3 flex flex-col gap-2">
             {plan.notes.map((note, i) => (
               <li key={i} className="flex items-start gap-2 text-[11px] leading-6 text-muted-foreground">

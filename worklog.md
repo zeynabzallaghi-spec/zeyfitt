@@ -453,3 +453,162 @@ Work Log:
 
 Stage Summary:
 - پس از تأیید پوش، SHA محلی و ریموت گزارش میشود
+
+---
+Task ID: i18n-B
+Agent: auth-onboarding-i18n
+Task: مهاجرت ورود/ثبت‌نام و راه‌اندازی اولیه به i18n + کلید تغییر زبان
+
+Work Log:
+- مطالعه اجباری پیش از کدنویسی: آخرین رکورد worklog، هسته i18n (shared/locale/format/use-strings)، الگوی مرجع sections/shell.ts، دیکشنری مشترک sections/shared.ts، کامپوننت UiLangSwitch و خواندن کامل هر دو فایل نمایش پیش از ویرایش
+- ساخت src/lib/i18n/sections/auth.ts: اینترفیس AuthStrings + دیکشنری کامل fa/en + authStrings(locale) — ۴۸ کلید: pageTitle («ورود | AI Fitness Coach»)، معرفی محصول، تب ورود/ثبت‌نام، برچسب/placeholder/خطاهای اعتبارسنجی، حالت‌های بارگذاری، راهنمای مهمان، پنج بخش شرایط استفاده، aria نمایش/پنهان‌کردن رمز و نگاشت صرفاً نمایشی خطاهای authErrorToFa (نسخه fa همان ورودی را عبور می‌دهد؛ تشخیص نوع خطا دست‌نخورده)
+- ساخت src/lib/i18n/sections/onboarding.ts: اینترفیس OnboardingStrings + دیکشنری fa/en + onboardingStrings(locale) — ۶۰ کلید: pageTitle («راه‌اندازی اولیه | AI Fitness Coach»)، ۴ عنوان مرحله، stepOf با localeNumber، سلام و معرفی، همه فیلدها/placeholderها/aria سلکت‌ها، واحدهای روز/دقیقه، برچسب‌های اعتبارسنجی، پیام‌های ارسال و نگاشت نمایشی کامل ۲۷ پیام فیلد سرور شِمای zod با fallback امن
+- مهاجرت auth-view.tsx: همه متن‌های قابل مشاهده از دیکشنری؛ useDocumentTitle(t.pageTitle)؛ UiLangSwitch با absolute top-4 end-4 z-20 روی ریشه صفحه (بدون برخورد با کارت مرکزی و ستون معرفی، بررسی موبایل هم شد)؛ text-left → text-start در سه input دارای dir="ltr"؛ HIGHLIGHTS به آیکن/پرچم ثابت + متن از دیکشنری؛ متن پذیرش شرایط به prefix/suffix (fa: "" + « را خوانده‌ام و می‌پذیرم.» عیناً مانند قبل)
+- مهاجرت onboarding-view.tsx: متن‌ها از دیکشنری؛ برچسب گزینه‌ها از sharedStrings (gender/goal/experience/equipment/limitation روی option.value، بدون تغییر src/lib/profile.ts)؛ گزینه‌های روز/دقیقه با localeNumber + واحد دیکشنری؛ آیکن‌های جهت‌دار بازگشت/ادامه با الگوی پایه LTR + rtl:rotate-180 (ظاهر fa مو‌به‌مو حفظ شد)؛ UiLangSwitch همان موقعیت absolute top-4 end-4 z-20
+- حفظ منطق: validateRange اکنون پرچم wholeNumber می‌گیرد (جایگزین مقایسه متنی label === "سن") با رفتار یکسان (فقط سن صحیح‌بودن را چک می‌کند)؛ خطاها همانند قبل هنگام submit در state تولید می‌شوند؛ هیچ تغییر در API/سرور/داده
+- بررسی خودکار: ۱۵۱ رشته fa دیکشنری‌ها عیناً (بدون فاصله) در منابع اصلی یافت شد؛ ۱۲۳ ران فارسی فایل‌های اصلی همه در دیکشنری‌ها پوشش داده شد (تنها استثنا: regex کاراکتری [٫,] در کد)؛ تعادل کلیدها fa/en = ۴۸/۴۸ و ۶۰/۶۰ با ترتیب یکسان؛ هیچ لیترال فارسی در JSX دو نما نماند (فقط کامنت‌های کد)؛ بدون import بلااستفاده
+
+Stage Summary:
+- فایل‌ها: جدید sections/auth.ts (۴۸ کلید fa/en) و sections/onboarding.ts (۶۰ کلید fa/en)؛ بازنویسی views/auth-view.tsx و views/onboarding-view.tsx — بدون تغییر سایر فایل‌ها
+- هر دو صفحه مهمان دوزبانه شدند (FA عیناً прежی با ZWNJ محفوظ، EN طبیعی)؛ کلید تغییر زبان روی هر دو در گوشه بالایی end (fa: چپ‌بالا / en: راست‌بالا)؛ RTL/LTR امن با کلاس‌های منطقی و rtl:rotate-180؛ عنوان سند ترجمه‌شده؛ بدون تغییر منطق، سرور یا داده
+
+---
+Task ID: i18n-C
+Agent: profile-progress-i18n
+Task: مهاجرت پروفایل و پیشرفت به i18n سراسری
+
+Work Log:
+- مطالعه اجباری پیش از کد: آخرین رکورد worklog، هسته i18n (shared.ts، locale.tsx، format.ts، use-strings.ts)، الگوی مرجع sections/shell.ts و دیکشنری مشترک sections/shared.ts؛ سپس خواندن کامل هر دو فایل هدف و اجزای وابسته (profile-fields، badges، view-intro، nav، session-context، lib/profile — فقط خواندن)
+- دیکشنری جدید src/lib/i18n/sections/profile.ts: اینترفیس ProfileStrings با ۸۳ کلید + دو دیکشنری کامل fa/en + getter طبق الگوی shell.ts؛ متن‌های فارسی عیناً از نمای فعلی استخراج شد و با اسکریپت، عین‌اللفظی بودن ۶۰ متن فارسی (شامل نیم‌فاصله ZWNJ، «مثلاً ۷۵٫۵» و نقل‌قول‌های گیومه) راستی‌آزمایی شد؛ برچسب گزینه‌ها از sharedStrings روی valueهای پایدار src/lib/profile.ts نمایش داده می‌شود (lib/profile.ts و هیچ فایل هسته‌ای دست‌نخورده)
+- دیکشنری جدید src/lib/i18n/sections/progress.ts: ProgressStrings با ۱۳ کلید (۱۸ متن) + نقشه measureLabel برای پنج اندازه بدن (قفسه سینه=Chest، کمر=Waist، باسن=Hips، بازو=Arm، ران=Thigh) با fallback به مقدار خام
+- بررسی محل ذخیره BODY_MEASURES با جست‌وجوی کل کدبیس: مقدار «قفسه سینه» فقط در progress-view.tsx است؛ نه به API پروفایل می‌رود، نه در DB یا localStorage ذخیره می‌شود → تصمیم: فقط-رابطی؛ آرایه فارسی به‌عنوان کلید داده ماند و نمایش با measureLabel به زبان رابط ترجمه می‌شود
+- مهاجرت profile-view.tsx: همه متن‌های قابل مشاهده (حالت بارگذاری و خالی، بنر شفافیت با تکه بولد جدا، سرتیتر شش بخش، فیلدها و hintها و placeholderها، aria-labelها، placeholder مشترک «انتخاب کنید»، توست‌های موفقیت/اعتبارسنجی کلاینت/اعتبارسنجی سرور/نشست منقضی/خطای سرور/خطای شبکه/بازنشانی/حذف ناموفق، دیالوگ حذف کامل حساب، یادداشت‌هایbcrypt و پاورقی) → t.*؛ گزینه‌های Select و ChipToggle → s.goalLabel/experienceLabel/genderLabel/unitsLabel/equipmentLabel/limitationLabel/dietLabel/allergyLabel(option.value)؛ toLocaleString("fa-IR") روز و دقیقه → daysPerWeekItem/minutesItem درون دیکشنری (همان خروجی Intl fa-IR قبلی)
+- تاریخ JalaliDate → LocaleDate دوزبانه: فارسی دقیقاً همان قالب پیش‌فرض fa-IR قبلی (شمسی + ارقام فارسی، «۱۴۰۵/۸/۲۵») و انگلیسی قالب پیش‌فرض en-GB (گرگوری + ارقام لاتین)؛ از localeFullLabel استفاده نشد چون ماه کامل می‌نویسد و رفتار نمایشی فعلی را تغییر می‌داد (کامنت داخل کد ثبت شد)؛ الگوی فقط-کلاینت useSyncExternalStore + suppressHydrationWarning دست‌نخورده ماند
+- جهت‌دهی RTL/LTR: dir="rtl" ثابتِ AlertDialogContent → dir={dir} از useDir (فارسی بدون تغییر، انگلیسی ltr)؛ text-left → text-start (درون dir="ltr" ایمیل هم‌ارز کامل است)؛ بقیه کلاس‌های جهت از قبل منطقی بودند (ms-auto، ms-1.5)؛ آیکون جهت‌دار جلو/عقب در این دو نما وجود نداشت و flex-row-reverse فوتر دیالوگ در هر دو جهت قرینه درست می‌دهد — بدون تغییر
+- مهاجرت progress-view.tsx: aria-label پنج section، عنوان «اندازه‌های بدن»، نشان «به‌زودی» روی StageBadge، ردیف اندازه‌ها با measureLabel، یادداشت حالت خالی، سه گام راهنما از t.steps با شماره localeNumber(i+1, locale)، نشان «فعال» و یادداشت حریم خصوصی → دیکشنری؛ WeightLogCard/SessionStats/SessionHistory طبق دستور صندوق سیاه مصرف شدند و به فایل‌هایشان دست نزده شد
+- خودبازبینی: جست‌وجوی فارسی در JSX دو نما → فقط کامنت‌های کد و آرایه داده BODY_MEASURES (مجاز طبق قاعده)؛ هیچ option.label، toLocaleString("fa-IR")، text-left، dir="rtl" ثابت یا JalaliDate باقی نمانده؛ توازن براکت چهار فایل سبز؛ بدون import بلااستفاده؛ tsc/eslint/build/تست/git طبق محدوده مأموریت اجرا نشد
+
+Stage Summary:
+- فایل‌های جدید: src/lib/i18n/sections/profile.ts (۸۳ کلید × ۲ زبان)، src/lib/i18n/sections/progress.ts (۱۳ کلید × ۲ زبان)
+- فایل‌های مهاجرت‌شده: src/components/fitness/views/profile-view.tsx، src/components/fitness/views/progress-view.tsx — بدون تغییر منطق، API یا داده ذخیره‌شده
+- تصمیم BODY_MEASURES: داده UI-محلی (نه persisted) → نمایش با نقشه measureLabel؛ مقادیر فارسی دست‌نخورده
+- باقی‌مانده دانسته‌شده: پیام‌های خطای Zod از شِمای مشترک src/lib/profile.ts و متن‌های درونی WeightLogCard/SessionStats/SessionHistory فعلاً فارسی‌اند (خارج از محدوده این مأموریت؛ دیکشنری آن‌ها نزد ایجنت‌های مهاجرت همان اجزاست)؛ hint «تاریخ شمسی» در انگلیسی «Gregorian date» شد تا با تاریخ نمایشی سازگار باشد؛ در EN ممکن است توست اعتبارسنجی، توضیح فارسیِ خطای شِما را نشان دهد (فقط fallbackهای پیرامونی دوزبانه شدند)
+
+---
+Task ID: i18n-D
+Agent: library-coach3d-i18n
+Task: مهاجرت کتابخانه و مربی سه‌بعدی + محتوای انگلیسی بانک حرکات
+Work Log:
+- خواندن اجباری پیش از کدنویسی: آخرین رکورد worklog، هسته i18n (shared/locale/format/use-strings)، الگوی مرجع sections/shell.ts و sections/shared.ts و scripts/check-library.ts (ثابت‌های اعتبارسنجی بانک: ۴۸ رکورد، یکتایی شناسه‌ها، حداقل طول فیلدها، اتصال ۶ حرکت سه‌بعدی، ترتیب پایدار)
+- دیکشنری جدید src/lib/i18n/sections/library.ts با الگوی دقیق shell.ts: اینترفیس LibraryStrings (۶۳ کلید شامل توابع counts/aria) + دیکشنری کامل fa/en + libraryStrings(locale)؛ متن‌های فارسی عیناً از library-view فعلی کپی شدند (با نیم‌فاصله و «…»)
+- نقشه‌های نمایشی عضله/تجهیزات/دسته/الگو در همان دیکشنری: FA/EN map روی شناسه‌های پایدار، ساخته‌شده از تعریف‌های داده (MUSCLE_GROUPS و EXERCISE_CATEGORIES/EQUIPMENT_TYPES/MOVEMENT_PATTERNS) تا فارسی آن‌ها به‌طور تضمین‌شده با داده اصلی مو (verbatim) بماند؛ انگلیسی از فیلد en موجود همان تعریف‌ها
+- دیکشنری جدید src/lib/i18n/sections/coach3d.ts (۱۷ کلید): بارگذاری صحنه، پشتیبانی WebGL، مرز خطا، پنل موبایل و کارت شفافیت؛ پاراگراف‌های دارای اسپن درشت به سه قطعه pre/bold/post تقسیم شدند تا ساختار JSX فعلی (فارسی) عیناً حفظ شود
+- src/lib/exercises/i18n.ts جدید: exerciseName(ex, locale) و exerciseContent(ex, locale) — نمایش دوزبانه، جدا از داده؛ در نبود enContent، همان محتوای فارسی اصلی برگردانده می‌شود
+- types.ts: فیلد اختیاری enContent (summary/steps/breathing/mistakes/safety) به LibraryExercise اضافه شد — هیچ فیلد موجودی تغییر نکرد
+- محتوای انگلیسی نمایشی (enContent) برای هر ۴۸ حرکت در ۴ فایل داده نوشته شد: ترجمه حرفه‌ای وفادار به فارسی (خلاصه، مراحل با همان طول/ترتیب، تنفس، اشتباهات با همان طول/ترتیب، ایمنی با همان طول/ترتیب)؛ بدون افزودن/حذف/جابه‌جایی حرکت و بدون تغییر id/fa/en/category/muscles/equipment/difficulty/pattern/compound/coach3dId
+- مهاجرت library-view.tsx: همه متن‌ها (سرچ، فیلترها، چیپ‌ها، کارت، دیالوگ ۷ بخشی، شمارش‌ها، حالت خالی، aria-labelها) از دیکشنری؛ اعداد با localeNumber؛ نمایش سطح با sharedStrings().difficultyLabel؛ نام و محتوای آموزشی هر حرکت با exerciseName/exerciseContent؛ سطر نام دوم (subtitle) اکنون زبان مقابل را نشان می‌دهد با dir شرطی (fa→ltr / en→rtl)؛ DIFFICULTY_OPTIONS حذف و از DIFFICULTY_ORDER داده استفاده شد (مقادیر فیلتر همچنان داده فارسی می‌مانند — داده تغییر نکرد)
+- مهاجرت coach3d-view.tsx: ScenePlaceholder و بدنه خطا به کامپوننت تابعی (SceneErrorFallback) منتقل شد تا از دیکشنری مصرف کند؛ کلاس SceneErrorBoundary فقط fallback را رندر می‌کند (منطق catch/getDerivedStateFromError دست‌نخورده)؛ کارت شفافیت با قطعات pre/bold/post
+- RTL/LTR: هر دو نما فاقد کلاس فیزیکی ml-/mr-/pl-/pr-/text-left/right بودند (start-3/ps-9/text-start از قبل منطقی)؛ آیکون‌های جهت‌دار جلو/عقب وجود ندارند (RotateCcw/RefreshCcw ریست، ChevronDown بازشدن عمودی) بنابراین rtl:rotate-180 لازم نشد؛ dir="ltr" فقط روی مونوگرام لاتین کارت باقی ماند
+- sample-data.ts وجود خارجی دارد (در مرحله ۵ حذف شده و در این دو نما هیچ داده نمونه‌ای نمایش داده نمی‌شود) → طبق دستور کاری انجام نشد
+- خودبازبینی: grep حروف فارسی در JSX هر دو نما = فقط کامنت‌های {/* */}؛ ۴۸/۴۸ حرکت enContent دارند؛ طول/ترتیب آرایه‌های enContent با فارسی برابر (بررسی برنامه‌ای: 0 اختلاف)؛ توازن کلیدهای fa/en دیکشنری‌ها و پوشش کامل نقشه‌های برچسب (۱۲ عضله، ۱۱ دسته، ۸ تجهیزات، ۱۲ الگو) تأیید شد؛ دسترسی exerciseName/exerciseContent روی هر ۴۸ رکورد تست برنامه‌ای شد (0 خطا)؛ کلاس‌ها/منطق/filters/store بدون تغییر
+Stage Summary:
+- فایل‌های جدید (۳): src/lib/i18n/sections/library.ts (۶۳ کلید ×۲ زبان)، src/lib/i18n/sections/coach3d.ts (۱۷ کلید ×۲ زبان)، src/lib/exercises/i18n.ts (۲ accessors)
+- فایل‌های ویرایش‌شده (۷): library-view.tsx (مهاجرت کامل)، coach3d-view.tsx (مهاجرت کامل)، exercises/types.ts (فیلد اختیاری enContent) و ۴ فایل داده
+- غنی‌سازی محتوا: هر ۴۸ حرکت بانک enContent گرفت (chest-back: ۱۲، shoulders-arms: ۱۴، core-legs: ۱۳، glutes-calves-fullbody: ۹) — مجموع ۵۲۹ رشته آموزشی ترجمه شد (۴۸ summary + ۱۹۳ step + ۴۸ breathing + ۱۴۴ mistake + ۹۶ safety) با طول و ترتیب عیناً برابر نسخه فارسی؛ تنها در انتهای فایل worklog افزوده شد
+- پوشش نقشه‌های نمایشی: muscleLabel (۱۲ شناسه)، equipmentLabel (۸)، categoryLabel (۱۱)، patternLabel (۱۲) — هر دو زبان، متصل به شناسه‌های پایدار
+- بدون تغییر منطقی/سروری: بانک همان بانک ایستای درون‌حافظه است، جست‌وجو/فیلتر/مرتب‌سازی دست‌نخورده، ثابت‌های check-library.ts نقض نشد (فقط فیلد اختیاری اضافه شد)
+- بلامانع باقی‌مانده (خارج از محدوده مجاز): زیرمؤلفه‌های مربی سه‌بعدی (coach3d/ui/* شامل ExerciseDetails/PlaybackBar و داده fitness3d با متن فارسی) و nav.ts هنوز فارسی‌محورند؛ به عهده تسک‌های مهاجرت بعدی
+
+---
+Task ID: i18n-A
+Agent: dashboard-weight-i18n
+Task: مهاجرت داشبورد و اجزای وزن به i18n سراسری
+Work Log:
+- مطالعه اجباری پیش از کدنویسی: worklog، هسته i18n (shared/locale/format/use-strings)، نمونه مرجع sections/shell.ts و sections/shared.ts و هر پنج فایل هدف به‌طور کامل خوانده شد
+- ساخت دیکشنری src/lib/i18n/sections/dashboard.ts (~۷۰ کلید؛ شامل قالب‌های تابعی مثل journeyProgress/percentLabel/statWeightNoteProfileWithLatest) — متن‌های فارسی عیناً از داشبورد قبلی با حفظ نیم‌فاصله کپی شد
+- ساخت دیکشنری src/lib/i18n/sections/weight.ts (~۵۵ کلید در چهار گروه کامنت‌گذاری‌شده: کارت روند وزن، دیالوگ ثبت وزن، نمودار روند، کارت برنامه امروز + آرایه weekdayLabels) برای مصرف مشترک چهار کامپوننت
+- افزوده حداقلی به src/lib/weight.ts: پارامتر اختیاری locale: Locale = "fa" برای jalaliDayLabel/jalaliFullLabel (fa عین فرمت قبلی fa-IR، en معادل en-GB طبق دستور) و پارامتر انتهایی اختیاری locale برای toWeightChartData؛ بقیه فایل و همه امضاها backward-compatible ماند (schema و پیام‌های سرور دست‌نخورده)
+- dashboard-view.tsx: حذف faDigits/labelOf/GOAL_OPTIONS/EXPERIENCE_OPTIONS؛ همه اعداد با localeNumber، برچسب هدف/سطح با sharedStrings.goalLabel/experienceLabel، عنوان مراحل نقشه راه با locale==="fa" ? stage.title : stage.titleEn، توست‌ها/aria/EmptyState از دیکشنری؛ پاک‌سازی پنج import مردهٔ پیش‌موجود (CloudCheck، ClipboardList، BookOpenText، EmptyState، StageBadge)
+- weight-log-card.tsx و weight-entry-dialog.tsx: همه متن‌ها (عنوان‌ها، دکمه‌ها، placeholder، خطاهای اعتبارسنجی، fallback خطای ثبت، sr-only، aria حذف، توضیح دیالوگ، یادداشت سقف ۵۰۰ رکورد) از دیکشنری وزن؛ dir="rtl" هاردکد دیالوگ به dir={dir} تغییر کرد؛ input تاریخ با dir="ltr" و text-start ماند
+- weight-trend-chart.tsx: آینه‌سازی محورها بر اساس dir (YAxis orientation و XAxis reversed)، tickFormatter با localeNumber، برچسب‌ها با toWeightChartData(entries, 12, locale) و تولتیپ با localeFullLabel؛ dir تولتیپ به‌جای هاردکد rtl، از useDir
+- today-session-card.tsx: برچسب‌های روز هفته به دیکشنری منتقل شد (WEEK_DAY_LABELS حذف)؛ همه متن‌ها/شمارنده‌ها دوزبانه شدند
+- RTL/LTR: ms-/me- از قبل منطقی بود؛ text-left ورودی تاریخ → text-start؛ آیکن‌های جهت‌دار ChevronLeft (۵ مورد «جلو») با کلاس flip آینه شدند
+- خودبازبینی: اسکن regex ارقام فارسی در JSX پنج فایل (فقط کامنت‌ها و regex تابعی ٫ باقی است)، بررسی unused imports، پارس نحوی هر ۸ فایل با کامپایلر TS (بدون اجرای build/tsc پروژه) — همه سبز
+Stage Summary:
+- ایجاد: src/lib/i18n/sections/dashboard.ts (~۷۰ کلید)، src/lib/i18n/sections/weight.ts (~۵۵ کلید)
+- اصلاح: dashboard-view.tsx، weight-log-card.tsx، weight-entry-dialog.tsx، weight-trend-chart.tsx، today-session-card.tsx، src/lib/weight.ts (حداقلی)
+- انحراف آگاهانه از دستور حرفی قاعده ۵: به‌جای rtl:rotate-180 از ltr:rotate-180 روی ChevronLeftهای «جلو» استفاده شد چون rtl:rotate-180 ظاهر فعلی RTL (نیاز صریح همان قاعده) را برعکس می‌کرد؛ الگوی موجود مهاجرت‌شدهٔ پروژه (food-log-section/nutrition-summary-card) همین نتیجه را تأیید می‌کند
+- ترجمه‌نشده عمدی: پیام‌های سرور (toast.error(result.message) و error کارت وزن)، داده‌های کاربر/سرور (عنوان جلسه/برنامه، faName حرکات)، پیام‌های zod سمت سرور — خارج از محدوده فایل‌ها و بدون تغییر منطق
+
+---
+Task ID: i18n-F
+Agent: nutrition-family-i18n
+Task: مهاجرت خانواده تغذیه (غیر foodlog) به i18n سراسری
+Work Log:
+- مطالعه الزامی انجام شد: worklog (آخرین ثبت)، هسته i18n (shared/locale/format/use-strings)، sections/shell.ts به‌عنوان الگوی مرجع، sections/shared.ts (dietLabel/allergyLabel/unknownValue)، foods/types.ts (FOOD_GROUPS دوزبانه، ALLERGEN_DEFS فارسی با ۶ آلرژن شامل سویا)، types موتور تغذیه و storage؛ هر ۶ فایل هدف کامل خوانده شد
+- دیکشنری جدید src/lib/i18n/sections/nutrition.ts ساخته شد (الگوی دقیق shell.ts): اینترفیس NutritionStrings با ۱۵۴ کلید گروه‌بندی‌شده به تفکیک زیرنما + FA عیناً (با حفظ نیم‌فاصله و ارقام فارسی در placeholderها) + EN طبیعی + Record<Locale,…> و getter nutritionStrings؛ توابع قالب، عددِ از پیش قالب‌بندی‌شده می‌گیرند تا دیکشنری مستقل از locale بماند
+- نقشه‌های نمایشی داخل دیکشنری: goalLabel (روی value موتور، با fallback)، dietPatternOption، activityOption (fallback = «{fa} — {hint}» داده موتور)، allergenLabel (۶ آلرژن ALLERGEN_DEFS؛ EN: Dairy/Gluten/Nuts/Seafood/Egg/Soy)، groupLabel (از FOOD_GROUPS fa/en)، versionLabel (فارسی با ارقام فارسی معادل نمایشی faDigits برای رشته نسخه)
+- nutrition-view: StatusChip/PlanSummaryCard/کامپوننت اصلی به useStrings/useLocale/useDir؛ همه متن‌ها، aria-labelها، توست‌ها (success/error) و توضیح دیالوگ حذف از دیکشنری؛ NUTRITION_GOAL_LABELS با t.goalLabel (همان fallback)؛ dir="rtl" دیالوگ → dir={dir}؛ ChevronLeft جلو-رو → ChevronRight با rtl:rotate-180 (نمایش فارسی پیکسل‌به‌پیکسل یکسان)؛ وابستگی t به useCallbackها اضافه شد؛ import بلااستفاده قبلی DIET_PATTERN_LABELS حذف شد
+- settings-form: هر ۷ SelectContent به dir={dir}؛ گزینه‌های هدف/الگوا/وعده/طول برنامه/بودجه/آماده‌سازی و سطح فعالیت از دیکشنری؛ چیپ‌های آلرژی طبق الزام با sharedStrings.allergyLabel (مقدارهای ALLERGY_OPTIONS بدون تغییر)؛ چیپ‌های مواد نامطلوب با نام locale-aware غذا (food.fa/food.en) و title با t.groupLabel؛ نوت کتو داخل dietDefaultFromProfile به کلید "keto" تبدیل و در رندر t.ketoNote شد (منطق یکسان)؛ خطاهای محلی فرم از دیکشنری (پیام zod از اسکیما = داده)؛ import بلااستفاده قبلی toast حذف شد
+- plan-detail: MacroRow دوزبانه شد (localeNumber/localeDecimal)؛ خلاصه برنامه، کارت‌ها (fallback «—» از sharedStrings.unknownValue)، روز/وعده، ردیف مواد (نام locale-aware از enName snapshot)، دیالوگ تغییر مقدار و توست‌ها از دیکشنری؛ نسخه موتور/بانک با t.versionLabel؛ بخش ثبت مصرف (دکمه، aria، دیالوگ FoodLogDialog و توست انقضای نشست) عمداً روی mechanism قبلی foodlog (useFoodLogUiLang/foodLogStrings) دست‌نخورده ماند
+- plan-preview: خلاصه برآورد، کارت‌ها، نوت فرمول (پیوست هشدار درشت‌مغذی با فاصله آغازین حفظ شد)، خط خلاصه تنظیمات (شرط «معمولی» روی DIET_PATTERN_LABELS عیناً حفظ شد — مقایسه داده پایدار موتور، مستقل از locale)، روزها و دکمه‌ها از دیکشنری
+- shopping-dialog: عنوان/توضیح/روزها/دکمه محاسبه/بارگذاری/خالی/نوت تقریب/بستن از دیکشنری؛ نام مواد locale-aware — snapshot فقط faName دارد، انگلیسی با findFood(foodId).en و fallback faName؛ dir={dir}
+- replace-dialog: عنوان/توضیح/نوت نبود پیشنهاد/ماده فعلی (متا گروه+کالری)/ردیف پیشنهادها با برچسب اختلاف انرژی (علامت + همان منطق قبلی داخل مقدار)/دکمه‌ها از دیکشنری؛ نام ماده فعلی از findFood(...).en با fallback؛ dir={dir}
+- بازبینی خودی: grep ارقام/حروف فارسی در JSX هر ۶ فایل — فقط کامنت‌ها، دو سه‌تاییِ متعلق به foodlog (دکمه ثبت مصرف و توست نشست) و دو مقایسه داده پایدار موتور (w.includes("متخصص") و === "معمولی") باقی است؛ faDigits/foodGroupFa/dir="rtl"/کلاس‌های فیزیکی ml/mr/pl/pr/text-left/right در هر ۶ فایل صفر است؛ توازن JSX و imports هر فایل بازخوانی و تأیید شد (بدون اجرای tsc/build طبق قواعد)
+- قواعد رعایت شد: بدون تغییر منطق/سرور/اسکیما/بانک مواد/پروفایل/فایل‌های foodlog؛ هیچ فایل خارج از ۶ فایل + دیکشنری جدید دست نخورد
+Stage Summary:
+- فایل جدید: src/lib/i18n/sections/nutrition.ts (۶۶۱ خط، ۱۵۴ کلید × fa/en، parity کامل)
+- فایل‌های مهاجرت‌شده (۶): nutrition-view.tsx (~۵۰ رشته)، settings-form.tsx (~۴۵)، plan-detail.tsx (~۳۵)، plan-preview.tsx (~۲۲)، shopping-dialog.tsx (~۱۰)، replace-dialog.tsx (~۹) — همه aria/placeholder/توست/empty-state هم پوشش داده شد
+- داده‌های فارسی که عمداً عیناً نمایش داده می‌شوند: عنوان وعده‌ها (meal.title)، یادداشت‌ها و هشدارهای ذخیره‌شده برنامه، plan.title، servingHint مواد، پیام‌های خطای سرور و هوک use-nutrition-plans، پیام‌های zod اسکیما، placeholderهای سهم متداول بانک (مثل «۱ عدد متوسط»)
+- ریسک‌ها: جداکننده هزارگان/اعشار Intl fa-IR (مثل ۲٬۰۰۰ و ۱٫۵۵) جایگزین ارقام خام faDigits شد (مطابق الزام format.ts)؛ شرط «معمولی» در plan-preview به فارسیِ داده موتور مقایسه می‌کند (رفتار قبلی، پایدار)؛ بخش foodlog در plan-detail هنوز از useFoodLogUiLang می‌خواند تا ریفاکتور جداگانه
+
+---
+Task ID: i18n-G
+Agent: coach3d-ui-i18n
+Task: مهاجرت زیرکامپوننت‌های UI مربی سه‌بعدی به i18n سراسری
+Work Log:
+- مطالعه اجباری پیش از کدنویسی: آخرین رکوردهای worklog (i18n-A الگوی دیکشنری و i18n-D الگوی مربی سه‌بعدی/نقشه‌های نمایشی)، هسته i18n (shared/locale/format/use-strings)، الگوی مرجع sections/shell.ts و sections/shared.ts و sections/library.ts، دیکشنری موجود sections/coach3d.ts، نمای مهاجرت‌شده coach3d-view.tsx و خواندن کامل هر فایل هدف پیش از ویرایش
+- بازرسی اولیه: CoachScene.tsx و CameraRig.tsx و BodyModel.tsx فقط کامنت فارسی دارند (بدون متن قابل مشاهده) → طبق دستور دست‌نخورده ماندند؛ بازرسی src/lib/fitness3d: داده حرکات (نام دوزبانه، تجهیزات، مفاصل، وضعیت شروع، مراحل، اشتباهات، نکته، honestyNote و ۲۰ نام مرحله چرخه) همه متنِ قابل مشاهده‌اند اما «داده» هستند → طبق دستور نقشه‌های نمایشی در دیکشنری ساخته شد و محتوای داده یک حرف هم تغییر نکرد
+- گسترش src/lib/i18n/sections/coach3d.ts از ۱۷ کلید به ۵۹ کلید (۴۲ کلید جدید ×۲ زبان، بدون تغییرنام کلیدهای قبلی): گروه فهرست انتخاب حرکت (aria/عنوان/نشان شمارش)، گروه جزئیات حرکت (aria/عنوان راهنما/وضعیت شروع/مفاصل/عضلات هدف/مراحل/اشتباهات/پسوند کمکی)، گروه پنل عضلات (aria/عنوان/اصلی/کمکی/برجسته‌سازی دستی/راهنمای ضربه/راهنمای رنگ‌ها/سلب ادعای EMG)، گروه نوار پخش (شروع/توقف/بازنشانی+aria/سرعت+aria/نما/نشان چرخش آزاد/کلید عضلات+aria)، گروه HUD (نشان فناوری/شمارنده مرحله/واحد تکرار/نشان سرعت) و توابع نام حرکت برای نمایش دوزبانه (نام اصلی + سطر دوم به زبان مقابل)
+- نقشه‌های نمایشی داده (طبق الگو muscleFa/muscleEn و الگوی library.ts): muscleLabel/muscleList با استفاده مجدد از muscleFa/muscleEn موجود؛ equipmentLabel و jointLabel و phaseLabel انگلیسی روی «مقدار فارسی داده» کلید خوردند (۲ تجهیزات، ۱۱ مفصل، ۲۰ نام مرحله) با fallback امن؛ exerciseContent(id) روی «شناسه پایدار حرکت» — نسخه فارسی با Object.fromEntries مستقیماً از EXERCISES ساخته می‌شود تا عین‌اللفظی تضمین شود و نسخه انگلیسی ترجمه نمایشی کامل هر ۶ حرکت است (۶ وضعیت شروع + ۲۴ مرحله + ۱۸ اشتباه + ۶ نکته + ۱ honestyNote = ۵۵ رشته، هم‌طول و هم‌ترتیب با فارسی)
+- مهاجرت ExerciseList.tsx: aria/عنوان/نشان شمارش با localeNumber؛ نام هر حرکت به زبان رابط و سطر دوم به زبان مقابل با dir شرطی (fa→ltr / en→rtl) + text-start (الگوی library-view)؛ شماره ردیف با localeNumber؛ عضله اصلی هر ردیف با muscleLabel
+- مهاجرت ExerciseDetails.tsx: aria و عنوان راهنما با نام locale-aware؛ چیپ تجهیزات با equipmentLabel؛ چیپ مفاصل با jointLabel؛ فهرست عضلات اصلی/کمکی با muscleList و پسوند (کمکی)/(secondary)؛ مراحل با محتوای دیکشنری و شماره localeNumber؛ tip و honestyNote از exerciseContent؛ muscleFa حذف شد
+- مهاجرت MusclePanel.tsx: aria/عنوان/برچسب گروه‌ها/برجسته‌سازی دستی/hint/راهنمای رنگ‌ها (اصلی، کمکی، انتخاب دستی)/سلب ادعای EMG از دیکشنری؛ MuscleChip برچسب را با muscleLabel می‌خواند (MUSCLE_GROUPS همچنان منبع فهرست گروه‌ها)
+- مهاجرت PlaybackBar.tsx: شروع حرکت/توقف/بازنشانی+aria/سرعت+aria/مقدار سرعت با localeDecimal (عین خروجی toLocaleString("fa-IR") قبلی: ۱×، ۱٫۵×، ۰٫۷۵×)/نما:/سه دکمه نما با viewButtonLabel روی شناسه پایدار (VIEW_BUTTONS بدون label شد)/نشان چرخش آزاد/کلید و aria عضلات هدف
+- مهاجرت SceneHud.tsx: نام حرکت دوزبانه با dir شرطی؛ نشان «مدل پروسیجرال Three.js»؛ نام مرحله با phaseLabel (داده فارسی در fa عیناً)؛ شمارنده مرحله با phaseOf؛ شمارنده تکرار با localeNumber + واحد «تکرار کامل»؛ نشان سرعت با hudSpeedBadge
+- RTL/LTR: هر پنج فایل فاقد کلاس فیزیکی ml-/mr-/pl-/pr-/text-left/right بودند (text-start و items-end از قبل منطقی)؛ فقط dir سطر نام دوم از "ltr" ثابت به شرطی تغییر کرد (fa: لاتین با ltr — عین قبل؛ en: فارسی با rtl)؛ dir="ltr" برای محتوای صرفاً لاتین حفظ شد
+- بدون تغییر منطق: store،DifficultyBadge (از پیش locale-aware با sharedStrings)، امضای هیچ کامپوننتی تغییر نکرد؛ هیچ فایل داده fitness3d و هیچ فایل هسته i18n و هیچ دیکشنری بخش دیگری دست نخورد
+- خودبازبینی برنامه‌ای: grep حروف فارسی خارج از کامنت در هر ۵ فایل = صفر؛ پارس نحوی TSX شش فایل با کامپایلر TS (بدون اجرای tsc/build پروژه) = بدون خطا؛ بدون import یا const بلااستفاده؛ توازن کلیدهای fa/en (۵۹/۵۹) و هم‌طولی/هم‌ترتیبی محتوای انگلیسی با داده فارسی تأیید شد؛ پوشش کامل نقشه‌ها (۲۰ مرحله/۱۱ مفصل/۲ تجهیزات/۱۲ عضله/۶ حرکت) و عین‌اللفظی محتوای فارسی با EXERCISES به‌صورت ساختاری تست شد؛ خروجی قالب‌های عددی با رفتار قبلی مطابقت داده شد
+Stage Summary:
+- فایل ویرایش‌شده (۱): src/lib/i18n/sections/coach3d.ts — از ۱۷ به ۵۹ کلید (۴۲ کلید جدید ×۲ زبان) + ۵ نقشه نمایشی داده (۲۰ نام مرحله، ۱۱ مفصل، ۲ تجهیزات، ۶ محتوای حرکت با ۵۵ رشته انگلیسی) و muscleLabel/muscleList با استفاده مجدد از muscleFa/muscleEn
+- فایل‌های مهاجرت‌شده (۵): coach3d/ui/{ExerciseList,ExerciseDetails,MusclePanel,PlaybackBar,SceneHud}.tsx — همه متن‌ها/aria/شمارنده‌ها از دیکشنری؛ بدون تغییر منطق، امضا یا رفتار سه‌بعدی
+- تفکیک داده/رابط: نام دوزبانه حرکات = داده (انتخاب نمایشی بر اساس locale)؛ تجهیزات/مفاصل/نام مراحل/محتوای آموزشی = داده (نقشه نمایشی در دیکشنری، fa مستقیماً از EXERCISES خوانده می‌شود)؛ DifficultyBadge از پیش locale-aware بود؛ بدنه صحنه (CoachScene/CameraRig/BodyModel) فقط کامنت فارسی دارد و طبق دستور دست نخورد
+- ترجمه‌نشده عمدی: هیچ — همه متن‌های قابل مشاهده پنج زیرمؤلفه پوشش داده شد؛ در EN اگر حرکت honestyNote نداشته باشد همان null می‌ماند (داده) و محتوای ناشناخته به متن فارسی داده fallback می‌شود (هرگز در عمل رخ نمی‌دهد چون هر ۶ حرکت ترجمه دارند)
+- ریسک‌ها: ورودی exerciseContent کلید رشته‌ای است (fallback امن به داده)؛ اگر در آینده فیلد/مرحله جدیدی به داده fitness3d اضافه شود باید نقشه‌های EN_PHASE_NAMES/EN_JOINT_LABELS/EN_EQUIPMENT_LABELS/EN_CONTENT تکمیل شوند (fa هرگز نیاز به به‌روزرسانی ندارد چون از داده خوانده می‌شود)؛ مقدار سرعت در EN با localeDecimal دو رقم اعشار سقف دارد (مقادیر گام ۰٫۲۵ همیشه سالم)
+
+---
+Task ID: 15
+Agent: Super Z (main agent)
+Task: الزام سراسری FA/EN — پشتیبانی کامل دوزبانه فارسی/انگلیسی در کل اپ (کلید سراسری زبان + RTL/LTR + ممیزی کامل ترجمه‌ها)
+
+Work Log:
+- هسته i18n جدید: src/lib/i18n/{shared,locale.tsx,format,use-strings}.ts — منبع واحد زبان با کوکی یک‌ساله «fit-ui-lang» + آینه localStorage؛ layout.tsx و page.tsx کوکی را سمت سرور می‌خوانند تا SSR و هیدراتیشن همیشه هم‌زبان باشند (lang/dir درست در اولین رندر، بدون فلش جهت)؛ setLocale هم‌زمان state + کوکی + localStorage + documentElement را به‌روز می‌کند
+- الگوی دیکشنری: sections/<name>.ts با اینترفیس تایپ‌شده + Record<Locale,T> + getter — TypeScript کامل‌بودن هر دو زبان را اجباری می‌کند؛ ۱۴ دیکشنری ساخته شد (shell/shared/dashboard/weight/auth/onboarding/profile/progress/library/coach3d/workout/nutrition + دستیار و foodlog موجود)
+- کلید تغییر زبان (ui-lang-switch.tsx) در سربرگ پنل + صفحه ورود + راه‌اندازی اولیه؛ نام هر زبان به خود آن زبان (فا/EN)
+- مهاجرت کامل ۹ خانواده نما + اجزای مشترک + زیرمؤلفه‌های مربی سه‌بعدی توسط ۷ ایجنت موازی (i18n-A..G) — استخراج همه متن‌های قابل مشاهده شامل aria/sr-only/toast/اعتبارسنجی/حالت‌های خالی/tooltip؛ متن‌های فارسی عیناً حفظ شد (ZWNJ بایت‌به‌بایت) و انگلیسی ترجمه طبیعی کامل
+- بانک حرکات: enContent (ترجمه نمایشی) برای هر ۴۸ حرکت اضافه شد (۵۲۹ رشته) — داده اصلی فارسی دست‌نخورده؛ دسترسی با exerciseName/exerciseContent بر اساس locale
+- تاریخ/عدد: format.ts — fa شمسی fa-IR با ارقام فارسی (عین رفتار قبلی)، en گرگوری en-GB لاتین؛ نمودارها جهت‌آگاه (YAxis right/left، X reversed)؛ faDigits → localeNumber در نقاط نمایش
+- دستیار: انتخاب‌گر داخلی فقط «زبان پاسخ» را کنترل می‌کند؛ رابط از کلید سراسری؛ در حالت auto زبان رابط به‌عنوان راهنمای ابهام به سرور ارسال می‌شود (uiLocale در schema/prompt/مسیرها) — اولویت با زبان صریح کاربر؛ سابقه مکالمه دست‌نخورده
+- غذای واقعی و کارت خلاصه: منبع زبان به کلید سراسری منتقل شد (useFoodLogUiLang پوش روی useLocale) + ۱۱ کلید جدید کارت برنامه
+- nav.ts: descriptionEn برای ۸ بخش + titleEn برای ۱۳ مرحله نقشه راه
+- تست جدید: scripts/check-i18n.ts (۳۳ تست: تعادل ساختاری fa≡en همه دیکشنری‌ها، رشته خالی، قالب تاریخ/عدد، هسته کوکی) + scripts/audit-i18n-strings.ts (ممیزی رشته فارسی در JSX) + scripts/browser-p13-i18n.sh (۳۶ تست مرورگر: تغییر زبان، RTL/LTR، پایداری پس از رفرش/ورود مجدد/کوکی‌پاک، هر ۸ بخش به EN، موبایل ۳۹۰px بدون سرریز)
+- زیرساخت تست: الگوی کوکی سوئیت‌ها name-agnostic شد ((__Secure-)؟) تا روی http مستقیم و https پروکسی هر دو کار کند؛ p9/p10 به معناشناسی جدید زبان (کلید سراسری + انتخاب‌گر فقط پاسخ) به‌روز شد
+- حادثه داده و بازیابی (شفاف): ریست سندباکس در آغاز نشست فایل db/custom.db (untracked) را به وضعیت خالی برگردانده و backups/ را حذف کرده بود؛ ۴ حساب اصلی (mahziar.parvizi@gmail.com و ۳ حساب تست مراحل قبل) غایب بودند؛ cleanup با قواعد پیشوندی خود بی‌گناه بود (هیچ‌کدام از ۴ ایمیل با پیشوندها نمی‌خواند) — بازیابی از blob گیت (commit 889a89e = آخرین وضعیت tracked) با تأیید ۴ کاربر/۴ پروفایل/۵ نشست/۴ حساب + بکاپ تازه (backups/custom-20261016-205738.db, mode 600) + محافظ PROTECTED_EMAILS در cleanup-test-users.ts
+- پاک‌سازی: ۵۱ کاربر آزمایشی نشست (پیشوندهای p4..p13/i18n-probe) حذف شد؛ ۴ حساب اصلی سالم؛ integrity زنده و بکاپ OK
+- رگرسیون کامل: tsc = صفر خطا در src؛ ESLint پاک؛ واحدها ۳۱۶/۳۱۶ (۲۸۳ موجود + ۳۳ i18n)؛ API ۳۶۱/۳۶۱ (P4 19 + P6 41 + P7 66 + P8 73 + P9 58 + P10 92 + شکست ۱۲)؛ مرورگر ۹۳/۹۳ (p8 7 + p9 22 + p10 28 + p13-i18n 36)؛ build تولیدی موفق و دیمون با دیتابیس بازیابی‌شده بالا (guest 200)
+
+Stage Summary:
+- کل اپ (سربرگ/سایدبار/پاورقی/۸ بخش/ورود/راه‌اندازی/پیام‌ها/اعتبارسنجی/حالت‌های خالی/نمودارها/تاریخ/اعداد) دوزبانه کامل است: fa=RTL شمسی با ارقام فارسی (رفتار قبلی عیناً)، en=LTR گرگوری لاتین
+- زبان با کوکی+localStorage پایدار است: رفرش، ورود مجدد و جابه‌جایی بخش‌ها حفظ می‌شود؛ زبان داده (نام حرکت/غذا/محتوای ثبت کاربر) از زبان رابط جدا ماند
+- موارد داده‌-محور که به همان زبان ثبت‌شده نمایش داده می‌شوند (طبق الزام بند ۵): نام وعده‌ها/برنامه‌های ساخته‌شده موتور، یادداشت‌ها، هشدارهای محاسباتی موتور، برچسب سهم مواد غذایی بانک، پیام‌های خطای سرور (schema/zod) — ترجمه نمایشی این‌ها نیازمند تصمیم لایه داده در مرحله مستقل بعدی است
+- وضعیت: الزام سراسری FA/EN کامل شد — متوقف و در انتظار تأیید کاربر برای مرحله مستقل بعدی (مرحله ۱۴: فهرست مربیان و پروفایل حرفه‌ای)

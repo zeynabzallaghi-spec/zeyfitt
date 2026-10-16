@@ -10,7 +10,7 @@
 import { useMemo, useState } from "react";
 import {
   AlertTriangle,
-  ChevronLeft,
+  ChevronRight,
   Loader2,
   Salad,
   ShieldAlert,
@@ -27,10 +27,14 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { toast } from "sonner";
 import type { FitnessProfileClient } from "@/lib/profile";
-import { ALLERGY_OPTIONS, faDigits, normalizeDigits } from "@/lib/profile";
-import { ALLERGEN_DEFS, FOOD_BANK, foodGroupFa, type AllergenId } from "@/lib/foods";
+import { ALLERGY_OPTIONS, normalizeDigits } from "@/lib/profile";
+import { ALLERGEN_DEFS, FOOD_BANK, type AllergenId } from "@/lib/foods";
+import { useLocale, useDir } from "@/lib/i18n/locale";
+import { useStrings } from "@/lib/i18n/use-strings";
+import { nutritionStrings } from "@/lib/i18n/sections/nutrition";
+import { sharedStrings } from "@/lib/i18n/sections/shared";
+import { localeNumber } from "@/lib/i18n/format";
 import {
   ACTIVITY_LEVELS,
   DIET_PATTERN_LABELS,
@@ -58,13 +62,13 @@ function goalDefaultFromProfile(goal: string | null): NutritionGoal {
 }
 
 /** نگاشت رژیم پروفایل به الگوی قابل‌پشتیبانی موتور — با شفافیت */
-function dietDefaultFromProfile(diet: string | null): { pattern: DietPattern; note: string | null } {
+function dietDefaultFromProfile(diet: string | null): { pattern: DietPattern; note: "keto" | null } {
   if (diet === "vegan") return { pattern: "vegan", note: null };
   if (diet === "vegetarian") return { pattern: "vegetarian", note: null };
   if (diet === "keto") {
     return {
       pattern: "none",
-      note: "الگوی کتوژنیک در موتور فعلی پشتیبانی نمی‌شود؛ برنامه با الگوی معمولی ساخته می‌شود.",
+      note: "keto",
     };
   }
   return { pattern: "none", note: null };
@@ -77,6 +81,10 @@ function allergensFromProfile(allergies: string[]): AllergenId[] {
 }
 
 export function NutritionSettingsForm({ profile, submitting, serverError, onSubmit, onCancel }: Props) {
+  const t = useStrings(nutritionStrings);
+  const s = useStrings(sharedStrings);
+  const locale = useLocale();
+  const dir = useDir();
   const profileHasEstimate = Boolean(profile?.age && profile?.heightCm && profile?.weightKg);
 
   const [goal, setGoal] = useState<NutritionGoal>(goalDefaultFromProfile(profile?.goal ?? null));
@@ -129,7 +137,7 @@ export function NutritionSettingsForm({ profile, submitting, serverError, onSubm
       const parsedHeight = Number(normalizeDigits(heightCm));
       const parsedWeight = Number(normalizeDigits(weightKg));
       if (!parsedAge || !parsedHeight || !parsedWeight) {
-        setFormError("برای برآورد کالری، سن، قد و وزن لازم است — این مقادیر فقط برای همین برنامه استفاده می‌شوند و پروفایل شما تغییر نمی‌کند.");
+        setFormError(t.missingEstimateError);
         return;
       }
       estimate = { age: parsedAge, heightCm: parsedHeight, weightKg: parsedWeight, gender: "undisclosed" };
@@ -151,7 +159,7 @@ export function NutritionSettingsForm({ profile, submitting, serverError, onSubm
 
     const parsed = nutritionSettingsSchema.safeParse(candidate);
     if (!parsed.success) {
-      setFormError(parsed.error.issues[0]?.message ?? "اطلاعات معتبر نیست.");
+      setFormError(parsed.error.issues[0]?.message ?? t.invalidInfoError);
       return;
     }
 
@@ -163,68 +171,73 @@ export function NutritionSettingsForm({ profile, submitting, serverError, onSubm
   return (
     <div className="flex flex-col gap-4">
       {/* بخش ۱ — اطلاعات برآورد */}
-      <section aria-label="اطلاعات برآورد" className="rounded-2xl border border-border/60 bg-card p-5">
+      <section aria-label={t.estimateSectionAria} className="rounded-2xl border border-border/60 bg-card p-5">
         <h3 className="flex items-center gap-2 text-sm font-bold">
           <UserRound className="size-4 text-primary" aria-hidden="true" />
-          اطلاعات برآورد انرژی
+          {t.estimateHeading}
         </h3>
         {profileHasEstimate ? (
           <>
             <div className="mt-4 grid grid-cols-3 gap-3">
               <div className="rounded-xl border border-border/50 bg-secondary/30 p-3 text-center">
-                <p className="text-[10px] text-muted-foreground">سن</p>
-                <p className="mt-1 text-sm font-bold">{faDigits(profile?.age ?? "—")} سال</p>
+                <p className="text-[10px] text-muted-foreground">{t.ageLabel}</p>
+                <p className="mt-1 text-sm font-bold">
+                  {profile?.age != null ? localeNumber(profile.age, locale) : s.unknownValue} {t.yearsUnit}
+                </p>
               </div>
               <div className="rounded-xl border border-border/50 bg-secondary/30 p-3 text-center">
-                <p className="text-[10px] text-muted-foreground">قد</p>
-                <p className="mt-1 text-sm font-bold">{faDigits(profile?.heightCm ?? "—")} سانتی‌متر</p>
+                <p className="text-[10px] text-muted-foreground">{t.heightLabel}</p>
+                <p className="mt-1 text-sm font-bold">
+                  {profile?.heightCm != null ? localeNumber(profile.heightCm, locale) : s.unknownValue} {t.cmUnit}
+                </p>
               </div>
               <div className="rounded-xl border border-border/50 bg-secondary/30 p-3 text-center">
-                <p className="text-[10px] text-muted-foreground">وزن</p>
-                <p className="mt-1 text-sm font-bold">{faDigits(profile?.weightKg ?? "—")} کیلوگرم</p>
+                <p className="text-[10px] text-muted-foreground">{t.weightLabel}</p>
+                <p className="mt-1 text-sm font-bold">
+                  {profile?.weightKg != null ? localeNumber(profile.weightKg, locale) : s.unknownValue} {t.kgUnit}
+                </p>
               </div>
             </div>
             <p className="mt-3 text-[11px] leading-5 text-muted-foreground">
-              از پروفایل شما خوانده شد. برای اصلاح، پروفایل را ویرایش کنید — این فرم پروفایل را تغییر نمی‌دهد.
+              {t.estimateFromProfileNote}
             </p>
           </>
         ) : (
           <>
             <p className="mt-2 text-[11px] leading-5 text-muted-foreground">
-              این اطلاعات در پروفایل شما ثبت نشده است. برای برآورد کالری همین‌جا وارد کنید؛
-              فقط برای همین برنامه استفاده می‌شود و پروفایل تغییر نمی‌کند.
+              {t.estimateMissingNote}
             </p>
             <div className="mt-4 grid grid-cols-3 gap-3">
               <div className="flex flex-col gap-1.5">
-                <Label htmlFor="nutrition-age" className="text-[11px]">سن (سال)</Label>
+                <Label htmlFor="nutrition-age" className="text-[11px]">{t.ageInputLabel}</Label>
                 <Input
                   id="nutrition-age"
                   inputMode="numeric"
                   value={age}
                   onChange={(e) => setAge(e.target.value)}
-                  placeholder="مثلاً ۳۰"
+                  placeholder={t.agePlaceholder}
                   className="h-9 text-sm"
                 />
               </div>
               <div className="flex flex-col gap-1.5">
-                <Label htmlFor="nutrition-height" className="text-[11px]">قد (سانتی‌متر)</Label>
+                <Label htmlFor="nutrition-height" className="text-[11px]">{t.heightInputLabel}</Label>
                 <Input
                   id="nutrition-height"
                   inputMode="numeric"
                   value={heightCm}
                   onChange={(e) => setHeightCm(e.target.value)}
-                  placeholder="مثلاً ۱۷۵"
+                  placeholder={t.heightPlaceholder}
                   className="h-9 text-sm"
                 />
               </div>
               <div className="flex flex-col gap-1.5">
-                <Label htmlFor="nutrition-weight" className="text-[11px]">وزن (کیلوگرم)</Label>
+                <Label htmlFor="nutrition-weight" className="text-[11px]">{t.weightInputLabel}</Label>
                 <Input
                   id="nutrition-weight"
                   inputMode="decimal"
                   value={weightKg}
                   onChange={(e) => setWeightKg(e.target.value)}
-                  placeholder="مثلاً ۷۵"
+                  placeholder={t.weightPlaceholder}
                   className="h-9 text-sm"
                 />
               </div>
@@ -235,16 +248,16 @@ export function NutritionSettingsForm({ profile, submitting, serverError, onSubm
         {/* سطح فعالیت — تنها فیلد ضروری که در پروفایل وجود ندارد */}
         <div className="mt-4 flex flex-col gap-1.5">
           <Label htmlFor="nutrition-activity" className="text-[11px]">
-            سطح فعالیت روزانه (خارج از تمرین)
+            {t.activityFieldLabel}
           </Label>
           <Select value={activityLevel} onValueChange={setActivityLevel}>
             <SelectTrigger id="nutrition-activity" className="h-9 text-sm">
               <SelectValue />
             </SelectTrigger>
-            <SelectContent dir="rtl">
+            <SelectContent dir={dir}>
               {ACTIVITY_LEVELS.map((level) => (
                 <SelectItem key={level.id} value={level.id}>
-                  {level.fa} — {level.hint}
+                  {t.activityOption(level.id, `${level.fa} — ${level.hint}`)}
                 </SelectItem>
               ))}
             </SelectContent>
@@ -255,8 +268,7 @@ export function NutritionSettingsForm({ profile, submitting, serverError, onSubm
           <div className="mt-4 flex items-start gap-2.5 rounded-xl border border-amber-400/30 bg-amber-400/10 p-3">
             <ShieldAlert className="mt-0.5 size-4 shrink-0 text-amber-300" aria-hidden="true" />
             <p className="text-[11px] leading-5 text-amber-200">
-              سن کمتر از ۱۸ سال: هدف کاهش یا افزایش وزن خودکار تنظیم نمی‌شود و برنامه با هدف
-              حفظ وزن ساخته خواهد شد. برای برنامه اختصاصی با متخصص تغذیه مشورت کنید.
+              {t.underageWarning}
             </p>
           </div>
         )}
@@ -264,84 +276,84 @@ export function NutritionSettingsForm({ profile, submitting, serverError, onSubm
         {showPregnancyField && (
           <div className="mt-4 flex items-center justify-between gap-3 rounded-xl border border-border/50 bg-secondary/20 p-3">
             <div>
-              <p className="text-xs font-semibold">بارداری یا شیردهی</p>
+              <p className="text-xs font-semibold">{t.pregnancyTitle}</p>
               <p className="mt-0.5 text-[10px] leading-4 text-muted-foreground">
-                در این حالت هدف کالری کاهشی/افزایشی خودکار تنظیم نمی‌شود.
+                {t.pregnancyHint}
               </p>
             </div>
             <Switch
               checked={pregnancyBreastfeeding}
               onCheckedChange={setPregnancyBreastfeeding}
-              aria-label="بارداری یا شیردهی"
+              aria-label={t.pregnancyTitle}
             />
           </div>
         )}
       </section>
 
       {/* بخش ۲ — هدف و ساختار برنامه */}
-      <section aria-label="هدف و ساختار برنامه" className="rounded-2xl border border-border/60 bg-card p-5">
+      <section aria-label={t.goalSectionAria} className="rounded-2xl border border-border/60 bg-card p-5">
         <h3 className="flex items-center gap-2 text-sm font-bold">
           <Salad className="size-4 text-primary" aria-hidden="true" />
-          هدف و ساختار برنامه
+          {t.goalSectionHeading}
         </h3>
         <div className="mt-4 grid gap-4 sm:grid-cols-2">
           <div className="flex flex-col gap-1.5">
-            <Label className="text-[11px]">هدف تغذیه‌ای</Label>
+            <Label className="text-[11px]">{t.goalFieldLabel}</Label>
             <Select value={goal} onValueChange={(v) => setGoal(v as NutritionGoal)}>
               <SelectTrigger className="h-9 text-sm">
                 <SelectValue />
               </SelectTrigger>
-              <SelectContent dir="rtl">
+              <SelectContent dir={dir}>
                 {(Object.keys(NUTRITION_GOAL_LABELS) as NutritionGoal[]).map((g) => (
                   <SelectItem key={g} value={g}>
-                    {NUTRITION_GOAL_LABELS[g]}
+                    {t.goalLabel(g)}
                   </SelectItem>
                 ))}
               </SelectContent>
             </Select>
           </div>
           <div className="flex flex-col gap-1.5">
-            <Label className="text-[11px]">الگوی غذایی</Label>
+            <Label className="text-[11px]">{t.dietPatternFieldLabel}</Label>
             <Select value={dietPattern} onValueChange={(v) => setDietPattern(v as DietPattern)}>
               <SelectTrigger className="h-9 text-sm">
                 <SelectValue />
               </SelectTrigger>
-              <SelectContent dir="rtl">
+              <SelectContent dir={dir}>
                 {(Object.keys(DIET_PATTERN_LABELS) as DietPattern[]).map((d) => (
                   <SelectItem key={d} value={d}>
-                    {DIET_PATTERN_LABELS[d]}
+                    {t.dietPatternOption(d)}
                   </SelectItem>
                 ))}
               </SelectContent>
             </Select>
             {dietMap.note && dietPattern === dietMap.pattern && (
-              <p className="text-[10px] leading-4 text-amber-300">{dietMap.note}</p>
+              <p className="text-[10px] leading-4 text-amber-300">{t.ketoNote}</p>
             )}
           </div>
           <div className="flex flex-col gap-1.5">
-            <Label className="text-[11px]">تعداد وعده در روز</Label>
+            <Label className="text-[11px]">{t.mealsPerDayFieldLabel}</Label>
             <Select value={String(mealsPerDay)} onValueChange={(v) => setMealsPerDay(Number(v))}>
               <SelectTrigger className="h-9 text-sm">
                 <SelectValue />
               </SelectTrigger>
-              <SelectContent dir="rtl">
+              <SelectContent dir={dir}>
                 {[3, 4, 5, 6].map((n) => (
                   <SelectItem key={n} value={String(n)}>
-                    {faDigits(n)} وعده
+                    {t.mealsOption(localeNumber(n, locale))}
                   </SelectItem>
                 ))}
               </SelectContent>
             </Select>
           </div>
           <div className="flex flex-col gap-1.5">
-            <Label className="text-[11px]">طول برنامه</Label>
+            <Label className="text-[11px]">{t.planLengthFieldLabel}</Label>
             <Select value={String(planLength)} onValueChange={(v) => setPlanLength(Number(v) as 1 | 7)}>
               <SelectTrigger className="h-9 text-sm">
                 <SelectValue />
               </SelectTrigger>
-              <SelectContent dir="rtl">
-                <SelectItem value="7">هفتگی — ۷ روز با تنوع</SelectItem>
-                <SelectItem value="1">یک‌روزه — الگوی تکراری</SelectItem>
+              <SelectContent dir={dir}>
+                <SelectItem value="7">{t.planLengthWeekly}</SelectItem>
+                <SelectItem value="1">{t.planLengthDaily}</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -349,13 +361,13 @@ export function NutritionSettingsForm({ profile, submitting, serverError, onSubm
       </section>
 
       {/* بخش ۳ — ترجیحات و محدودیت‌ها */}
-      <section aria-label="ترجیحات و محدودیت‌ها" className="rounded-2xl border border-border/60 bg-card p-5">
+      <section aria-label={t.prefsSectionAria} className="rounded-2xl border border-border/60 bg-card p-5">
         <h3 className="flex items-center gap-2 text-sm font-bold">
           <AlertTriangle className="size-4 text-primary" aria-hidden="true" />
-          آلرژی‌ها و ترجیحات
+          {t.allergiesHeading}
         </h3>
 
-        <p className="mt-3 text-[11px] text-muted-foreground">آلرژی‌ها — مواد دارای این آلرژن‌ها به‌طور کامل حذف می‌شوند:</p>
+        <p className="mt-3 text-[11px] text-muted-foreground">{t.allergiesHint}</p>
         <div className="mt-2 flex flex-wrap gap-2">
           {ALLERGY_OPTIONS.map((option) => {
             const active = allergens.includes(option.value as AllergenId);
@@ -371,14 +383,14 @@ export function NutritionSettingsForm({ profile, submitting, serverError, onSubm
                     : "border-border/60 bg-secondary/30 text-muted-foreground hover:border-primary/30"
                 }`}
               >
-                {option.label}
+                {s.allergyLabel(option.value)}
               </button>
             );
           })}
         </div>
 
         <p className="mt-4 text-[11px] text-muted-foreground">
-          مواد نامطلوب (اختیاری) — از {faDigits(FOOD_BANK.length)} ماده بانک:
+          {t.dislikedLabel(localeNumber(FOOD_BANK.length, locale))}
         </p>
         <div className="mt-2 max-h-44 overflow-y-auto rounded-xl border border-border/50 bg-secondary/20 p-3">
           <div className="flex flex-wrap gap-1.5">
@@ -390,14 +402,14 @@ export function NutritionSettingsForm({ profile, submitting, serverError, onSubm
                   type="button"
                   onClick={() => toggleDisliked(food.id)}
                   aria-pressed={active}
-                  title={foodGroupFa(food.group)}
+                  title={t.groupLabel(food.group)}
                   className={`rounded-md border px-2 py-1 text-[10px] font-medium transition-all ${
                     active
                       ? "border-destructive/40 bg-destructive/10 text-rose-300 line-through"
                       : "border-border/50 bg-card text-muted-foreground hover:border-primary/30"
                   }`}
                 >
-                  {food.fa}
+                  {locale === "fa" ? food.fa : food.en}
                 </button>
               );
             })}
@@ -406,34 +418,33 @@ export function NutritionSettingsForm({ profile, submitting, serverError, onSubm
 
         <div className="mt-4 grid gap-4 sm:grid-cols-2">
           <div className="flex flex-col gap-1.5">
-            <Label className="text-[11px]">بودجه</Label>
+            <Label className="text-[11px]">{t.budgetFieldLabel}</Label>
             <Select value={budget} onValueChange={(v) => setBudget(v as "any" | "low")}>
               <SelectTrigger className="h-9 text-sm">
                 <SelectValue />
               </SelectTrigger>
-              <SelectContent dir="rtl">
-                <SelectItem value="any">بدون محدودیت</SelectItem>
-                <SelectItem value="low">اقتصادی — مواد گران حذف شود</SelectItem>
+              <SelectContent dir={dir}>
+                <SelectItem value="any">{t.budgetAny}</SelectItem>
+                <SelectItem value="low">{t.budgetLow}</SelectItem>
               </SelectContent>
             </Select>
           </div>
           <div className="flex flex-col gap-1.5">
-            <Label className="text-[11px]">آماده‌سازی غذا</Label>
+            <Label className="text-[11px]">{t.prepFieldLabel}</Label>
             <Select value={prep} onValueChange={(v) => setPrep(v as "any" | "simple")}>
               <SelectTrigger className="h-9 text-sm">
                 <SelectValue />
               </SelectTrigger>
-              <SelectContent dir="rtl">
-                <SelectItem value="any">بدون اولویت</SelectItem>
-                <SelectItem value="simple">ساده و سریع</SelectItem>
+              <SelectContent dir={dir}>
+                <SelectItem value="any">{t.prepAny}</SelectItem>
+                <SelectItem value="simple">{t.prepSimple}</SelectItem>
               </SelectContent>
             </Select>
           </div>
         </div>
 
         <p className="mt-4 rounded-xl border border-amber-400/25 bg-amber-400/5 p-3 text-[11px] leading-5 text-amber-200/90">
-          اگر بیماری مرتبط با تغذیه، اختلال خوردن یا نیاز درمانی دارید، این ابزار برای شما مناسب
-          نیست؛ لطفاً با پزشک یا متخصص تغذیه مشورت کنید.
+          {t.medicalDisclaimer}
         </p>
       </section>
 
@@ -456,8 +467,8 @@ export function NutritionSettingsForm({ profile, submitting, serverError, onSubm
           ) : (
             <Salad className="size-4" aria-hidden="true" />
           )}
-          ساخت پیش‌نمایش برنامه
-          <ChevronLeft className="size-4" aria-hidden="true" />
+          {t.buildPreviewButton}
+          <ChevronRight className="size-4 rtl:rotate-180" aria-hidden="true" />
         </Button>
         <Button
           variant="outline"
@@ -468,10 +479,10 @@ export function NutritionSettingsForm({ profile, submitting, serverError, onSubm
           disabled={submitting}
           className="border-border/70 font-semibold hover:border-primary/40 hover:text-primary"
         >
-          انصراف
+          {t.cancel}
         </Button>
         <span className="text-[10px] text-muted-foreground/70">
-          پیش‌نمایش قبل از ذخیره نمایش داده می‌شود
+          {t.previewBeforeSaveHint}
         </span>
       </div>
     </div>

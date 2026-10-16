@@ -17,7 +17,7 @@ import { motion } from "framer-motion";
 import {
   Archive,
   ArchiveRestore,
-  ChevronLeft,
+  ChevronRight,
   CircleAlert,
   ListPlus,
   Plus,
@@ -42,16 +42,16 @@ import { useAppStore } from "@/store/app-store";
 import { useSessionData } from "../session-context";
 import { useNutritionPlans } from "@/hooks/use-nutrition-plans";
 import { useNutritionDetail } from "@/hooks/use-nutrition-detail";
-import { faDigits } from "@/lib/profile";
+import { useLocale, useDir } from "@/lib/i18n/locale";
+import { useStrings } from "@/lib/i18n/use-strings";
+import { nutritionStrings } from "@/lib/i18n/sections/nutrition";
+import { localeNumber } from "@/lib/i18n/format";
 import { cn } from "@/lib/utils";
 import { ViewIntro } from "../shared/view-intro";
 import { EmptyState } from "../shared/empty-state";
 import { RealBadge } from "../shared/badges";
 import {
-  DIET_PATTERN_LABELS,
-  NUTRITION_GOAL_LABELS,
   type GeneratedNutritionPlan,
-  type NutritionGoal,
   type NutritionSettings,
 } from "@/lib/nutrition-engine/types";
 import type { NutritionPlanSummaryClient } from "@/lib/nutrition-storage";
@@ -63,6 +63,7 @@ import { FoodLogSection } from "./nutrition/food-log-section";
 type Mode = "list" | "form" | "preview";
 
 function StatusChip({ status }: { status: "active" | "archived" }) {
+  const t = useStrings(nutritionStrings);
   return (
     <span
       className={cn(
@@ -72,7 +73,7 @@ function StatusChip({ status }: { status: "active" | "archived" }) {
           : "border-border/50 bg-secondary/40 text-muted-foreground"
       )}
     >
-      {status === "active" ? "فعال" : "بایگانی"}
+      {status === "active" ? t.statusActive : t.statusArchived}
     </span>
   );
 }
@@ -92,6 +93,8 @@ function PlanSummaryCard({
   onActivate: () => void;
   onDelete: () => void;
 }) {
+  const t = useStrings(nutritionStrings);
+  const locale = useLocale();
   return (
     <div
       className={cn(
@@ -105,9 +108,9 @@ function PlanSummaryCard({
           <StatusChip status={plan.status} />
         </div>
         <p className="mt-1 text-[10px] leading-5 text-muted-foreground">
-          {NUTRITION_GOAL_LABELS[plan.goal as NutritionGoal] ?? plan.goal} — {faDigits(plan.mealsPerDay)} وعده در روز —{" "}
-          {plan.planLength > 1 ? `${faDigits(plan.planLength)} روز` : "یک‌روزه"} —{" "}
-          {plan.targetKcal !== null ? `هدف ${faDigits(plan.targetKcal)} کیلوکالری` : "حالت احتیاط"}
+          {t.goalLabel(plan.goal)} — {t.mealsPerDayUnit(localeNumber(plan.mealsPerDay, locale))} —{" "}
+          {plan.planLength > 1 ? t.daysShort(localeNumber(plan.planLength, locale)) : t.oneDayPlan} —{" "}
+          {plan.targetKcal !== null ? t.targetKcalLabel(localeNumber(plan.targetKcal, locale)) : t.cautionMode}
         </p>
       </div>
       <div className="flex shrink-0 flex-wrap items-center gap-1.5">
@@ -117,8 +120,8 @@ function PlanSummaryCard({
             onClick={onOpen}
             className="h-7 bg-primary/15 px-2.5 text-[10px] font-bold text-primary hover:bg-primary/25"
           >
-            مشاهده برنامه
-            <ChevronLeft className="size-3.5" aria-hidden="true" />
+            {t.viewPlan}
+            <ChevronRight className="size-3.5 rtl:rotate-180" aria-hidden="true" />
           </Button>
         ) : (
           <Button
@@ -129,7 +132,7 @@ function PlanSummaryCard({
             className="h-7 border-border/70 px-2.5 text-[10px] font-semibold hover:border-primary/40 hover:text-primary"
           >
             <ArchiveRestore className="size-3" aria-hidden="true" />
-            فعال‌سازی
+            {t.activate}
           </Button>
         )}
         {!active && (
@@ -141,7 +144,7 @@ function PlanSummaryCard({
             className="h-7 border-destructive/30 px-2 text-[10px] font-semibold text-rose-300 hover:bg-destructive/10"
           >
             <Trash2 className="size-3" aria-hidden="true" />
-            حذف
+            {t.delete}
           </Button>
         )}
       </div>
@@ -163,6 +166,9 @@ export function NutritionView() {
   const item = getNavItem("nutrition");
   const { profile } = useSessionData();
   const setActiveView = useAppStore((s) => s.setActiveView);
+  const t = useStrings(nutritionStrings);
+  const locale = useLocale();
+  const dir = useDir();
   const {
     plans,
     loading,
@@ -212,11 +218,11 @@ export function NutritionView() {
       setPreview(null);
       setSettings(null);
       setMode("list");
-      toast.success("برنامه غذایی ذخیره و فعال شد");
+      toast.success(t.savedToast);
     } else {
       setSaveError(result.message);
     }
-  }, [createPlan, settings]);
+  }, [createPlan, settings, t]);
 
   const handleActivate = useCallback(
     async (id: string) => {
@@ -224,12 +230,12 @@ export function NutritionView() {
       const result = await updatePlan(id, { status: "active" });
       setBusyId(null);
       if (result.ok) {
-        toast.success("برنامه فعال شد؛ برنامه فعال قبلی بایگانی شد");
+        toast.success(t.activatedToast);
       } else {
         toast.error(result.message);
       }
     },
-    [updatePlan]
+    [updatePlan, t]
   );
 
   const handleArchive = useCallback(
@@ -238,24 +244,24 @@ export function NutritionView() {
       const result = await updatePlan(id, { status: "archived" });
       setBusyId(null);
       if (result.ok) {
-        toast.success("برنامه بایگانی شد");
+        toast.success(t.archivedToast);
       } else {
         toast.error(result.message);
       }
     },
-    [updatePlan]
+    [updatePlan, t]
   );
 
   const handleDeleteConfirm = useCallback(async () => {
     if (!deleteTarget) return;
     const result = await deletePlan(deleteTarget.id);
     if (result.ok) {
-      toast.success("برنامه حذف شد");
+      toast.success(t.deletedToast);
     } else {
       toast.error(result.message);
     }
     setDeleteTarget(null);
-  }, [deletePlan, deleteTarget]);
+  }, [deletePlan, deleteTarget, t]);
 
   /* --------------------------------- حالت‌ها --------------------------------- */
 
@@ -280,7 +286,7 @@ export function NutritionView() {
             className="mt-4 border-border/70 font-semibold hover:border-primary/40 hover:text-primary"
           >
             <RotateCcw className="size-3.5" aria-hidden="true" />
-            تلاش مجدد
+            {t.retry}
           </Button>
         </div>
       )}
@@ -295,9 +301,9 @@ export function NutritionView() {
           />
 
           {activePlanSummary && activeDetail.plan && (
-            <section aria-label="برنامه غذایی فعال" className="flex flex-col gap-3">
+            <section aria-label={t.activePlanSectionAria} className="flex flex-col gap-3">
               <div className="flex flex-wrap items-center gap-2">
-                <h3 className="text-sm font-bold">برنامه فعال</h3>
+                <h3 className="text-sm font-bold">{t.activePlanHeading}</h3>
                 <StatusChip status="active" />
                 <div className="ms-auto flex items-center gap-1.5">
                   <Button
@@ -308,7 +314,7 @@ export function NutritionView() {
                     className="h-7 border-border/70 px-2.5 text-[10px] font-semibold hover:border-amber-400/40 hover:text-amber-300"
                   >
                     <Archive className="size-3" aria-hidden="true" />
-                    بایگانی
+                    {t.archive}
                   </Button>
                   <Button
                     size="sm"
@@ -317,7 +323,7 @@ export function NutritionView() {
                     className="h-7 border-destructive/30 px-2.5 text-[10px] font-semibold text-rose-300 hover:bg-destructive/10"
                   >
                     <Trash2 className="size-3" aria-hidden="true" />
-                    حذف
+                    {t.delete}
                   </Button>
                 </div>
               </div>
@@ -335,15 +341,15 @@ export function NutritionView() {
             <section className="rounded-2xl border border-border/60 bg-card p-6">
               <EmptyState
                 icon={Salad}
-                title="هنوز برنامه غذایی نساخته‌اید"
-                description="برنامه‌ساز تغذیه بر اساس هدف، سطح فعالیت، الگوی غذایی و آلرژی‌های شما — و از بانک مواد غذایی واقعی — برنامه وعده‌ها را با مقدار گرم هر ماده می‌سازد. تنظیمات را پر کنید، پیش‌نمایش را ببینید و ذخیره کنید."
+                title={t.emptyTitle}
+                description={t.emptyDescription}
                 action={
                   <Button
                     onClick={() => setMode("form")}
                     className="font-bold text-primary-foreground glow-lime-sm"
                   >
                     <Plus className="size-4" aria-hidden="true" />
-                    ساخت برنامه غذایی
+                    {t.createPlan}
                   </Button>
                 }
               />
@@ -353,25 +359,25 @@ export function NutritionView() {
           {!activePlanSummary && plans.length > 0 && (
             <section className="rounded-2xl border border-border/60 bg-card p-5 md:p-6">
               <p className="text-xs leading-6 text-muted-foreground">
-                برنامه فعالی ندارید؛ یکی از برنامه‌های بایگانی را فعال کنید یا برنامه جدیدی بسازید.
+                {t.noActivePlanNote}
               </p>
               <Button
                 onClick={() => setMode("form")}
                 className="mt-3 font-bold text-primary-foreground glow-lime-sm"
               >
                 <Plus className="size-4" aria-hidden="true" />
-                ساخت برنامه غذایی
+                {t.createPlan}
               </Button>
             </section>
           )}
 
           {archivedPlans.length > 0 && (
-            <section aria-label="برنامه‌های قبلی" className="rounded-2xl border border-border/60 bg-card p-4 md:p-5">
+            <section aria-label={t.previousPlansAria} className="rounded-2xl border border-border/60 bg-card p-4 md:p-5">
               <div className="mb-3 flex items-center gap-2.5">
                 <Archive className="size-4 text-muted-foreground" aria-hidden="true" />
-                <h3 className="text-xs font-bold">برنامه‌های قبلی</h3>
+                <h3 className="text-xs font-bold">{t.previousPlansHeading}</h3>
                 <span className="rounded-md border border-border/50 bg-secondary/40 px-1.5 py-0.5 text-[9px] font-bold text-muted-foreground">
-                  {faDigits(archivedPlans.length)}
+                  {localeNumber(archivedPlans.length, locale)}
                 </span>
               </div>
               <div className="flex flex-col gap-2.5">
@@ -398,7 +404,7 @@ export function NutritionView() {
                 className="border-border/70 font-semibold hover:border-primary/40 hover:text-primary"
               >
                 <ListPlus className="size-4" aria-hidden="true" />
-                ساخت برنامه جدید
+                {t.createNewPlan}
               </Button>
             </section>
           )}
@@ -406,24 +412,24 @@ export function NutritionView() {
           {/* پیوند به پروفایل برای اصلاح اطلاعات پایه */}
           {!activePlanSummary && (
             <p className="text-center text-[10px] leading-5 text-muted-foreground/70">
-              اطلاعات پایه (سن، قد، وزن، آلرژی‌ها) از{" "}
+              {t.profileNoteBefore}
               <button
                 type="button"
                 onClick={() => setActiveView("profile")}
                 className="font-semibold text-primary underline-offset-2 hover:underline"
               >
-                پروفایل
-              </button>{" "}
-              خوانده می‌شود؛ اطلاعات گمشده را همین فرم می‌پرسد.
+                {t.profileLink}
+              </button>
+              {t.profileNoteAfter}
             </p>
           )}
         </>
       )}
 
       {!loading && !error && mode === "form" && (
-        <section aria-label="تنظیمات برنامه غذایی جدید" className="flex flex-col gap-4">
+        <section aria-label={t.settingsFormAria} className="flex flex-col gap-4">
           <div className="flex items-center gap-2.5">
-            <h3 className="text-sm font-bold">تنظیمات برنامه غذایی</h3>
+            <h3 className="text-sm font-bold">{t.settingsHeading}</h3>
           </div>
           <NutritionSettingsForm
             profile={profile}
@@ -439,9 +445,9 @@ export function NutritionView() {
       )}
 
       {!loading && !error && mode === "preview" && preview && (
-        <section aria-label="پیش‌نمایش برنامه غذایی" className="flex flex-col gap-4">
+        <section aria-label={t.previewSectionAria} className="flex flex-col gap-4">
           <div className="flex items-center gap-2.5">
-            <h3 className="text-sm font-bold">پیش‌نمایش برنامه</h3>
+            <h3 className="text-sm font-bold">{t.previewHeading}</h3>
           </div>
           <NutritionPlanPreview
             plan={preview}
@@ -458,21 +464,20 @@ export function NutritionView() {
 
       {/* دیالوگ تأیید حذف */}
       <AlertDialog open={deleteTarget !== null} onOpenChange={(open) => !open && setDeleteTarget(null)}>
-        <AlertDialogContent dir="rtl">
+        <AlertDialogContent dir={dir}>
           <AlertDialogHeader>
-            <AlertDialogTitle className="text-start">حذف برنامه غذایی</AlertDialogTitle>
+            <AlertDialogTitle className="text-start">{t.deleteDialogTitle}</AlertDialogTitle>
             <AlertDialogDescription className="text-start leading-7">
-              برنامه «{deleteTarget?.title}» برای همیشه حذف می‌شود و قابل بازگشت نیست. اگر این
-              برنامه فعال است، پس از حذف برنامه فعالی باقی نمی‌ماند.
+              {t.deleteDialogDescription(deleteTarget?.title ?? "")}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter className="gap-2">
-            <AlertDialogCancel>انصراف</AlertDialogCancel>
+            <AlertDialogCancel>{t.cancel}</AlertDialogCancel>
             <AlertDialogAction
               onClick={() => void handleDeleteConfirm()}
               className="bg-destructive text-white hover:bg-destructive/90"
             >
-              حذف برنامه
+              {t.deletePlanConfirm}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

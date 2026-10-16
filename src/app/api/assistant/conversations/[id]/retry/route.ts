@@ -39,10 +39,14 @@ export async function POST(request: Request, context: RouteContext) {
 
     // انتخاب زبان اختیاری برای تلاش مجدد
     let language: "auto" | "fa" | "en" = "auto";
+    let uiLocale: "fa" | "en" | undefined;
     try {
       const body: unknown = await request.json();
       const parsed = retrySchema.safeParse(body);
-      if (parsed.success) language = parsed.data.language;
+      if (parsed.success) {
+        language = parsed.data.language;
+        uiLocale = parsed.data.uiLocale;
+      }
     } catch {
       // بدنه خالی مجاز است — پیش‌فرض auto
     }
@@ -66,6 +70,7 @@ export async function POST(request: Request, context: RouteContext) {
       conversationId: id,
       language,
       sourceMessageText: unanswered.content,
+      uiLocale,
     });
 
     return NextResponse.json({ assistantMessage }, { status: 201 });
