@@ -56,6 +56,8 @@ export interface WorkoutPlanClient {
   notes: string[];
   status: "active" | "archived";
   libraryVersion: string;
+  /** زبان تولید محتوای برنامه — رکوردهای قدیمی «fa» */
+  contentLocale: string;
   createdAt: string;
   updatedAt: string;
   days: PlannedDayClient[];
@@ -72,6 +74,8 @@ export interface WorkoutPlanSummaryClient {
   focus: string;
   status: "active" | "archived";
   totalExercises: number;
+  /** زبان تولید محتوا — رکوردهای قدیمی «fa» */
+  contentLocale: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -145,6 +149,7 @@ export function toClientPlan(
     notes: parseJsonArray(plan.notesJson),
     status: marshalStatus(plan.status),
     libraryVersion: plan.libraryVersion,
+    contentLocale: plan.contentLocale === "en" ? "en" : "fa",
     createdAt: plan.createdAt.toISOString(),
     updatedAt: plan.updatedAt.toISOString(),
     days: plan.days
@@ -179,6 +184,7 @@ export async function listUserPlans(userId: string): Promise<WorkoutPlanSummaryC
         focus: plan.focus,
         status: marshalStatus(plan.status),
         totalExercises,
+        contentLocale: plan.contentLocale === "en" ? "en" : "fa",
         createdAt: plan.createdAt.toISOString(),
         updatedAt: plan.updatedAt.toISOString(),
       } satisfies WorkoutPlanSummaryClient;
@@ -226,7 +232,8 @@ export async function findActivePlanId(userId: string): Promise<string | null> {
 export async function saveGeneratedPlan(
   userId: string,
   settings: PlanSettings,
-  plan: GeneratedPlan
+  plan: GeneratedPlan,
+  contentLocale: "fa" | "en" = "fa"
 ): Promise<WorkoutPlanClient> {
   const saved = await db.$transaction(async (tx) => {
     await tx.workoutPlan.updateMany({
@@ -251,6 +258,7 @@ export async function saveGeneratedPlan(
         notesJson: JSON.stringify(plan.notes),
         status: "active",
         libraryVersion: LIBRARY_VERSION,
+        contentLocale,
         days: {
           create: plan.days.map((day) => ({
             order: day.order,

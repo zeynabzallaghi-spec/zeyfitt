@@ -11,6 +11,7 @@
  */
 
 import { ChefHat, ChevronLeft, ChevronRight, Loader2, Utensils } from "lucide-react";
+import { nutritionTitleFromFields } from "@/lib/i18n/engine-content";
 import { Button } from "@/components/ui/button";
 import { useAppStore } from "@/store/app-store";
 import type { NutritionPlanSummaryClient } from "@/lib/nutrition-storage";
@@ -56,7 +57,7 @@ export function NutritionSummaryCard({
         <div className="flex flex-1 flex-col">
           {plan ? (
             <div>
-              <p className="text-xs font-bold leading-6 text-foreground">{plan.title}</p>
+              <p className="text-xs font-bold leading-6 text-foreground">{nutritionTitleFromFields(plan.planLength, plan.goal, logLang) || plan.title}</p>
               <p className="mt-1 text-[11px] leading-6 text-muted-foreground">
                 {ls.planGoalLine(
                   ns.goalLabel(plan.goal as string) ?? plan.goal,

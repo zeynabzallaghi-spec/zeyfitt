@@ -11,10 +11,11 @@
  */
 
 import { ChevronLeft, CalendarCheck2, Clock3, ListChecks, Play } from "lucide-react";
+import { sessionTitleLabel, dayTitleLabel } from "@/lib/i18n/engine-content";
+import { useLocale } from "@/lib/i18n/locale";
 import { Button } from "@/components/ui/button";
 import { useAppStore } from "@/store/app-store";
 import type { WorkoutPlanClient } from "@/lib/plan-storage";
-import { useLocale } from "@/lib/i18n/locale";
 import { useStrings } from "@/lib/i18n/use-strings";
 import { localeNumber } from "@/lib/i18n/format";
 import { weightStrings } from "@/lib/i18n/sections/weight";
@@ -37,6 +38,7 @@ export function TodaySessionCard({
   const setActiveView = useAppStore((s) => s.setActiveView);
   const t = useStrings(weightStrings);
   const locale = useLocale();
+  // (useLocale بالا خوانده می‌شود)
 
   if (!plan) {
     return (
@@ -71,7 +73,7 @@ export function TodaySessionCard({
             <CalendarCheck2 className="size-3.5" aria-hidden="true" />
             {t.todayBadge(t.weekdayLabels[today], localeNumber(todaySession.order, locale))}
           </span>
-          <span className="text-[11px] font-bold text-foreground">{todaySession.title}</span>
+          <span className="text-[11px] font-bold text-foreground">{sessionTitleLabel(todaySession.title, locale)}</span>
         </div>
         <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-[10px] leading-5 text-muted-foreground">
           <span className="inline-flex items-center gap-1">
@@ -144,7 +146,7 @@ export function TodaySessionCard({
       if (found) {
         upcoming = {
           label: offset === 1 ? t.tomorrowLabel : t.weekdayLabels[dayIndex],
-          title: found.title,
+          title: dayTitleLabel(found.title, locale),
         };
         break;
       }

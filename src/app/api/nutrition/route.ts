@@ -3,12 +3,14 @@ import { getServerSession } from "@/lib/session";
 import {
   nutritionSettingsSchema,
   firstNutritionSettingsError,
+  contentLocaleOf,
 } from "@/lib/nutrition-engine/schema";
 import {
   computeNutritionTargets,
   generateNutritionPlan,
   NutritionPlanError,
 } from "@/lib/nutrition-engine";
+import { zodIssueCodes } from "@/lib/api-issues";
 import type { NutritionSettings } from "@/lib/nutrition-engine/types";
 import {
   listUserNutritionPlans,
@@ -60,10 +62,17 @@ export async function POST(request: Request) {
     const parsed = nutritionSettingsSchema.safeParse(body);
     if (!parsed.success) {
       return NextResponse.json(
-        { error: "VALIDATION", message: firstNutritionSettingsError(parsed.error) },
+        {
+          error: "VALIDATION",
+          message: firstNutritionSettingsError(parsed.error),
+          issues: zodIssueCodes(parsed.error),
+        },
         { status: 400 }
       );
     }
+
+    // زبان تولید محتوا — انتخاب صریح کلاینت (زبان رابط) با پیش‌فرض امن
+    const contentLocale = contentLocaleOf(parsed.data.contentLocale);
 
     // اطلاعات برآورد: اولویت با پروفایل واقعی؛ در نبود آن، مقدار فرم تغذیه
     const profile = await getProfileEstimateFields();
@@ -79,7 +88,8 @@ export async function POST(request: Request) {
       estimate,
       settings.goal,
       settings.activityLevel,
-      settings.pregnancyBreastfeeding
+      settings.pregnancyBreastfeeding,
+      contentLocale
     );
     if (targets.status === "insufficient_data") {
       return insufficientDataResponse(targets.missingLabels);
@@ -87,18 +97,18 @@ export async function POST(request: Request) {
 
     let plan;
     try {
-      plan = generateNutritionPlan(settings, targets.snapshot);
+      plan = generateNutritionPlan(settings, targets.snapshot, contentLocale);
     } catch (error) {
       if (error instanceof NutritionPlanError) {
         return NextResponse.json(
-          { error: "PLAN_NOT_FEASIBLE", message: error.message },
+          { error: "PLAN_NOT_FEASIBLE", code: error.code, params: error.params, message: error.message },
           { status: 422 }
         );
       }
       throw error;
     }
 
-    const saved = await saveGeneratedNutritionPlan(session.user.id, settings, plan);
+    const saved = await saveGeneratedNutritionPlan(session.user.id, settings, plan, contentLocale);
     return NextResponse.json({ plan: saved }, { status: 201 });
   } catch (error) {
     console.error("[nutrition:POST]", error instanceof Error ? error.name : "unknown");

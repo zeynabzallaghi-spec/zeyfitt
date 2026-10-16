@@ -107,6 +107,15 @@ export const PLAN_GOAL_LABELS: Record<PlanGoal, string> = {
   fitness: "آمادگی جسمانی",
 };
 
+/** برچسب انگلیسی هدف — فقط برای تولید محتوا با locale="en" */
+export const PLAN_GOAL_LABELS_EN: Record<PlanGoal, string> = {
+  fat_loss: "Fat loss",
+  muscle_gain: "Muscle gain",
+  strength: "Strength",
+  maintain: "Maintenance",
+  fitness: "General fitness",
+};
+
 export const PLAN_EXPERIENCE_LABELS: Record<PlanExperience, string> = {
   beginner: "مبتدی",
   intermediate: "متوسط",
@@ -124,6 +133,14 @@ export function focusFa(focus: PlanFocus): string {
     return PLAN_FOCUS_LABELS[focus];
   }
   return EXERCISE_CATEGORIES.find((c) => c.id === focus)?.fa ?? focus;
+}
+
+/** برچسب انگلیسی تمرکز — فقط برای تولید محتوا با locale="en" */
+export function focusEn(focus: PlanFocus): string {
+  if (focus === "all") return "Full body";
+  if (focus === "upper") return "Upper body";
+  if (focus === "lower") return "Lower body";
+  return EXERCISE_CATEGORIES.find((c) => c.id === focus)?.en ?? focus;
 }
 
 /** تایپ Difficulty باز export می‌شود تا UI و تست‌ها یک منبع داشته باشند */

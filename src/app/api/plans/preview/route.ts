@@ -4,8 +4,10 @@ import {
   planSettingsSchema,
   firstPlanSettingsError,
   normalizedPreferredDays,
+  contentLocaleOf,
 } from "@/lib/plan-engine/schema";
 import { generatePlan, PlanGenerationError } from "@/lib/plan-engine/engine";
+import { zodIssueCodes } from "@/lib/api-issues";
 import type { PlanSettings } from "@/lib/plan-engine/types";
 
 /**
@@ -29,11 +31,16 @@ export async function POST(request: Request) {
     const parsed = planSettingsSchema.safeParse(body);
     if (!parsed.success) {
       return NextResponse.json(
-        { error: "VALIDATION", message: firstPlanSettingsError(parsed.error) },
+        {
+          error: "VALIDATION",
+          message: firstPlanSettingsError(parsed.error),
+          issues: zodIssueCodes(parsed.error),
+        },
         { status: 400 }
       );
     }
 
+    const contentLocale = contentLocaleOf(parsed.data.contentLocale);
     const settings: PlanSettings = {
       ...parsed.data,
       preferredDays: normalizedPreferredDays(parsed.data.preferredDays).slice(
@@ -43,12 +50,12 @@ export async function POST(request: Request) {
     };
 
     try {
-      const plan = generatePlan(settings);
+      const plan = generatePlan(settings, contentLocale);
       return NextResponse.json({ plan, settings });
     } catch (error) {
       if (error instanceof PlanGenerationError) {
         return NextResponse.json(
-          { error: "PLAN_NOT_FEASIBLE", message: error.message },
+          { error: "PLAN_NOT_FEASIBLE", code: error.code, message: error.message },
           { status: 422 }
         );
       }

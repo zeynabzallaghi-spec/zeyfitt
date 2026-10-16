@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { getServerSession } from "@/lib/session";
 import { planTitleSchema } from "@/lib/plan-engine/schema";
+import { zodIssueCodes } from "@/lib/api-issues";
 import {
   deleteOwnedPlan,
   findOwnedPlan,
@@ -64,7 +65,11 @@ export async function PATCH(request: Request, context: RouteContext) {
     if (!parsed.success) {
       const first = parsed.error.issues[0];
       return NextResponse.json(
-        { error: "VALIDATION", message: first?.message ?? "اطلاعات معتبر نیست" },
+        {
+          error: "VALIDATION",
+          message: first?.message ?? "اطلاعات معتبر نیست",
+          issues: zodIssueCodes(parsed.error),
+        },
         { status: 400 }
       );
     }

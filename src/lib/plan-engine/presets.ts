@@ -12,6 +12,7 @@ import type {
   ExerciseCategoryId,
 } from "@/lib/exercises/types";
 import type { PlanExperience, PlanFocus, PlanGoal } from "./types";
+import type { Locale } from "@/lib/i18n/shared";
 
 /* --------------------- نقشه تجهیزات پروفایل → بانک حرکات --------------------- */
 
@@ -42,6 +43,8 @@ export interface DayTemplate {
   title: string;
   focusLabel: string;
   slots: DaySlot[];
+  /** نیمه بدن قالب — جایگزین مقایسه متنی برچسب (برای پرکردن جلسه) */
+  half: "upper" | "lower" | "full";
 }
 
 /** جایگاه‌های پایه هر تمرکز */
@@ -110,19 +113,45 @@ const SLOT_GROUPS: Record<SlotGroupName, DaySlot[]> = {
   ],
 };
 
-const GROUP_TITLE: Record<SlotGroupName, { title: string; focusLabel: string }> = {
-  push: { title: "پوش — سینه، سرشانه و پشت بازو", focusLabel: "بالاتنه" },
-  pull: { title: "پول — پشت و جلو بازو", focusLabel: "بالاتنه" },
-  legs: { title: "پایین‌تنه — چهارسر، همسترینگ و ساق", focusLabel: "پایین‌تنه" },
-  upperA: { title: "بالاتنه — سینه و پشت", focusLabel: "بالاتنه" },
-  upperB: { title: "بالاتنه — سرشانه و بازو", focusLabel: "بالاتنه" },
-  lowerA: { title: "پایین‌تنه — چهارسر و سرینی", focusLabel: "پایین‌تنه" },
-  lowerB: { title: "پایین‌تنه — همسترینگ و مرکزی", focusLabel: "پایین‌تنه" },
-  armCore: { title: "بازو، سرشانه و مرکزی", focusLabel: "بالاتنه" },
-  fullA: { title: "تمام بدن — جلسه اول", focusLabel: "تمام بدن" },
-  fullB: { title: "تمام بدن — جلسه دوم", focusLabel: "تمام بدن" },
-  fullC: { title: "تمام بدن — جلسه سوم", focusLabel: "تمام بدن" },
+interface GroupTitleEntry {
+  title: string;
+  focusLabel: string;
+  half: "upper" | "lower" | "full";
+}
+
+/** برچسب‌های فارسی — عیناً رفتار قبل (بایت‌به‌بایت) */
+const GROUP_TITLE: Record<SlotGroupName, GroupTitleEntry> = {
+  push: { title: "پوش — سینه، سرشانه و پشت بازو", focusLabel: "بالاتنه", half: "upper" },
+  pull: { title: "پول — پشت و جلو بازو", focusLabel: "بالاتنه", half: "upper" },
+  legs: { title: "پایین‌تنه — چهارسر، همسترینگ و ساق", focusLabel: "پایین‌تنه", half: "lower" },
+  upperA: { title: "بالاتنه — سینه و پشت", focusLabel: "بالاتنه", half: "upper" },
+  upperB: { title: "بالاتنه — سرشانه و بازو", focusLabel: "بالاتنه", half: "upper" },
+  lowerA: { title: "پایین‌تنه — چهارسر و سرینی", focusLabel: "پایین‌تنه", half: "lower" },
+  lowerB: { title: "پایین‌تنه — همسترینگ و مرکزی", focusLabel: "پایین‌تنه", half: "lower" },
+  armCore: { title: "بازو، سرشانه و مرکزی", focusLabel: "بالاتنه", half: "upper" },
+  fullA: { title: "تمام بدن — جلسه اول", focusLabel: "تمام بدن", half: "full" },
+  fullB: { title: "تمام بدن — جلسه دوم", focusLabel: "تمام بدن", half: "full" },
+  fullC: { title: "تمام بدن — جلسه سوم", focusLabel: "تمام بدن", half: "full" },
 };
+
+/** برچسب‌های انگلیسی همان قالب‌ها — فقط برای تولید با locale="en" */
+const GROUP_TITLE_EN: Record<SlotGroupName, { title: string; focusLabel: string }> = {
+  push: { title: "Push — chest, shoulders & triceps", focusLabel: "Upper body" },
+  pull: { title: "Pull — back & biceps", focusLabel: "Upper body" },
+  legs: { title: "Lower body — quads, hamstrings & calves", focusLabel: "Lower body" },
+  upperA: { title: "Upper body — chest & back", focusLabel: "Upper body" },
+  upperB: { title: "Upper body — shoulders & arms", focusLabel: "Upper body" },
+  lowerA: { title: "Lower body — quads & glutes", focusLabel: "Lower body" },
+  lowerB: { title: "Lower body — hamstrings & core", focusLabel: "Lower body" },
+  armCore: { title: "Arms, shoulders & core", focusLabel: "Upper body" },
+  fullA: { title: "Full body — session 1", focusLabel: "Full body" },
+  fullB: { title: "Full body — session 2", focusLabel: "Full body" },
+  fullC: { title: "Full body — session 3", focusLabel: "Full body" },
+};
+
+function groupTitle(name: SlotGroupName, locale: Locale): { title: string; focusLabel: string } {
+  return locale === "en" ? GROUP_TITLE_EN[name] : GROUP_TITLE[name];
+}
 
 /** دسته‌های بالاتنه و پایین‌تنه — برای تبدیل تمرکزها */
 const UPPER_CATEGORIES: ExerciseCategoryId[] = ["chest", "back", "shoulders", "biceps", "triceps", "fullbody"];
@@ -166,26 +195,28 @@ const CATEGORY_FILL_DAY: Partial<Record<ExerciseCategoryId, SlotGroupName>> = {
 export function buildDayTemplates(
   days: number,
   focus: PlanFocus,
-  experience: PlanExperience
+  experience: PlanExperience,
+  locale: Locale = "fa"
 ): DayTemplate[] {
   const beginner = experience === "beginner";
 
   if (focus === "all") {
-    return buildAllFocus(days, beginner);
+    return buildAllFocus(days, beginner, locale);
   }
   if (focus === "upper") {
-    return buildBodyHalfFocus(days, "upper");
+    return buildBodyHalfFocus(days, "upper", locale);
   }
   if (focus === "lower") {
-    return buildBodyHalfFocus(days, "lower");
+    return buildBodyHalfFocus(days, "lower", locale);
   }
-  return buildCategoryFocus(days, focus, beginner);
+  return buildCategoryFocus(days, focus, beginner, locale);
 }
 
-function buildAllFocus(days: number, beginner: boolean): DayTemplate[] {
+function buildAllFocus(days: number, beginner: boolean, locale: Locale): DayTemplate[] {
   const mk = (name: SlotGroupName): DayTemplate => ({
-    ...GROUP_TITLE[name],
+    ...groupTitle(name, locale),
     slots: SLOT_GROUPS[name],
+    half: GROUP_TITLE[name].half,
   });
 
   if (beginner) {
@@ -219,7 +250,7 @@ function buildAllFocus(days: number, beginner: boolean): DayTemplate[] {
 }
 
 /** تمرکز بالاتنه یا پایین‌تنه — روزها از جایگاه‌های همان نیمه چرخش می‌خورند */
-function buildBodyHalfFocus(days: number, half: "upper" | "lower"): DayTemplate[] {
+function buildBodyHalfFocus(days: number, half: "upper" | "lower", locale: Locale): DayTemplate[] {
   const pool: SlotGroupName[] =
     half === "upper"
       ? ["upperA", "upperB", "push", "pull", "armCore"]
@@ -231,7 +262,7 @@ function buildBodyHalfFocus(days: number, half: "upper" | "lower"): DayTemplate[
     const slots = SLOT_GROUPS[name].map((slot) =>
       i >= pool.length && slot.count > 1 ? { ...slot, count: slot.count - 1 } : slot
     );
-    out.push({ ...GROUP_TITLE[name], slots });
+    out.push({ ...groupTitle(name, locale), slots, half: GROUP_TITLE[name].half });
   }
   return out;
 }
@@ -240,7 +271,12 @@ function buildBodyHalfFocus(days: number, half: "upper" | "lower"): DayTemplate[
  * تمرکز روی یک دسته مشخص — حدود نیمی از روزها روی دسته اصلی با دسته‌های
  * مکمل و بقیه روزهای متعادل‌کننده تا ریکاوری دسته اصلی رعایت شود.
  */
-function buildCategoryFocus(days: number, category: ExerciseCategoryId, beginner: boolean): DayTemplate[] {
+function buildCategoryFocus(
+  days: number,
+  category: ExerciseCategoryId,
+  beginner: boolean,
+  locale: Locale
+): DayTemplate[] {
   const out: DayTemplate[] = [];
   const fillDay = CATEGORY_FILL_DAY[category] ?? "fullB";
   const synergists = SYNERGISTS[category] ?? [];
@@ -251,16 +287,24 @@ function buildCategoryFocus(days: number, category: ExerciseCategoryId, beginner
     if (syn) slots.push({ category: syn, count: 1 });
     if (!beginner && index % 2 === 1) slots.push({ category, count: 1 });
     return {
-      title: `تمرکز ${categoryTitle(category)} — جلسه ${index + 1}`,
-      focusLabel: categoryTitle(category),
+      title:
+        locale === "en"
+          ? `${categoryTitle(category, "en")} focus — session ${index + 1}`
+          : `تمرکز ${categoryTitle(category, "fa")} — جلسه ${index + 1}`,
+      focusLabel: categoryTitle(category, locale),
       slots,
+      half: GROUP_TITLE[fillDay].half,
     };
   };
 
   const mkFillDay = (): DayTemplate => ({
-    ...GROUP_TITLE[fillDay],
+    ...groupTitle(fillDay, locale),
     slots: SLOT_GROUPS[fillDay],
-    title: `${GROUP_TITLE[fillDay].title} (روز مکمل)`,
+    half: GROUP_TITLE[fillDay].half,
+    title:
+      locale === "en"
+        ? `${GROUP_TITLE_EN[fillDay].title} (supplementary day)`
+        : `${GROUP_TITLE[fillDay].title} (روز مکمل)`,
   });
 
   for (let i = 0; i < days; i++) {
@@ -269,7 +313,7 @@ function buildCategoryFocus(days: number, category: ExerciseCategoryId, beginner
   return out;
 }
 
-function categoryTitle(id: ExerciseCategoryId): string {
+function categoryTitle(id: ExerciseCategoryId, locale: Locale = "fa"): string {
   // واردات بالا برای جلوگیری از چرخه — برچسب فارسی دسته
   const titles: Record<ExerciseCategoryId, string> = {
     chest: "سینه",
@@ -284,6 +328,22 @@ function categoryTitle(id: ExerciseCategoryId): string {
     calves: "ساق پا",
     fullbody: "تمام بدن",
   };
+  if (locale === "en") {
+    const en: Record<ExerciseCategoryId, string> = {
+      chest: "chest",
+      back: "back",
+      shoulders: "shoulders",
+      biceps: "biceps",
+      triceps: "triceps",
+      core: "core",
+      quads: "quads",
+      hamstrings: "hamstrings",
+      glutes: "glutes",
+      calves: "calves",
+      fullbody: "full body",
+    };
+    return en[id] ?? id;
+  }
   return titles[id] ?? id;
 }
 

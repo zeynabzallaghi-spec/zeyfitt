@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { currentUiLocale } from "@/lib/i18n/locale-current";
 import type { WorkoutPlanClient } from "@/lib/plan-storage";
 
 /**
@@ -31,12 +32,20 @@ export function usePlanDetail(id: string | null): UsePlanDetailResult {
       const response = await fetch(`/api/plans/${encodeURIComponent(id)}`, { cache: "no-store" });
       if (!mounted.current) return;
       if (response.status === 401) {
-        setError("نشست شما منقضی شده است؛ صفحه را دوباره بارگذاری کنید.");
+        setError(
+          currentUiLocale() === "en"
+            ? "Your session has expired; please reload the page."
+            : "نشست شما منقضی شده است؛ صفحه را دوباره بارگذاری کنید."
+        );
         setPlan(null);
         return;
       }
       if (!response.ok) {
-        setError("خواندن برنامه ممکن نشد؛ لطفاً دوباره تلاش کنید.");
+        setError(
+          currentUiLocale() === "en"
+            ? "Could not read the plan; please try again."
+            : "خواندن برنامه ممکن نشد؛ لطفاً دوباره تلاش کنید."
+        );
         setPlan(null);
         return;
       }
@@ -44,7 +53,11 @@ export function usePlanDetail(id: string | null): UsePlanDetailResult {
       setPlan(data.plan);
     } catch {
       if (mounted.current) {
-        setError("ارتباط با سرور برقرار نشد؛ اتصال خود را بررسی کنید.");
+        setError(
+          currentUiLocale() === "en"
+            ? "Could not reach the server; please check your connection."
+            : "ارتباط با سرور برقرار نشد؛ اتصال خود را بررسی کنید."
+        );
       }
     } finally {
       if (mounted.current) setLoading(false);

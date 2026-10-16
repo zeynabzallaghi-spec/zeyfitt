@@ -43,6 +43,7 @@ import { useSessionData } from "../session-context";
 import { useNutritionPlans } from "@/hooks/use-nutrition-plans";
 import { useNutritionDetail } from "@/hooks/use-nutrition-detail";
 import { useLocale, useDir } from "@/lib/i18n/locale";
+import { nutritionTitleFromFields } from "@/lib/i18n/engine-content";
 import { useStrings } from "@/lib/i18n/use-strings";
 import { nutritionStrings } from "@/lib/i18n/sections/nutrition";
 import { localeNumber } from "@/lib/i18n/format";
@@ -104,7 +105,7 @@ function PlanSummaryCard({
     >
       <div className="min-w-0 flex-1">
         <div className="flex flex-wrap items-center gap-2">
-          <p className="truncate text-xs font-bold text-foreground">{plan.title}</p>
+          <p className="truncate text-xs font-bold text-foreground">{nutritionTitleFromFields(plan.planLength, plan.goal, locale) || plan.title}</p>
           <StatusChip status={plan.status} />
         </div>
         <p className="mt-1 text-[10px] leading-5 text-muted-foreground">

@@ -57,6 +57,8 @@ const exerciseIdField = z
 
 export const startSessionSchema = z
   .object({
+    /** زبان تولید عنوان جلسه (تمرین آزاد) — انتخاب صریح کلاینت */
+    contentLocale: z.enum(["fa", "en"]).default("fa"),
     /** شروع از روز برنامه ذخیره‌شده کاربر */
     planDayId: z.string().trim().min(1).max(64).optional(),
     /** تمرین آزاد — فقط حرکات واقعی بانک حرکات مرحله ۵ */
@@ -83,16 +85,16 @@ export const setLogSchema = z.object({
     .max(64),
   setNumber: intFromDigits().refine(
     (v) => Number.isInteger(v) && v >= SET_NUMBER_MIN && v <= SET_NUMBER_MAX,
-    `شماره ست باید عددی بین ${faDigits(SET_NUMBER_MIN)} تا ${faDigits(SET_NUMBER_MAX)} باشد`
+    { message: `شماره ست باید عددی بین ${faDigits(SET_NUMBER_MIN)} تا ${faDigits(SET_NUMBER_MAX)} باشد`, params: { ck: "SET_NUMBER_RANGE" } }
   ),
   reps: intFromDigits().refine(
     (v) => Number.isInteger(v) && v >= REPS_MIN && v <= REPS_MAX,
-    `تعداد تکرار باید عددی بین ${faDigits(REPS_MIN)} تا ${faDigits(REPS_MAX)} باشد`
+    { message: `تعداد تکرار باید عددی بین ${faDigits(REPS_MIN)} تا ${faDigits(REPS_MAX)} باشد`, params: { ck: "REPS_RANGE" } }
   ),
   /** وزنه اختیاری — null یعنی بدون بار خارجی (وزن بدن یا نامعلوم) */
   weightKg: weightFromDigits().refine(
     (v) => v === null || (v >= WEIGHT_MIN && v <= WEIGHT_MAX),
-    `وزنه باید بین ${faDigits(WEIGHT_MIN)} تا ${faDigits(WEIGHT_MAX)} کیلوگرم باشد`
+    { message: `وزنه باید بین ${faDigits(WEIGHT_MIN)} تا ${faDigits(WEIGHT_MAX)} کیلوگرم باشد`, params: { ck: "WEIGHT_RANGE" } }
   ),
   note: z.string().trim().max(200, "یادداشت ست حداکثر ۲۰۰ کاراکتر است").nullish(),
 });
@@ -124,6 +126,11 @@ export const finishSessionSchema = z.object({
     .nullish()
     .transform((v) => (v && v.length > 0 ? v : null)),
 });
+
+/** زبان تولید عنوان جلسه — با پیش‌فرض امن */
+export function contentLocaleOf(value: unknown): "fa" | "en" {
+  return value === "en" ? "en" : "fa";
+}
 
 export type FinishSessionPayload = z.output<typeof finishSessionSchema>;
 

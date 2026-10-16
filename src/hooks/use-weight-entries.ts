@@ -1,6 +1,8 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { currentUiLocale } from "@/lib/i18n/locale-current";
+import { apiErrorLabel, issueLabel, genericIssueMessage } from "@/lib/i18n/sections/server-messages";
 import type { WeightEntryClient } from "@/lib/weight";
 
 /**
@@ -42,19 +44,31 @@ export function useWeightEntries(): UseWeightEntriesResult {
       const response = await fetch("/api/weight", { cache: "no-store" });
       if (!mounted.current) return;
       if (response.status === 401) {
-        setError("نشست شما منقضی شده است؛ صفحه را دوباره بارگذاری کنید.");
+        setError(
+          currentUiLocale() === "en"
+            ? "Your session has expired; please reload the page."
+            : "نشست شما منقضی شده است؛ صفحه را دوباره بارگذاری کنید."
+        );
         setEntries([]);
         return;
       }
       if (!response.ok) {
-        setError("خواندن تاریخچه وزن ممکن نشد؛ لطفاً دوباره تلاش کنید.");
+        setError(
+          currentUiLocale() === "en"
+            ? "Could not read the weight history; please try again."
+            : "خواندن تاریخچه وزن ممکن نشد؛ لطفاً دوباره تلاش کنید."
+        );
         return;
       }
       const data = (await response.json()) as { entries: WeightEntryClient[] };
       setEntries(Array.isArray(data.entries) ? data.entries : []);
     } catch {
       if (mounted.current) {
-        setError("ارتباط با سرور برقرار نشد؛ اتصال خود را بررسی کنید.");
+        setError(
+          currentUiLocale() === "en"
+            ? "Could not reach the server; please check your connection."
+            : "ارتباط با سرور برقرار نشد؛ اتصال خود را بررسی کنید."
+        );
       }
     } finally {
       if (mounted.current) setLoading(false);
@@ -82,18 +96,48 @@ export function useWeightEntries(): UseWeightEntriesResult {
           await refresh();
           return { ok: true };
         }
+        const locale = currentUiLocale();
         if (response.status === 401) {
-          return { ok: false, message: "نشست شما منقضی شده است؛ دوباره وارد شوید." };
+          return {
+            ok: false,
+            message:
+              locale === "en"
+                ? "Your session has expired; please sign in again."
+                : "نشست شما منقضی شده است؛ دوباره وارد شوید.",
+          };
         }
         if (response.status === 400) {
           const data = (await response.json().catch(() => null)) as
-            | { message?: string }
+            | { error?: string; issues?: { code: string; path: string }[] }
             | null;
-          return { ok: false, message: data?.message ?? "اطلاعات واردشده معتبر نیست." };
+          const label = data?.issues?.[0]?.code
+            ? issueLabel("weight", data.issues[0].code, locale)
+            : null;
+          return {
+            ok: false,
+            message:
+              label ??
+              (data?.error ? apiErrorLabel(data.error, locale) : null) ??
+              (locale === "en"
+                ? "The submitted information is not valid."
+                : "اطلاعات واردشده معتبر نیست."),
+          };
         }
-        return { ok: false, message: "ثبت وزن انجام نشد؛ لطفاً دوباره تلاش کنید." };
+        return {
+          ok: false,
+          message:
+            locale === "en"
+              ? "Weight could not be recorded; please try again."
+              : "ثبت وزن انجام نشد؛ لطفاً دوباره تلاش کنید.",
+        };
       } catch {
-        return { ok: false, message: "ارتباط با سرور برقرار نشد؛ اتصال خود را بررسی کنید." };
+        return {
+          ok: false,
+          message:
+            currentUiLocale() === "en"
+              ? "Could not reach the server; please check your connection."
+              : "ارتباط با سرور برقرار نشد؛ اتصال خود را بررسی کنید.",
+        };
       } finally {
         if (mounted.current) setAdding(false);
       }

@@ -8,6 +8,9 @@
  */
 
 import { motion } from "framer-motion";
+import { dayTitleLabel, dayFocusLabel, planNoteLabel } from "@/lib/i18n/engine-content";
+import { planTitleFromFields } from "@/lib/i18n/engine-content";
+import { useLocale } from "@/lib/i18n/locale";
 import {
   ArrowLeft,
   CalendarDays,
@@ -38,6 +41,7 @@ export function PlanPreview({
   onBack: () => void;
 }) {
   const t = useStrings(workoutStrings);
+  const locale = useLocale();
   return (
     <motion.div
       initial={{ opacity: 0, y: 10 }}
@@ -53,7 +57,7 @@ export function PlanPreview({
               <ClipboardList className="size-4" aria-hidden="true" />
             </span>
             <div>
-              <h4 className="text-sm font-extrabold">{plan.title}</h4>
+              <h4 className="text-sm font-extrabold">{planTitleFromFields(plan.goal, plan.daysPerWeek, plan.focus, locale) || plan.title}</h4>
               <p className="mt-0.5 text-[10px] text-muted-foreground">
                 {t.previewNotSaved}
               </p>
@@ -86,7 +90,7 @@ export function PlanPreview({
         {plan.days.map((day) => (
           <div key={day.order} className="rounded-2xl border border-border/60 bg-card p-4">
             <div className="flex items-center justify-between gap-2">
-              <p className="text-xs font-bold text-foreground">{day.title}</p>
+              <p className="text-xs font-bold text-foreground">{dayTitleLabel(day.title, locale)}</p>
               <span className="shrink-0 rounded-md border border-border/50 bg-secondary/40 px-1.5 py-0.5 text-[9px] font-bold text-muted-foreground">
                 {day.weekday !== null ? t.weekDayLabels[day.weekday] : t.freeDay}
               </span>
@@ -100,7 +104,7 @@ export function PlanPreview({
                 <Clock3 className="size-3" aria-hidden="true" />
                 {t.approxMinutes(day.estMinutes)}
               </span>
-              <span>{day.focusLabel}</span>
+              <span>{dayFocusLabel(day.focusLabel, locale)}</span>
             </div>
             <ul className="mt-3 flex flex-col gap-1.5 border-t border-border/40 pt-3">
               {day.exercises.map((ex) => (
@@ -124,7 +128,7 @@ export function PlanPreview({
             {plan.notes.map((note, i) => (
               <li key={i} className="flex items-start gap-2 text-[10px] leading-5 text-muted-foreground">
                 <span className="mt-2 size-1.5 shrink-0 rounded-full bg-primary/60" aria-hidden="true" />
-                {note}
+                {planNoteLabel(note, locale)}
               </li>
             ))}
           </ul>

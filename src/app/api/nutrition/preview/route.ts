@@ -3,12 +3,14 @@ import { getServerSession } from "@/lib/session";
 import {
   nutritionSettingsSchema,
   firstNutritionSettingsError,
+  contentLocaleOf,
 } from "@/lib/nutrition-engine/schema";
 import {
   computeNutritionTargets,
   generateNutritionPlan,
   NutritionPlanError,
 } from "@/lib/nutrition-engine";
+import { zodIssueCodes } from "@/lib/api-issues";
 import type { NutritionSettings } from "@/lib/nutrition-engine/types";
 import {
   getProfileEstimateFields,
@@ -38,10 +40,16 @@ export async function POST(request: Request) {
     const parsed = nutritionSettingsSchema.safeParse(body);
     if (!parsed.success) {
       return NextResponse.json(
-        { error: "VALIDATION", message: firstNutritionSettingsError(parsed.error) },
+        {
+          error: "VALIDATION",
+          message: firstNutritionSettingsError(parsed.error),
+          issues: zodIssueCodes(parsed.error),
+        },
         { status: 400 }
       );
     }
+
+    const contentLocale = contentLocaleOf(parsed.data.contentLocale);
 
     const profile = await getProfileEstimateFields();
     const estimate = resolveEstimate(profile, parsed.data.estimate);
@@ -56,19 +64,20 @@ export async function POST(request: Request) {
       estimate,
       settings.goal,
       settings.activityLevel,
-      settings.pregnancyBreastfeeding
+      settings.pregnancyBreastfeeding,
+      contentLocale
     );
     if (targets.status === "insufficient_data") {
       return insufficientDataResponse(targets.missingLabels);
     }
 
     try {
-      const plan = generateNutritionPlan(settings, targets.snapshot);
+      const plan = generateNutritionPlan(settings, targets.snapshot, contentLocale);
       return NextResponse.json({ plan });
     } catch (error) {
       if (error instanceof NutritionPlanError) {
         return NextResponse.json(
-          { error: "PLAN_NOT_FEASIBLE", message: error.message },
+          { error: "PLAN_NOT_FEASIBLE", code: error.code, params: error.params, message: error.message },
           { status: 422 }
         );
       }

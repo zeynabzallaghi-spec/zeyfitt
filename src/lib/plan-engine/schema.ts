@@ -12,6 +12,7 @@ import {
   type ExerciseCategoryId,
 } from "@/lib/exercises/types";
 import { normalizeDigits, faDigits } from "@/lib/profile";
+import type { Locale } from "@/lib/i18n/shared";
 
 const EQUIPMENT_IDS = EQUIPMENT_TYPES.map((e) => e.id) as [EquipmentId, ...EquipmentId[]];
 const CATEGORY_IDS = EXERCISE_CATEGORIES.map((c) => c.id) as [
@@ -41,29 +42,40 @@ const intFromDigits = () =>
   }, z.number());
 
 export const planSettingsSchema = z.object({
+  /** زبان تولید محتوای برنامه — انتخاب صریح کلاینت (زبان رابط کاربر) */
+  contentLocale: z.enum(["fa", "en"]).default("fa"),
   goal: z.enum(["fat_loss", "muscle_gain", "strength", "maintain", "fitness"], {
     message: "هدف تمرینی را انتخاب کنید",
   }),
   experience: z.enum(["beginner", "intermediate", "advanced"], {
     message: "سطح تجربه را انتخاب کنید",
   }),
-  daysPerWeek: intFromDigits()
-    .refine((v) => v >= 2 && v <= 6, "تعداد روزهای تمرین باید بین ۲ تا ۶ روز باشد"),
-  sessionMinutes: intFromDigits()
-    .refine(
-      (v) => v === 30 || v === 45 || v === 60 || v === 90,
-      "مدت جلسه باید یکی از مقادیر ۳۰، ۴۵، ۶۰ یا ۹۰ دقیقه باشد"
-    ),
+  daysPerWeek: intFromDigits().refine(
+    (v) => v >= 2 && v <= 6,
+    { message: "تعداد روزهای تمرین باید بین ۲ تا ۶ روز باشد", params: { ck: "DAYS_RANGE" } }
+  ),
+  sessionMinutes: intFromDigits().refine(
+    (v) => v === 30 || v === 45 || v === 60 || v === 90,
+    { message: "مدت جلسه باید یکی از مقادیر ۳۰، ۴۵، ۶۰ یا ۹۰ دقیقه باشد", params: { ck: "SESSION_MINUTES_VALUE" } }
+  ),
   equipment: z
     .array(z.enum(EQUIPMENT_IDS))
     .min(1, "حداقل یک نوع تجهیزات در دسترس را انتخاب کنید")
     .max(EQUIPMENT_IDS.length, "فهرست تجهیزات نامعتبر است"),
   focus: z.enum(FOCUS_IDS).default("all"),
   preferredDays: z
-    .array(intFromDigits().refine((v) => Number.isInteger(v) && v >= 0 && v <= 6, "روز هفته نامعتبر است"))
+    .array(
+      intFromDigits().refine(
+        (v) => Number.isInteger(v) && v >= 0 && v <= 6,
+        { message: "روز هفته نامعتبر است", params: { ck: "PREFERRED_DAY_RANGE" } }
+      )
+    )
     .max(6, "حداکثر ۶ روز ترجیحی قابل انتخاب است")
     .default([])
-    .refine((days) => new Set(days).size === days.length, "روزهای ترجیحی تکراری هستند"),
+    .refine((days) => new Set(days).size === days.length, {
+      message: "روزهای ترجیحی تکراری هستند",
+      params: { ck: "DUPLICATE_PREFERRED_DAYS" },
+    }),
   excludedCategories: z
     .array(z.enum(CATEGORY_IDS))
     .max(CATEGORY_IDS.length - 1, "نمی‌توان همه دسته‌های حرکتی را حذف کرد")
@@ -79,6 +91,11 @@ export const planSettingsSchema = z.object({
     .nullish()
     .transform((v) => (v && v.length > 0 ? v : null)),
 });
+
+/** زبان تولید محتوا از تنظیمات — با پیش‌فرض امن */
+export function contentLocaleOf(value: unknown): Locale {
+  return value === "en" ? "en" : "fa";
+}
 
 export type PlanSettingsPayload = z.output<typeof planSettingsSchema>;
 export type PlanSettingsInput = z.input<typeof planSettingsSchema>;

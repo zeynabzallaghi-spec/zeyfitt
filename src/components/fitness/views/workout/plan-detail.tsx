@@ -45,11 +45,18 @@ import {
 } from "@/lib/exercises";
 import type { PlannedDayClient, WorkoutPlanClient } from "@/lib/plan-storage";
 import type { PlannedExercise } from "@/lib/plan-engine/types";
+import {
+  dayTitleLabel,
+  dayFocusLabel,
+  planNoteLabel,
+} from "@/lib/i18n/engine-content";
+import { exerciseContent } from "@/lib/exercises/i18n";
 
 /* ------------------------------ ردیف حرکت ------------------------------ */
 
 function ExerciseRow({ ex }: { ex: PlannedExercise & { id?: string } }) {
   const t = useStrings(workoutStrings);
+  const locale = useLocale();
   const openLibraryExercise = useAppStore((s) => s.openLibraryExercise);
   const setCoachExercise = useCoach3DStore((s) => s.setExercise);
   const setActiveView = useAppStore((s) => s.setActiveView);
@@ -94,7 +101,10 @@ function ExerciseRow({ ex }: { ex: PlannedExercise & { id?: string } }) {
           </div>
           {ex.note && (
             <p className="mt-2 border-t border-border/40 pt-2 text-[10px] leading-5 text-muted-foreground/80">
-              {ex.note}
+              {(() => {
+                const bank = getExerciseById(ex.exerciseId);
+                return bank ? exerciseContent(bank, locale).summary : ex.note;
+              })()}
             </p>
           )}
           {live && live.mistakes.length > 0 && (
@@ -162,9 +172,9 @@ function DayCard({
             {localeNumber(day.order, locale)}
           </span>
           <div className="min-w-0 flex-1">
-            <p className="truncate text-xs font-bold text-foreground">{day.title}</p>
+            <p className="truncate text-xs font-bold text-foreground">{dayTitleLabel(day.title, locale)}</p>
             <p className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-0.5 text-[10px] text-muted-foreground">
-              <span>{day.focusLabel}</span>
+              <span>{dayFocusLabel(day.focusLabel, locale)}</span>
               <span className="inline-flex items-center gap-1">
                 <Clock3 className="size-3" aria-hidden="true" />{t.approxMinutes(day.estMinutes)}
               </span>
@@ -234,6 +244,7 @@ export function PlanDetail({
   startingDayId?: string | null;
 }) {
   const t = useStrings(workoutStrings);
+  const locale = useLocale();
   const equipmentLabels = plan.equipment.map((e) => t.equipmentName(e));
 
   return (
@@ -287,7 +298,7 @@ export function PlanDetail({
             {plan.notes.map((note, i) => (
               <li key={i} className="flex items-start gap-2 text-[11px] leading-6 text-muted-foreground">
                 <span className="mt-2.5 size-1.5 shrink-0 rounded-full bg-primary/60" aria-hidden="true" />
-                {note}
+                {planNoteLabel(note, locale)}
               </li>
             ))}
           </ul>

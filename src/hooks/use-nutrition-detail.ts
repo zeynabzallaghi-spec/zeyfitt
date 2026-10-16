@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { currentUiLocale } from "@/lib/i18n/locale-current";
 import type { NutritionPlanClient } from "@/lib/nutrition-storage";
 
 /**
@@ -35,12 +36,20 @@ export function useNutritionDetail(id: string | null): UseNutritionDetailResult 
       });
       if (!mounted.current) return;
       if (response.status === 401) {
-        setError("نشست شما منقضی شده است؛ صفحه را دوباره بارگذاری کنید.");
+        setError(
+          currentUiLocale() === "en"
+            ? "Your session has expired; please reload the page."
+            : "نشست شما منقضی شده است؛ صفحه را دوباره بارگذاری کنید."
+        );
         setPlan(null);
         return;
       }
       if (!response.ok) {
-        setError("خواندن برنامه ممکن نشد؛ لطفاً دوباره تلاش کنید.");
+        setError(
+          currentUiLocale() === "en"
+            ? "Could not read the plan; please try again."
+            : "خواندن برنامه ممکن نشد؛ لطفاً دوباره تلاش کنید."
+        );
         setPlan(null);
         return;
       }
@@ -48,7 +57,11 @@ export function useNutritionDetail(id: string | null): UseNutritionDetailResult 
       setPlan(data.plan);
     } catch {
       if (mounted.current) {
-        setError("ارتباط با سرور برقرار نشد؛ اتصال خود را بررسی کنید.");
+        setError(
+          currentUiLocale() === "en"
+            ? "Could not reach the server; please check your connection."
+            : "ارتباط با سرور برقرار نشد؛ اتصال خود را بررسی کنید."
+        );
       }
     } finally {
       if (mounted.current) setLoading(false);

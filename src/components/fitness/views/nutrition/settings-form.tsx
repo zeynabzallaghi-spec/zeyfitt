@@ -8,6 +8,9 @@
  */
 
 import { useMemo, useState } from "react";
+import { zodIssueCodes } from "@/lib/api-issues";
+import { issueLabel, genericIssueMessage } from "@/lib/i18n/sections/server-messages";
+import { currentUiLocale } from "@/lib/i18n/locale-current";
 import {
   AlertTriangle,
   ChevronRight,
@@ -159,7 +162,13 @@ export function NutritionSettingsForm({ profile, submitting, serverError, onSubm
 
     const parsed = nutritionSettingsSchema.safeParse(candidate);
     if (!parsed.success) {
-      setFormError(parsed.error.issues[0]?.message ?? t.invalidInfoError);
+      // ترجمه نمایشی از کد پایدار issue — متن شِما هرگز نمایش داده نمی‌شود
+      const locale = currentUiLocale();
+      const first = zodIssueCodes(parsed.error)[0];
+      setFormError(
+        (first ? issueLabel("nutrition", first.code, locale) : null) ??
+          genericIssueMessage(locale)
+      );
       return;
     }
 

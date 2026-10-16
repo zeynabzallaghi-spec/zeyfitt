@@ -25,7 +25,8 @@ import type {
   PlannedDay,
   PlannedExercise,
 } from "./types";
-import { focusFa, PLAN_GOAL_LABELS } from "./types";
+import { focusFa, focusEn, PLAN_GOAL_LABELS, PLAN_GOAL_LABELS_EN } from "./types";
+import type { Locale } from "@/lib/i18n/shared";
 import {
   buildDayTemplates,
   prescribe,
@@ -39,8 +40,18 @@ const WORK_SECONDS_PER_SET = 40;
 /** زمان جابه‌جایی و آماده‌سازی بین حرکات (ثانیه) — برای برآورد واقعی‌تر جلسه */
 const SETUP_SECONDS_PER_EXERCISE = 60;
 
-/** خطای موتور با پیام فارسی — بدون جزئیات فنی */
-export class PlanGenerationError extends Error {}
+/** خطای موتور با کد پایدار و پیام محلی‌شده — بدون جزئیات فنی */
+export interface PlanErrorCode {
+  code: "PLAN_INSUFFICIENT_EXERCISES" | "PLAN_TOO_FEW_SESSIONS";
+}
+
+export class PlanGenerationError extends Error {
+  code: PlanErrorCode["code"];
+  constructor(code: PlanErrorCode["code"], message: string) {
+    super(message);
+    this.code = code;
+  }
+}
 
 /** زمان تقریبی یک حرکت بر حسب دقیقه — شامل اجرا، استراحت و جابه‌جایی */
 function estimateExerciseMinutes(sets: number, restSeconds: number): number {
@@ -58,9 +69,9 @@ const UPPER_FILL: ExerciseCategoryId[] = ["chest", "back", "shoulders", "biceps"
 const LOWER_FILL: ExerciseCategoryId[] = ["quads", "hamstrings", "glutes", "calves", "core", "fullbody"];
 const FULL_FILL: ExerciseCategoryId[] = ["chest", "back", "quads", "shoulders", "hamstrings", "glutes", "core", "biceps", "triceps", "calves", "fullbody"];
 
-function fillCategoriesFor(focusLabel: string): ExerciseCategoryId[] {
-  if (focusLabel === "بالاتنه") return UPPER_FILL;
-  if (focusLabel === "پایین‌تنه") return LOWER_FILL;
+function fillCategoriesFor(half: "upper" | "lower" | "full"): ExerciseCategoryId[] {
+  if (half === "upper") return UPPER_FILL;
+  if (half === "lower") return LOWER_FILL;
   return FULL_FILL;
 }
 
@@ -100,10 +111,12 @@ function pickExercises(
 
 /**
  * تولید برنامه تمرینی از تنظیمات.
- * در نبود حرکت کافی، PlanGenerationError با پیام فارسی پرتاب می‌شود
- * (پیش از آن همه کاستنی‌های معقول اعمال شده است).
+ * زبان تولید از پارامتر locale تعیین می‌شود (پیش‌فرض fa — خروجی فارسی
+ * عیناً رفتار قبل است). در نبود حرکت کافی، PlanGenerationError با کد پایدار
+ * و پیام محلی‌شده پرتاب می‌شود (پیش از آن همه کاستنی‌های معقول اعمال شده است).
  */
-export function generatePlan(settings: PlanSettings): GeneratedPlan {
+export function generatePlan(settings: PlanSettings, locale: Locale = "fa"): GeneratedPlan {
+  const en = locale === "en";
   const available = new Set(settings.equipment);
   const excludedCategories = new Set<ExerciseCategoryId>(settings.excludedCategories);
   const excludedExercises = new Set(settings.excludedExerciseIds);
@@ -119,12 +132,15 @@ export function generatePlan(settings: PlanSettings): GeneratedPlan {
 
   if (pool.length < 6) {
     throw new PlanGenerationError(
-      "با این تجهیزات و محدودیت‌ها حرکت کافی برای ساخت برنامه وجود ندارد؛ فهرست تجهیزات را کامل‌تر کنید یا برخی محدودیت‌ها را بردارید."
+      "PLAN_INSUFFICIENT_EXERCISES",
+      en
+        ? "There are not enough exercises with this equipment and these limitations to build a plan; broaden the equipment list or remove some limitations."
+        : "با این تجهیزات و محدودیت‌ها حرکت کافی برای ساخت برنامه وجود ندارد؛ فهرست تجهیزات را کامل‌تر کنید یا برخی محدودیت‌ها را بردارید."
     );
   }
 
   /* ---------------- قالب روزها ---------------- */
-  const templates = buildDayTemplates(settings.daysPerWeek, settings.focus, settings.experience);
+  const templates = buildDayTemplates(settings.daysPerWeek, settings.focus, settings.experience, locale);
   const targetCount = targetExercisesPerSession(settings.sessionMinutes);
 
   const usedInPlan = new Set<string>();
@@ -188,7 +204,7 @@ export function generatePlan(settings: PlanSettings): GeneratedPlan {
       for (const ex of exercises) {
         perDayCategoryCount.set(ex.category, (perDayCategoryCount.get(ex.category) ?? 0) + 1);
       }
-      const fillRotation = fillCategoriesFor(template.focusLabel);
+      const fillRotation = fillCategoriesFor(template.half);
       let fillCursor = 0;
       let attempts = 0;
       while (
@@ -246,24 +262,38 @@ export function generatePlan(settings: PlanSettings): GeneratedPlan {
 
   if (days.length < 2) {
     throw new PlanGenerationError(
-      "با این تنظیمات حداقل دو جلسه معقول ساخته نشد؛ تجهیزات بیشتری انتخاب کنید یا محدودیت‌ها را کاهش دهید."
+      "PLAN_TOO_FEW_SESSIONS",
+      en
+        ? "At least two reasonable sessions could not be built with these settings; choose more equipment or reduce the limitations."
+        : "با این تنظیمات حداقل دو جلسه معقول ساخته نشد؛ تجهیزات بیشتری انتخاب کنید یا محدودیت‌ها را کاهش دهید."
     );
   }
 
-  const focusLabel = focusFa(settings.focus);
-  const notes: string[] = [
-    `هر جلسه با ${toFa(WARMUP_MINUTES)} دقیقه گرم‌کردن سبک (حرکات کششی پویا و چند تکرار سبک از حرکت اول جلسه) شروع شود.`,
-    "پیشرفت تدریجی: ابتدا اجرای صحیح و کامل بودن بازه تکرار را هدف بگیرید؛ سپس با حفظ فرم، وزنه یا تکرارها را کم‌کم افزایش دهید. سرعت پیشرفت به اجرای صحیح، توانایی فرد و ریکاوری بستگی دارد.",
-    "بین جلسات همان گروه عضلانی حداقل یک روز فاصله بگذارید؛ اگر احساس خستگی ماندگار دارید، یک جلسه را سبک‌تر اجرا کنید.",
-    "این برنامه بر اساس قوانین تمرینی استاندارد ساخته شده است؛ ادعای تضمین نتیجه یا کاهش چربی موضعی ندارد.",
-  ];
+  const focusLabel = en ? focusEn(settings.focus) : focusFa(settings.focus);
+  const notes: string[] = en
+    ? [
+        `Start each session with ${WARMUP_MINUTES} minutes of light warm-up (dynamic stretches and a few light reps of the session's first exercise).`,
+        "Gradual progress: first aim for correct, full-range execution within the rep range; then gradually increase the weight or reps while keeping form. The pace of progress depends on correct execution, individual ability and recovery.",
+        "Leave at least one day between sessions for the same muscle group; if you feel persistent fatigue, make one session lighter.",
+        "This plan is built on standard training principles; it makes no claim of guaranteed results or spot fat reduction.",
+      ]
+    : [
+        `هر جلسه با ${toFa(WARMUP_MINUTES)} دقیقه گرم‌کردن سبک (حرکات کششی پویا و چند تکرار سبک از حرکت اول جلسه) شروع شود.`,
+        "پیشرفت تدریجی: ابتدا اجرای صحیح و کامل بودن بازه تکرار را هدف بگیرید؛ سپس با حفظ فرم، وزنه یا تکرارها را کم‌کم افزایش دهید. سرعت پیشرفت به اجرای صحیح، توانایی فرد و ریکاوری بستگی دارد.",
+        "بین جلسات همان گروه عضلانی حداقل یک روز فاصله بگذارید؛ اگر احساس خستگی ماندگار دارید، یک جلسه را سبک‌تر اجرا کنید.",
+        "این برنامه بر اساس قوانین تمرینی استاندارد ساخته شده است؛ ادعای تضمین نتیجه یا کاهش چربی موضعی ندارد.",
+      ];
   if (settings.limitationNotes && settings.limitationNotes.length > 0) {
     notes.push(
-      `یادداشت احتیاطی شما در ساخت برنامه لحاظ شد: «${settings.limitationNotes}». در صورت درد یا سابقه آسیب، پیش از اجرا با پزشک یا فیزیوتراپیست واجد صلاحیت مشورت کنید.`
+      en
+        ? `Your precautionary note was considered while building this plan: "${settings.limitationNotes}". If you feel pain or have an injury history, consult a qualified physician or physiotherapist before executing.`
+        : `یادداشت احتیاطی شما در ساخت برنامه لحاظ شد: «${settings.limitationNotes}». در صورت درد یا سابقه آسیب، پیش از اجرا با پزشک یا فیزیوتراپیست واجد صلاحیت مشورت کنید.`
     );
   }
 
-  const title = `${PLAN_GOAL_LABELS[settings.goal]} — ${toFa(settings.daysPerWeek)} روز در هفته${settings.focus !== "all" ? ` (${focusLabel})` : ""}`;
+  const title = en
+    ? `${PLAN_GOAL_LABELS_EN[settings.goal]} — ${settings.daysPerWeek} days/week${settings.focus !== "all" ? ` (${focusLabel})` : ""}`
+    : `${PLAN_GOAL_LABELS[settings.goal]} — ${toFa(settings.daysPerWeek)} روز در هفته${settings.focus !== "all" ? ` (${focusLabel})` : ""}`;
 
   return {
     title,

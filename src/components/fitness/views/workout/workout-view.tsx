@@ -45,6 +45,7 @@ import { useWorkoutPlans } from "@/hooks/use-workout-plans";
 import { usePlanDetail } from "@/hooks/use-plan-detail";
 import { useActiveSession } from "@/hooks/use-workout-sessions";
 import { useLocale, useDir } from "@/lib/i18n/locale";
+import { planTitleFromFields } from "@/lib/i18n/engine-content";
 import { useStrings } from "@/lib/i18n/use-strings";
 import { workoutStrings } from "@/lib/i18n/sections/workout";
 import { localeNumber } from "@/lib/i18n/format";
@@ -94,6 +95,7 @@ function PlanSummaryCard({
   onDelete: () => void;
 }) {
   const t = useStrings(workoutStrings);
+  const locale = useLocale();
   return (
     <div
       className={cn(
@@ -103,7 +105,7 @@ function PlanSummaryCard({
     >
       <div className="min-w-0 flex-1">
         <div className="flex flex-wrap items-center gap-2">
-          <p className="truncate text-xs font-bold text-foreground">{plan.title}</p>
+          <p className="truncate text-xs font-bold text-foreground">{planTitleFromFields(plan.goal, plan.daysPerWeek, plan.focus, locale) || plan.title}</p>
           <StatusChip status={plan.status} />
         </div>
         <p className="mt-1 text-[10px] leading-5 text-muted-foreground">

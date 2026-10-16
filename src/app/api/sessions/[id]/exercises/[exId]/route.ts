@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { zodIssueCodes } from "@/lib/api-issues";
 import { getServerSession } from "@/lib/session";
 import { exerciseStatusSchema, firstSessionError } from "@/lib/workout-session/schema";
 import { setExerciseStatus } from "@/lib/session-storage";
@@ -32,7 +33,7 @@ export async function PATCH(
     const parsed = exerciseStatusSchema.safeParse(body);
     if (!parsed.success) {
       return NextResponse.json(
-        { error: "VALIDATION", message: firstSessionError(parsed.error) },
+        { error: "VALIDATION", message: firstSessionError(parsed.error), issues: zodIssueCodes(parsed.error) },
         { status: 400 }
       );
     }

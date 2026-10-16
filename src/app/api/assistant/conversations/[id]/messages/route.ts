@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { zodIssueCodes } from "@/lib/api-issues";
 import { getServerSession } from "@/lib/session";
 import { appendUserMessage, findOwnedConversation } from "@/lib/assistant/storage";
 import { checkChatRateLimit } from "@/lib/assistant/rate-limit";
@@ -44,7 +45,7 @@ export async function POST(request: Request, context: RouteContext) {
     const parsed = sendMessageSchema.safeParse(body);
     if (!parsed.success) {
       return NextResponse.json(
-        { error: "VALIDATION", message: firstAssistantError(parsed.error) },
+        { error: "VALIDATION", message: firstAssistantError(parsed.error), issues: zodIssueCodes(parsed.error) },
         { status: 400 }
       );
     }

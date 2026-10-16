@@ -30,6 +30,12 @@ import { normalizeDigits } from "@/lib/profile";
 import { cn } from "@/lib/utils";
 import { recomputeItemFromSnapshot } from "@/lib/nutrition-engine/engine";
 import { useLocale } from "@/lib/i18n/locale";
+import { nutritionTitleFromFields } from "@/lib/i18n/engine-content";
+import {
+  energyWarningLabel,
+  nutritionNoteLabel,
+  mealTitleLabel,
+} from "@/lib/i18n/engine-content";
 import { useStrings } from "@/lib/i18n/use-strings";
 import { nutritionStrings } from "@/lib/i18n/sections/nutrition";
 import { sharedStrings } from "@/lib/i18n/sections/shared";
@@ -177,7 +183,7 @@ export function NutritionPlanDetail({ plan, onChanged }: Props) {
       <section aria-label={t.planSummaryAria} className="rounded-2xl border border-primary/25 bg-primary/5 p-5">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div className="min-w-0">
-            <h3 className="text-sm font-bold">{plan.title}</h3>
+            <h3 className="text-sm font-bold">{nutritionTitleFromFields(plan.planLength, plan.goal, locale) || plan.title}</h3>
             <p className="mt-1 text-[11px] leading-5 text-muted-foreground">
               {t.goalPrefix}{t.goalLabel(plan.goal)} — {t.mealsPerDayUnit(num(plan.mealsPerDay))} —{" "}
               {plan.days.length > 1 ? t.daysWithVariety(num(plan.days.length)) : t.oneDayPlan}
@@ -270,7 +276,7 @@ export function NutritionPlanDetail({ plan, onChanged }: Props) {
                   {day.meals.map((meal) => (
                     <div key={meal.id} className="rounded-xl border border-border/40 bg-secondary/20 p-3.5">
                       <div className="flex flex-wrap items-center justify-between gap-2">
-                        <p className="text-xs font-bold text-primary">{meal.title}</p>
+                        <p className="text-xs font-bold text-primary">{mealTitleLabel(meal.type, meal.title, locale)}</p>
                         <span className="text-[10px] font-bold text-muted-foreground">
                           {num(meal.kcal)} {t.kcalUnit}
                         </span>
@@ -365,7 +371,7 @@ export function NutritionPlanDetail({ plan, onChanged }: Props) {
             {plan.notes.map((note, index) => (
               <li key={index} className="flex items-start gap-2.5 text-[11px] leading-6 text-muted-foreground">
                 <span className="mt-2.5 size-1.5 shrink-0 rounded-full bg-primary/70" aria-hidden="true" />
-                {note}
+                {nutritionNoteLabel(note, locale)}
               </li>
             ))}
           </ul>

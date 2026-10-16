@@ -1,6 +1,8 @@
 "use client";
 
 import { useEffect, useState, useSyncExternalStore } from "react";
+import { issueLabel, genericIssueMessage } from "@/lib/i18n/sections/server-messages";
+import { currentUiLocale } from "@/lib/i18n/locale-current";
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import {
@@ -298,12 +300,20 @@ export function ProfileView() {
       }
 
       if (response.status === 400) {
-        const data = (await response.json()) as { fields?: Record<string, string> };
-        const first = data.fields ? Object.values(data.fields)[0] : undefined;
-        setFormError(first ?? t.invalidInfoFallback);
+        // ترجمه نمایشی از کد پایدار فیلد — پیام خام سرور هرگز نمایش داده نمی‌شود
+        const locale = currentUiLocale();
+        const data = (await response.json()) as {
+          fields?: Record<string, string>;
+          fieldCodes?: Record<string, string>;
+        };
+        const firstCode = data.fieldCodes
+          ? Object.values(data.fieldCodes)[0]
+          : undefined;
+        const label = firstCode ? issueLabel("profile", firstCode, locale) : null;
+        setFormError(label ?? t.invalidInfoFallback);
         toast({
           title: t.serverValidationTitle,
-          description: first ?? t.serverValidationDescFallback,
+          description: label ?? t.serverValidationDescFallback,
         });
         return;
       }

@@ -6,6 +6,13 @@ import type {
   WorkoutPlanSummaryClient,
 } from "@/lib/plan-storage";
 import type { GeneratedPlan, PlanSettings } from "@/lib/plan-engine/types";
+import { currentUiLocale } from "@/lib/i18n/locale-current";
+import {
+  apiErrorLabel,
+  engineErrorLabel,
+  issueLabel,
+  genericIssueMessage,
+} from "@/lib/i18n/sections/server-messages";
 
 /**
  * هوک مدیریت برنامه‌های تمرینی کاربر جاری — داده همیشه از API متصل به نشست
@@ -38,19 +45,68 @@ export interface UseWorkoutPlansResult {
   deletingId: string | null;
 }
 
+function netFail(): Failure {
+  return {
+    ok: false,
+    message:
+      currentUiLocale() === "en"
+        ? "Could not reach the server; please check your connection."
+        : "ارتباط با سرور برقرار نشد؛ اتصال خود را بررسی کنید.",
+  };
+}
+
 async function parseFailure(response: Response): Promise<Failure> {
+  const locale = currentUiLocale();
   if (response.status === 401) {
-    return { ok: false, kind: "auth", message: "نشست شما منقضی شده است؛ دوباره وارد شوید." };
+    return { ok: false, kind: "auth", message: expiredMessage() };
   }
   try {
-    const data = (await response.json()) as { message?: string; error?: string };
+    const data = (await response.json()) as {
+      message?: string;
+      error?: string;
+      code?: string;
+      params?: Record<string, string>;
+      issues?: { code: string; path: string }[];
+    };
     if (response.status === 422 && data.error === "PLAN_NOT_FEASIBLE") {
-      return { ok: false, kind: "infeasible", message: data.message ?? "با این تنظیمات برنامه معقولی ساخته نشد." };
+      const label =
+        engineErrorLabel(data.code, data.params, locale) ??
+        (locale === "en"
+          ? "No reasonable plan could be built with these settings."
+          : "با این تنظیمات برنامه معقولی ساخته نشد.");
+      return { ok: false, kind: "infeasible", message: label };
     }
-    return { ok: false, kind: "validation", message: data.message ?? "اطلاعات واردشده معتبر نیست." };
+    if (data.error === "VALIDATION") {
+      const first = data.issues?.[0]?.code;
+      const label = first ? issueLabel("plan", first, locale) : null;
+      return {
+        ok: false,
+        kind: "validation",
+        message:
+          label ??
+          apiErrorLabel("VALIDATION", locale) ??
+          genericIssueMessage(locale),
+      };
+    }
+    const label = data.error ? apiErrorLabel(data.error, locale) : null;
+    return {
+      ok: false,
+      kind: "validation",
+      message:
+        label ??
+        (locale === "en"
+          ? "The submitted information is not valid."
+          : "اطلاعات واردشده معتبر نیست."),
+    };
   } catch {
-    return { ok: false, message: "ارتباط با سرور برقرار نشد؛ اتصال خود را بررسی کنید." };
+    return netFail();
   }
+}
+
+function expiredMessage(): string {
+  return currentUiLocale() === "en"
+    ? "Your session has expired; please sign in again."
+    : "نشست شما منقضی شده است؛ دوباره وارد شوید.";
 }
 
 export function useWorkoutPlans(): UseWorkoutPlansResult {
@@ -67,19 +123,23 @@ export function useWorkoutPlans(): UseWorkoutPlansResult {
       const response = await fetch("/api/plans", { cache: "no-store" });
       if (!mounted.current) return;
       if (response.status === 401) {
-        setError("نشست شما منقضی شده است؛ صفحه را دوباره بارگذاری کنید.");
+        setError(expiredMessage());
         setPlans([]);
         return;
       }
       if (!response.ok) {
-        setError("خواندن برنامه‌ها ممکن نشد؛ لطفاً دوباره تلاش کنید.");
+        setError(
+          currentUiLocale() === "en"
+            ? "Could not read the plans; please try again."
+            : "خواندن برنامه‌ها ممکن نشد؛ لطفاً دوباره تلاش کنید."
+        );
         return;
       }
       const data = (await response.json()) as { plans: WorkoutPlanSummaryClient[] };
       setPlans(Array.isArray(data.plans) ? data.plans : []);
     } catch {
       if (mounted.current) {
-        setError("ارتباط با سرور برقرار نشد؛ اتصال خود را بررسی کنید.");
+        setError(netFail().message);
       }
     } finally {
       if (mounted.current) setLoading(false);
@@ -99,7 +159,7 @@ export function useWorkoutPlans(): UseWorkoutPlansResult {
       const response = await fetch("/api/plans/preview", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(settings),
+        body: JSON.stringify({ ...settings, contentLocale: currentUiLocale() }),
       });
       if (response.ok) {
         const data = (await response.json()) as { plan: GeneratedPlan };
@@ -107,7 +167,7 @@ export function useWorkoutPlans(): UseWorkoutPlansResult {
       }
       return await parseFailure(response);
     } catch {
-      return { ok: false, message: "ارتباط با سرور برقرار نشد؛ اتصال خود را بررسی کنید." };
+      return netFail();
     }
   }, []);
 
@@ -118,7 +178,7 @@ export function useWorkoutPlans(): UseWorkoutPlansResult {
         const response = await fetch("/api/plans", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(settings),
+          body: JSON.stringify({ ...settings, contentLocale: currentUiLocale() }),
         });
         if (response.status === 201) {
           const data = (await response.json()) as { plan: WorkoutPlanClient };
@@ -127,7 +187,7 @@ export function useWorkoutPlans(): UseWorkoutPlansResult {
         }
         return await parseFailure(response);
       } catch {
-        return { ok: false, message: "ارتباط با سرور برقرار نشد؛ اتصال خود را بررسی کنید." };
+        return netFail();
       } finally {
         if (mounted.current) setCreating(false);
       }
@@ -153,7 +213,7 @@ export function useWorkoutPlans(): UseWorkoutPlansResult {
         }
         return await parseFailure(response);
       } catch {
-        return { ok: false, message: "ارتباط با سرور برقرار نشد؛ اتصال خود را بررسی کنید." };
+        return netFail();
       }
     },
     [refresh]
@@ -172,7 +232,7 @@ export function useWorkoutPlans(): UseWorkoutPlansResult {
         }
         return await parseFailure(response);
       } catch {
-        return { ok: false, message: "ارتباط با سرور برقرار نشد؛ اتصال خود را بررسی کنید." };
+        return netFail();
       } finally {
         if (mounted.current) setDeletingId(null);
       }

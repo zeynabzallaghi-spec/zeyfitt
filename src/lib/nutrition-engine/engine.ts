@@ -38,15 +38,24 @@ import type {
   ReplacementSuggestion,
   ShoppingListItem,
 } from "./types";
-import { MEAL_TYPE_LABELS, NUTRITION_GOAL_LABELS } from "./types";
+import { MEAL_TYPE_LABELS, MEAL_TYPE_LABELS_EN, NUTRITION_GOAL_LABELS, NUTRITION_GOAL_LABELS_EN } from "./types";
+import type { Locale } from "@/lib/i18n/shared";
 import { faDigits } from "@/lib/profile";
 
 /* -------------------------------- خطای موتور -------------------------------- */
 
+export type NutritionErrorCode =
+  | "NUTRITION_INVALID_MEALS_COUNT"
+  | "NUTRITION_SLOT_NO_OPTION";
+
 export class NutritionPlanError extends Error {
-  constructor(message: string) {
+  code: NutritionErrorCode;
+  params: Record<string, string>;
+  constructor(code: NutritionErrorCode, message: string, params: Record<string, string> = {}) {
     super(message);
     this.name = "NutritionPlanError";
+    this.code = code;
+    this.params = params;
   }
 }
 
@@ -258,16 +267,22 @@ function poolForSlot(
 
 /**
  * تولید برنامه غذایی از تنظیمات و snapshot محاسبات.
- * خروجی برای ورودی یکسان همیشه یکسان است (بدون تصادف).
- * در کمبود گزینه سازگار، NutritionPlanError با پیام فارسی پرتاب می‌شود.
+ * زبان تولید از پارامتر locale تعیین می‌شود (پیش‌فرض fa — خروجی فارسی عیناً
+ * رفتار قبل است). خروجی برای ورودی یکسان همیشه یکسان است (بدون تصادف).
+ * در کمبود گزینه سازگار، NutritionPlanError با کد پایدار پرتاب می‌شود.
  */
 export function generateNutritionPlan(
   settings: NutritionSettings,
-  calc: CalcSnapshot
+  calc: CalcSnapshot,
+  locale: Locale = "fa"
 ): GeneratedNutritionPlan {
+  const en = locale === "en";
   const structure = MEAL_STRUCTURES[settings.mealsPerDay];
   if (!structure) {
-    throw new NutritionPlanError("تعداد وعده‌ها باید بین ۳ تا ۶ باشد.");
+    throw new NutritionPlanError(
+      "NUTRITION_INVALID_MEALS_COUNT",
+      en ? "The number of meals must be between 3 and 6." : "تعداد وعده‌ها باید بین ۳ تا ۶ باشد."
+    );
   }
 
   const filterOptions = {
@@ -283,26 +298,40 @@ export function generateNutritionPlan(
   const notes: string[] = [];
   if (settings.allergens.length > 0) {
     notes.push(
-      "مواد دارای آلرژن انتخابی شما از کل برنامه حذف شده‌اند؛ با این حال ترکیبات محصولات آماده می‌تواند متفاوت باشد — پیش از مصرف برچسب محصول را بررسی کنید. ایمنی کامل تضمین نمی‌شود."
+      en
+        ? "Foods containing your selected allergens have been removed from the whole plan; however, the composition of packaged products can vary — always check the product label before eating. Complete safety cannot be guaranteed."
+        : "مواد دارای آلرژن انتخابی شما از کل برنامه حذف شده‌اند؛ با این حال ترکیبات محصولات آماده می‌تواند متفاوت باشد — پیش از مصرف برچسب محصول را بررسی کنید. ایمنی کامل تضمین نمی‌شود."
     );
   }
   if (settings.dietPattern === "vegan") {
     notes.push(
-      "برنامه وگان بر پایه حبوبات، سویا، غلات، میوه و سبزیجات بانک طراحی شده است؛ پروتئین روزانه ممکن است به مرز پایین محدوده توصیه‌ای نزدیک باشد."
+      en
+        ? "The vegan plan is built on legumes, soy, grains, fruit and vegetables from the food bank; daily protein may approach the lower edge of the recommended range."
+        : "برنامه وگان بر پایه حبوبات، سویا، غلات، میوه و سبزیجات بانک طراحی شده است؛ پروتئین روزانه ممکن است به مرز پایین محدوده توصیه‌ای نزدیک باشد."
     );
   } else if (settings.dietPattern === "vegetarian") {
     notes.push(
-      "برنامه گیاهی شامل لبنیات و تخم‌مرغ است؛ گوشت و ماهی در هیچ وعده‌ای نیامده است."
+      en
+        ? "The vegetarian plan includes dairy and eggs; meat and fish are not present in any meal."
+        : "برنامه گیاهی شامل لبنیات و تخم‌مرغ است؛ گوشت و ماهی در هیچ وعده‌ای نیامده است."
     );
   }
   if (settings.budget === "low") {
-    notes.push("مواد گران‌قیمت از فهرست حذف شده‌اند تا هزینه خرید پایین‌تر بماند.");
+    notes.push(
+      en
+        ? "Expensive foods have been removed from the list to keep the shopping cost lower."
+        : "مواد گران‌قیمت از فهرست حذف شده‌اند تا هزینه خرید پایین‌تر بماند."
+    );
   }
   notes.push(
-    "برند، رسیدگی و روش پخت می‌تواند مقدار واقعی انرژی و درشت‌مغذی را تغییر دهد؛ همه اعداد تخمینی‌اند."
+    en
+      ? "Brand, ripeness and cooking method can change the real energy and macronutrient values; all numbers are estimates."
+      : "برند، رسیدگی و روش پخت می‌تواند مقدار واقعی انرژی و درشت‌مغذی را تغییر دهد؛ همه اعداد تخمینی‌اند."
   );
   notes.push(
-    "این برنامه یک پیشنهاد عمومی برنامه‌ریزی غذایی است، نه رژیم درمانی یا نسخه پزشکی. اگر بیماری مرتبط با تغذیه دارید با متخصص مشورت کنید."
+    en
+      ? "This plan is a general meal-planning suggestion, not diet therapy or a medical prescription. If you have a nutrition-related condition, consult a specialist."
+      : "این برنامه یک پیشنهاد عمومی برنامه‌ریزی غذایی است، نه رژیم درمانی یا نسخه پزشکی. اگر بیماری مرتبط با تغذیه دارید با متخصص مشورت کنید."
   );
 
   const days: PlannedNutritionDay[] = [];
@@ -331,7 +360,11 @@ export function generateNutritionPlan(
             return;
           }
           throw new NutritionPlanError(
-            `با محدودیت‌های انتخابی شما، گزینه سازگاری برای جایگاه «${slotFaName(slotSpec.slot)}» در ${MEAL_TYPE_LABELS[mealSpec.type]} یافت نشد. محدودیت‌ها را کمتر کنید یا بانک مواد در دسترس را بازبینی کنید.`
+            "NUTRITION_SLOT_NO_OPTION",
+            en
+              ? `With your selected restrictions, no compatible option was found for the "${slotEnName(slotSpec.slot)}" slot in ${MEAL_TYPE_LABELS_EN[mealSpec.type]}. Reduce the restrictions or review the available food bank.`
+              : `با محدودیت‌های انتخابی شما، گزینه سازگاری برای جایگاه «${slotFaName(slotSpec.slot)}» در ${MEAL_TYPE_LABELS[mealSpec.type]} یافت نشد. محدودیت‌ها را کمتر کنید یا بانک مواد در دسترس را بازبینی کنید.`,
+            { slot: slotSpec.slot, mealType: mealSpec.type }
           );
         }
 
@@ -424,7 +457,7 @@ export function generateNutritionPlan(
       meals.push({
         order: mealIndex + 1,
         type: mealSpec.type,
-        title: MEAL_TYPE_LABELS[mealSpec.type],
+        title: en ? MEAL_TYPE_LABELS_EN[mealSpec.type] : MEAL_TYPE_LABELS[mealSpec.type],
         items,
         ...totals,
       });
@@ -432,7 +465,9 @@ export function generateNutritionPlan(
 
     if (fruitOnlySnack) {
       notes.push(
-        "برای میان‌وعده‌ها گزینه پروتئینی سازگار با محدودیت‌های شما یافت نشد؛ آن میان‌وعده فقط میوه است. می‌توانید محدودیت‌ها را بازبینی کنید."
+        en
+          ? "No protein-compatible snack option was found for your restrictions; that snack is fruit only. You may want to review the restrictions."
+          : "برای میان‌وعده‌ها گزینه پروتئینی سازگار با محدودیت‌های شما یافت نشد؛ آن میان‌وعده فقط میوه است. می‌توانید محدودیت‌ها را بازبینی کنید."
       );
     }
 
@@ -445,11 +480,19 @@ export function generateNutritionPlan(
     days.push({ order: dayIndex + 1, meals, ...dayTotals });
   }
 
-  const lengthLabel = settings.planLength === 7 ? "هفتگی" : "یک‌روزه";
+  const lengthLabel = en
+    ? settings.planLength === 7
+      ? "weekly"
+      : "one-day"
+    : settings.planLength === 7
+      ? "هفتگی"
+      : "یک‌روزه";
   // در حالت احتیاط هدف مؤثر «حفظ وزن» است — عنوان و هدف برنامه هم صادقانه همان باشد
   const effectiveGoal = calc.caution ? "maintain" : settings.goal;
   return {
-    title: `برنامه غذایی ${lengthLabel} — ${NUTRITION_GOAL_LABELS[effectiveGoal]}`,
+    title: en
+      ? `${NUTRITION_GOAL_LABELS_EN[effectiveGoal]} — ${lengthLabel} meal plan`
+      : `برنامه غذایی ${lengthLabel} — ${NUTRITION_GOAL_LABELS[effectiveGoal]}`,
     goal: effectiveGoal,
     dietPattern: settings.dietPattern,
     mealsPerDay: settings.mealsPerDay,
@@ -480,6 +523,30 @@ function slotFaName(slot: FoodSlotId | "snack_pool"): string {
       return "چربی پخت";
     case "snack_pool":
       return "میان‌وعده";
+  }
+}
+
+/** برچسب انگلیسی جایگاه — فقط برای تولید محتوا با locale="en" */
+function slotEnName(slot: FoodSlotId | "snack_pool"): string {
+  switch (slot) {
+    case "breakfast_grain":
+      return "breakfast grain";
+    case "protein":
+      return "protein source";
+    case "carb":
+      return "carb source";
+    case "vegetable":
+      return "vegetables";
+    case "fruit":
+      return "fruit";
+    case "dairy_snack":
+      return "dairy snack";
+    case "nuts":
+      return "nuts";
+    case "fat":
+      return "cooking fat";
+    case "snack_pool":
+      return "snack";
   }
 }
 

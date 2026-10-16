@@ -37,9 +37,11 @@ import {
 } from "@/lib/exercises/types";
 import {
   planSettingsSchema,
-  firstPlanSettingsError,
 } from "@/lib/plan-engine/schema";
 import { PROFILE_TO_LIBRARY_EQUIPMENT } from "@/lib/plan-engine/presets";
+import { zodIssueCodes } from "@/lib/api-issues";
+import { issueLabel, genericIssueMessage } from "@/lib/i18n/sections/server-messages";
+import { currentUiLocale } from "@/lib/i18n/locale-current";
 import type {
   PlanFocus,
   PlanGoal,
@@ -185,7 +187,13 @@ export function PlanSettingsForm({
     };
     const parsed = planSettingsSchema.safeParse(candidate);
     if (!parsed.success) {
-      setClientError(firstPlanSettingsError(parsed.error));
+      // ترجمه نمایشی از کد پایدار issue — متن شِما (فارسی) هرگز نمایش داده نمی‌شود
+      const locale = currentUiLocale();
+      const first = zodIssueCodes(parsed.error)[0];
+      setClientError(
+        (first ? issueLabel("plan", first.code, locale) : null) ??
+          genericIssueMessage(locale)
+      );
       return;
     }
     onSubmit({

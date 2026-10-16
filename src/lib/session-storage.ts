@@ -314,7 +314,7 @@ export async function startSession(
     const created = await db.workoutSession.create({
       data: {
         userId,
-        title: "تمرین آزاد",
+        title: input.contentLocale === "en" ? "Free workout" : "تمرین آزاد",
         status: "in_progress",
         startedAt: new Date(),
         exercises: {

@@ -42,6 +42,24 @@ import { workoutStrings } from "../src/lib/i18n/sections/workout";
 import { nutritionStrings } from "../src/lib/i18n/sections/nutrition";
 import { assistantStrings } from "../src/lib/assistant/i18n";
 import { foodLogStrings } from "../src/lib/foodlog/i18n";
+import {
+  apiErrorLabel,
+  engineErrorLabel,
+  issueLabel,
+  insufficientDataMessage,
+} from "../src/lib/i18n/sections/server-messages";
+import {
+  planTitleFromFields,
+  dayTitleLabel,
+  dayFocusLabel,
+  planNoteLabel,
+  sessionTitleLabel,
+  mealTitleLabel,
+  nutritionNoteLabel,
+  nutritionTitleFromFields,
+  energyWarningLabel,
+  pregnancyWarningLabel,
+} from "../src/lib/i18n/engine-content";
 
 let pass = 0;
 let fail = 0;
@@ -217,6 +235,116 @@ check(
   "dict/assistant notConfigured exists both",
   assistantStrings("fa").notConfiguredTitle.length > 0 && assistantStrings("en").notConfiguredTitle.length > 0
 );
+
+/* --------------------- ۷: پیام‌های سمت سرور (کدهای پایدار) --------------------- */
+
+check("server-messages/api codes bilingual", (() => {
+  const codes = ["UNAUTHENTICATED", "VALIDATION", "INTERNAL", "NOT_FOUND", "LIMIT_REACHED", "PLAN_NOT_FEASIBLE", "INSUFFICIENT_DATA", "SESSION_CLOSED", "EXERCISE_NOT_IN_BANK", "INCOMPATIBLE_FOOD", "ITEM_NOT_FOUND", "FOOD_NOT_FOUND", "RATE_LIMITED"];
+  return codes.every((c) => apiErrorLabel(c, "fa")?.length && apiErrorLabel(c, "en")?.length);
+})());
+check("server-messages/unknown code → null (no raw leak)", apiErrorLabel("SOMETHING_ELSE", "fa") === null);
+check("server-messages/engine plan errors", (() => {
+  return (
+    engineErrorLabel("PLAN_INSUFFICIENT_EXERCISES", undefined, "en")?.includes("not enough exercises") === true &&
+    engineErrorLabel("PLAN_TOO_FEW_SESSIONS", undefined, "fa")?.includes("حداقل دو جلسه") === true
+  );
+})());
+check("server-messages/engine slot error params", (() => {
+  const en = engineErrorLabel("NUTRITION_SLOT_NO_OPTION", { slot: "protein", mealType: "breakfast" }, "en") ?? "";
+  const fa = engineErrorLabel("NUTRITION_SLOT_NO_OPTION", { slot: "protein", mealType: "breakfast" }, "fa") ?? "";
+  return en.includes("protein source") && en.includes("Breakfast") && fa.includes("منبع پروتئینی") && fa.includes("صبحانه");
+})());
+check("server-messages/issue labels exact+fallback", (() => {
+  return (
+    issueLabel("weight", "weightKg#too_small", "en")?.includes("at least 25 kg") === true &&
+    issueLabel("plan", "DAYS_RANGE", "fa")?.includes("۲ تا ۶") === true &&
+    issueLabel("nutrition", "estimate.weightKg#invalid_type", "en")?.length ? true : false
+  );
+})());
+check("server-messages/common kind fallback for unknown schema", issueLabel("unknown", "x#too_big", "en")?.includes("above the allowed") === true);
+check("server-messages/insufficient data composed", (() => {
+  const en = insufficientDataMessage(["age", "weightKg"], "en") ?? "";
+  const fa = insufficientDataMessage(["age"], "fa") ?? "";
+  return en.includes("age") && en.includes("weight") && fa.includes("سن") && fa.includes("برآورد");
+})());
+
+/* --------------------- ۸: نمایش محتوای موتورها (بدون بازنویسی داده) --------------------- */
+
+check("engine-content/plan title recompose", (() => {
+  return (
+    planTitleFromFields("fat_loss", 3, "all", "fa") === "کاهش چربی — ۳ روز در هفته" &&
+    planTitleFromFields("fat_loss", 3, "all", "en") === "Fat loss — 3 days/week" &&
+    planTitleFromFields("strength", 4, "upper", "en") === "Strength — 4 days/week (Upper body)" &&
+    planTitleFromFields("muscle_gain", 4, "chest", "en") === "Muscle gain — 4 days/week (Chest)"
+  );
+})());
+check("engine-content/day titles both directions", (() => {
+  return (
+    dayTitleLabel("پوش — سینه، سرشانه و پشت بازو", "en") === "Push — chest, shoulders & triceps" &&
+    dayTitleLabel("تمرکز سینه — جلسه 2", "en") === "chest focus — session 2" &&
+    dayTitleLabel("بالاتنه — سینه و پشت (روز مکمل)", "en") === "Upper body — chest & back (supplementary day)" &&
+    dayTitleLabel("تمام بدن — جلسه دوم", "fa") === "تمام بدن — جلسه دوم"
+  );
+})());
+check("engine-content/day focus labels", (() => {
+  return (
+    dayFocusLabel("بالاتنه", "en") === "Upper body" &&
+    dayFocusLabel("تمام بدن", "en") === "Full body" &&
+    dayFocusLabel("سینه", "en") === "Chest" &&
+    dayFocusLabel("پایین‌تنه", "fa") === "پایین‌تنه"
+  );
+})());
+check("engine-content/plan notes (closed set + warmup + limitation echo)", (() => {
+  const faNote = "این برنامه بر اساس قوانین تمرینی استاندارد ساخته شده است؛ ادعای تضمین نتیجه یا کاهش چربی موضعی ندارد.";
+  const warmupFa = "هر جلسه با ۵ دقیقه گرم‌کردن سبک (حرکات کششی پویا و چند تکرار سبک از حرکت اول جلسه) شروع شود.";
+  const limitFa = "یادداشت احتیاطی شما در ساخت برنامه لحاظ شد: «زانوی حساس». در صورت درد یا سابقه آسیب، پیش از اجرا با پزشک یا فیزیوتراپیست واجد صلاحیت مشورت کنید.";
+  return (
+    planNoteLabel(faNote, "fa") === faNote &&
+    planNoteLabel(faNote, "en").startsWith("This plan is built on standard") &&
+    planNoteLabel(warmupFa, "en").includes("5 minutes of light warm-up") &&
+    planNoteLabel(limitFa, "en").includes("زانوی حساس") &&
+    planNoteLabel(limitFa, "en").startsWith("Your precautionary note")
+  );
+})());
+check("engine-content/session title", (() => {
+  return (
+    sessionTitleLabel("تمرین آزاد", "en") === "Free workout" &&
+    sessionTitleLabel("Free workout", "fa") === "تمرین آزاد" &&
+    sessionTitleLabel("پوش — سینه، سرشانه و پشت بازو", "en").startsWith("Push")
+  );
+})());
+check("engine-content/meal titles via stable type", (() => {
+  return (
+    mealTitleLabel("breakfast", "هرچیزی", "en") === "Breakfast" &&
+    mealTitleLabel("snack_pm", "هرچیزی", "fa") === "میان‌وعده عصر" &&
+    mealTitleLabel("lunch", "ناهار", "fa") === "ناهار" &&
+    mealTitleLabel("dinner", "Dinner", "fa") === "شام"
+  );
+})());
+check("engine-content/nutrition notes + title", (() => {
+  const faNote = "این برنامه یک پیشنهاد عمومی برنامه‌ریزی غذایی است، نه رژیم درمانی یا نسخه پزشکی. اگر بیماری مرتبط با تغذیه دارید با متخصص مشورت کنید.";
+  return (
+    nutritionNoteLabel(faNote, "fa") === faNote &&
+    nutritionNoteLabel(faNote, "en").startsWith("This plan is a general meal-planning") &&
+    nutritionTitleFromFields(7, "weight_loss", "fa") === "برنامه غذایی هفتگی — کاهش وزن تدریجی" &&
+    nutritionTitleFromFields(1, "muscle_gain", "en") === "Muscle-gain support — one-day meal plan"
+  );
+})());
+check("engine-content/energy warnings + macro diff regex", (() => {
+  const faBase = "همه اعداد این بخش «تخمین» بر پایه فرمول‌های عمومی‌اند، نه اندازه‌گیری دقیق نیاز بدن شما.";
+  const faDiff = "جمع انرژی درشت‌مغذی‌ها بیشتر از هدف کالری است (اختلاف حدود 45 کیلوکالری ناشی از گرد کردن و محدوده‌های استاندارد).";
+  return (
+    energyWarningLabel(faBase, "fa") === faBase &&
+    energyWarningLabel(faBase, "en").startsWith("All numbers in this") &&
+    energyWarningLabel(faDiff, "en").includes("higher") &&
+    energyWarningLabel(faDiff, "en").includes("45 kcal") &&
+    pregnancyWarningLabel("en").includes("pregnancy or breastfeeding")
+  );
+})());
+check("engine-content/unknown text falls back to stored (honest)", (() => {
+  const unknown = "متن ناشناختهٔ قدیمی";
+  return planNoteLabel(unknown, "en") === unknown && nutritionNoteLabel(unknown, "en") === unknown;
+})());
 
 console.log(`\nRESULT: ${pass} pass, ${fail} fail`);
 process.exit(fail > 0 ? 1 : 0);

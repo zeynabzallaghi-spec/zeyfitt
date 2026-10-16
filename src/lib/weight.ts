@@ -48,11 +48,11 @@ export const weightEntryPayloadSchema = z.object({
       .date({ message: "تاریخ ثبت معتبر نیست" })
       .refine(
         (date) => date.getTime() <= Date.now() + 60_000,
-        "تاریخ ثبت نمی‌تواند در آینده باشد"
+        { message: "تاریخ ثبت نمی‌تواند در آینده باشد", params: { ck: "FUTURE_DATE" } }
       )
       .refine(
         (date) => Date.now() - date.getTime() <= 1000 * 60 * 60 * 24 * 366 * 2,
-        "تاریخ ثبت نمی‌تواند قدیمی‌تر از دو سال باشد"
+        { message: "تاریخ ثبت نمی‌تواند قدیمی‌تر از دو سال باشد", params: { ck: "TOO_OLD_DATE" } }
       )
   ),
 });

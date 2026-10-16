@@ -6,6 +6,7 @@ import {
   weightEntryPayloadSchema,
   type WeightEntryClient,
 } from "@/lib/weight";
+import { zodIssueCodes } from "@/lib/api-issues";
 
 /** سقف تعداد رکوردهای وزن هر کاربر — برای جلوگیری از سوءاستفاده */
 const MAX_ENTRIES_PER_USER = 500;
@@ -56,7 +57,11 @@ export async function POST(request: Request) {
     if (!parsed.success) {
       const first = parsed.error.issues[0];
       return NextResponse.json(
-        { error: "VALIDATION", message: first?.message ?? "اطلاعات معتبر نیست" },
+        {
+          error: "VALIDATION",
+          message: first?.message ?? "اطلاعات معتبر نیست",
+          issues: zodIssueCodes(parsed.error),
+        },
         { status: 400 }
       );
     }

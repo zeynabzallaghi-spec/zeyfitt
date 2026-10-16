@@ -4,9 +4,11 @@ import {
   planSettingsSchema,
   firstPlanSettingsError,
   normalizedPreferredDays,
+  contentLocaleOf,
 } from "@/lib/plan-engine/schema";
 import { generatePlan, PlanGenerationError } from "@/lib/plan-engine/engine";
 import { listUserPlans, saveGeneratedPlan } from "@/lib/plan-storage";
+import { zodIssueCodes } from "@/lib/api-issues";
 import type { PlanSettings } from "@/lib/plan-engine/types";
 
 /**
@@ -48,11 +50,17 @@ export async function POST(request: Request) {
     const parsed = planSettingsSchema.safeParse(body);
     if (!parsed.success) {
       return NextResponse.json(
-        { error: "VALIDATION", message: firstPlanSettingsError(parsed.error) },
+        {
+          error: "VALIDATION",
+          message: firstPlanSettingsError(parsed.error),
+          issues: zodIssueCodes(parsed.error),
+        },
         { status: 400 }
       );
     }
 
+    // زبان تولید محتوا — انتخاب صریح کلاینت (زبان رابط) با پیش‌فرض امن
+    const contentLocale = contentLocaleOf(parsed.data.contentLocale);
     const settings: PlanSettings = {
       ...parsed.data,
       preferredDays: normalizedPreferredDays(parsed.data.preferredDays).slice(
@@ -63,18 +71,18 @@ export async function POST(request: Request) {
 
     let plan;
     try {
-      plan = generatePlan(settings);
+      plan = generatePlan(settings, contentLocale);
     } catch (error) {
       if (error instanceof PlanGenerationError) {
         return NextResponse.json(
-          { error: "PLAN_NOT_FEASIBLE", message: error.message },
+          { error: "PLAN_NOT_FEASIBLE", code: error.code, message: error.message },
           { status: 422 }
         );
       }
       throw error;
     }
 
-    const saved = await saveGeneratedPlan(session.user.id, settings, plan);
+    const saved = await saveGeneratedPlan(session.user.id, settings, plan, contentLocale);
     return NextResponse.json({ plan: saved }, { status: 201 });
   } catch (error) {
     console.error("[plans:POST]", error instanceof Error ? error.name : "unknown");

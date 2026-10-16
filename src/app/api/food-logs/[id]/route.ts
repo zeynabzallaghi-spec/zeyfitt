@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { zodIssueCodes } from "@/lib/api-issues";
 import { getServerSession } from "@/lib/session";
 import { updateFoodLogSchema, firstFoodLogError } from "@/lib/foodlog/schema";
 import { FoodLogDomainError, updateFoodLog, deleteFoodLog } from "@/lib/foodlog/storage";
@@ -29,7 +30,7 @@ export async function PATCH(
     const parsed = updateFoodLogSchema.safeParse(body);
     if (!parsed.success) {
       return NextResponse.json(
-        { error: "VALIDATION", message: firstFoodLogError(parsed.error) },
+        { error: "VALIDATION", message: firstFoodLogError(parsed.error), issues: zodIssueCodes(parsed.error) },
         { status: 400 }
       );
     }

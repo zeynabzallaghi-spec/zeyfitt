@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { getServerSession } from "@/lib/session";
 import { profilePayloadSchema, toClientProfile, type ProfilePayload } from "@/lib/profile";
+import { zodIssueCodes } from "@/lib/api-issues";
 
 /** نگاشت خروجی اعتبارسنجی به ستون‌های پایگاه داده */
 function toDbData(data: ProfilePayload) {
@@ -62,11 +63,15 @@ export async function PUT(request: Request) {
     const parsed = profilePayloadSchema.safeParse(body);
     if (!parsed.success) {
       const fields: Record<string, string> = {};
-      for (const issue of parsed.error.issues) {
-        const key = String(issue.path[0] ?? "form");
-        if (!fields[key]) fields[key] = issue.message;
+      const fieldCodes: Record<string, string> = {};
+      for (const issue of zodIssueCodes(parsed.error)) {
+        const key = issue.path.split(".")[0] || "form";
+        if (!fields[key]) fields[key] =
+          parsed.error.issues.find((i) => String(i.path[0] ?? "form") === key)?.message ??
+          "اطلاعات معتبر نیست";
+        if (!fieldCodes[key]) fieldCodes[key] = issue.code;
       }
-      return NextResponse.json({ error: "VALIDATION", fields }, { status: 400 });
+      return NextResponse.json({ error: "VALIDATION", fields, fieldCodes }, { status: 400 });
     }
 
     // هویت کاربر فقط از نشست — شناسه ارسالی از کلاینت هرگز مجاز نیست

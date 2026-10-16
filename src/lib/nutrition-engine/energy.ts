@@ -42,6 +42,7 @@ import type {
   TargetsResult,
 } from "./types";
 import { activityLevelDef } from "./types";
+import type { Locale } from "@/lib/i18n/shared";
 
 /** گرد کردن به مضرب ۱۰ — برای کالری */
 function round10(value: number): number {
@@ -60,6 +61,17 @@ function missingLabelsOf(estimate: EstimateInfo | null): string[] {
   if (!estimate.heightCm || estimate.heightCm <= 0) missing.push("قد");
   if (!estimate.weightKg || estimate.weightKg <= 0) missing.push("وزن");
   return missing;
+}
+
+/** کلیدهای پایدار کمبودها — برای ترجمه نمایشی در UI (متن هرگز از سرور نیاید) */
+export const ESTIMATE_MISSING_LABELS: Record<string, string> = {
+  "سن": "age",
+  "قد": "heightCm",
+  "وزن": "weightKg",
+};
+
+export function missingKeysOf(labels: string[]): string[] {
+  return labels.map((label) => ESTIMATE_MISSING_LABELS[label] ?? label);
 }
 
 /**
@@ -110,13 +122,17 @@ export function computeMacroTargets(
  * اگر اطلاعات ناقص باشد هیچ عددی تولید نمی‌شود (فقط فهرست کمبودها).
  * اگر کاربر در گروه احتیاط باشد (زیر ۱۸ سال یا باردار/شیرده)، هدف کالری
  * روی «حفظ وزن» قفل می‌شود و هشدار مشورت با متخصص تولید می‌شود.
+ * زبان هشدارها (که در snapshot ذخیره می‌شوند) از locale تعیین می‌شود
+ * (پیش‌فرض fa — عیناً رفتار قبل).
  */
 export function computeNutritionTargets(
   estimate: EstimateInfo | null,
   goal: NutritionGoal,
   activityLevel: ActivityLevelId,
-  pregnancyBreastfeeding: boolean
+  pregnancyBreastfeeding: boolean,
+  locale: Locale = "fa"
 ): TargetsResult {
+  const en = locale === "en";
   const missing = missingLabelsOf(estimate);
   if (missing.length > 0 || !estimate) {
     return { status: "insufficient_data", missingLabels: missing };
@@ -128,7 +144,9 @@ export function computeNutritionTargets(
   }
 
   const warnings: string[] = [
-    "همه اعداد این بخش «تخمین» بر پایه فرمول‌های عمومی‌اند، نه اندازه‌گیری دقیق نیاز بدن شما.",
+    en
+      ? "All numbers in this “estimate” section are based on general formulas, not an exact measurement of your body's needs."
+      : "همه اعداد این بخش «تخمین» بر پایه فرمول‌های عمومی‌اند، نه اندازه‌گیری دقیق نیاز بدن شما.",
   ];
 
   const underage = estimate.age < 18;
@@ -137,17 +155,23 @@ export function computeNutritionTargets(
 
   if (underage) {
     warnings.push(
-      "سن کمتر از ۱۸ سال: هدف کاهش وزن یا محدودیت انرژی به‌صورت خودکار تنظیم نمی‌شود؛ برای برنامه اختصاصی حتماً با متخصص تغذیه مشورت کنید."
+      en
+        ? "Age under 18: the weight-loss goal or energy restriction is not applied automatically; for a personal plan, be sure to consult a nutrition specialist."
+        : "سن کمتر از ۱۸ سال: هدف کاهش وزن یا محدودیت انرژی به‌صورت خودکار تنظیم نمی‌شود؛ برای برنامه اختصاصی حتماً با متخصص تغذیه مشورت کنید."
     );
   }
   if (pregnancyBreastfeeding) {
     warnings.push(
-      "در بارداری یا شیردهی نیاز تغذیه‌ای خاص است؛ این ابزار هدف کالری کاهشی/افزایشی برای شما تنظیم نمی‌کند و برنامه فعلی جایگزین نظر متخصص نیست."
+      en
+        ? "During pregnancy or breastfeeding, nutritional needs are special; this tool does not set a deficit/surplus calorie goal for you, and the current plan is not a substitute for specialist advice."
+        : "در بارداری یا شیردهی نیاز تغذیه‌ای خاص است؛ این ابزار هدف کالری کاهشی/افزایشی برای شما تنظیم نمی‌کند و برنامه فعلی جایگزین نظر متخصص نیست."
     );
   }
   if (estimate.gender === "undisclosed") {
     warnings.push(
-      "جنسیت اعلام‌نشده: برای فرمول، میانگین دو فرمول مردان و زنان استفاده شد؛ عدم‌قطعیت برآورد بالاتر است."
+      en
+        ? "Gender undisclosed: the average of the male and female formulas was used; the estimate uncertainty is higher."
+        : "جنسیت اعلام‌نشده: برای فرمول، میانگین دو فرمول مردان و زنان استفاده شد؛ عدم‌قطعیت برآورد بالاتر است."
     );
   }
 
@@ -174,7 +198,9 @@ export function computeNutritionTargets(
 
   if (Math.abs(macrosWithDiff.diff) > 30) {
     warnings.push(
-      `جمع انرژی درشت‌مغذی‌ها ${macrosWithDiff.diff > 0 ? "بیشتر" : "کمتر"} از هدف کالری است (اختلاف حدود ${Math.abs(macrosWithDiff.diff)} کیلوکالری ناشی از گرد کردن و محدوده‌های استاندارد).`
+      en
+        ? `The macronutrient energy total is ${macrosWithDiff.diff > 0 ? "higher" : "lower"} than the calorie target (a difference of about ${Math.abs(macrosWithDiff.diff)} kcal due to rounding and standard ranges).`
+        : `جمع انرژی درشت‌مغذی‌ها ${macrosWithDiff.diff > 0 ? "بیشتر" : "کمتر"} از هدف کالری است (اختلاف حدود ${Math.abs(macrosWithDiff.diff)} کیلوکالری ناشی از گرد کردن و محدوده‌های استاندارد).`
     );
   }
 

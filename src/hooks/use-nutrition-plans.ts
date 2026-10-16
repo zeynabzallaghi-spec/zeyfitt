@@ -9,6 +9,14 @@ import type {
   GeneratedNutritionPlan,
   NutritionSettings,
 } from "@/lib/nutrition-engine/types";
+import { currentUiLocale } from "@/lib/i18n/locale-current";
+import {
+  apiErrorLabel,
+  engineErrorLabel,
+  issueLabel,
+  genericIssueMessage,
+  insufficientDataMessage,
+} from "@/lib/i18n/sections/server-messages";
 
 /**
  * هوک مدیریت برنامه‌های غذایی کاربر جاری — داده همیشه از API متصل به نشست
@@ -41,21 +49,77 @@ export interface UseNutritionPlansResult {
   deletingId: string | null;
 }
 
+function nutritionNetFail(): Failure {
+  return {
+    ok: false,
+    message:
+      currentUiLocale() === "en"
+        ? "Could not reach the server; please check your connection."
+        : "ارتباط با سرور برقرار نشد؛ اتصال خود را بررسی کنید.",
+  };
+}
+
 export async function parseNutritionFailure(response: Response): Promise<Failure> {
+  const locale = currentUiLocale();
   if (response.status === 401) {
-    return { ok: false, kind: "auth", message: "نشست شما منقضی شده است؛ دوباره وارد شوید." };
+    return {
+      ok: false,
+      kind: "auth",
+      message:
+        locale === "en"
+          ? "Your session has expired; please sign in again."
+          : "نشست شما منقضی شده است؛ دوباره وارد شوید.",
+    };
   }
   try {
-    const data = (await response.json()) as { message?: string; error?: string };
+    const data = (await response.json()) as {
+      message?: string;
+      error?: string;
+      code?: string;
+      params?: Record<string, string>;
+      issues?: { code: string; path: string }[];
+      missingKeys?: string[];
+    };
     if (response.status === 422 && data.error === "PLAN_NOT_FEASIBLE") {
-      return { ok: false, kind: "infeasible", message: data.message ?? "با این محدودیت‌ها برنامه معقولی ساخته نشد." };
+      const label =
+        engineErrorLabel(data.code, data.params, locale) ??
+        (locale === "en"
+          ? "No reasonable plan could be built with these restrictions."
+          : "با این محدودیت‌ها برنامه معقولی ساخته نشد.");
+      return { ok: false, kind: "infeasible", message: label };
     }
     if (response.status === 422 && data.error === "INSUFFICIENT_DATA") {
-      return { ok: false, kind: "insufficient", message: data.message ?? "اطلاعات کافی برای برآورد موجود نیست." };
+      const label =
+        insufficientDataMessage(data.missingKeys ?? [], locale) ??
+        (locale === "en"
+          ? "There is not enough information for the estimate."
+          : "اطلاعات کافی برای برآورد موجود نیست.");
+      return { ok: false, kind: "insufficient", message: label };
     }
-    return { ok: false, kind: "validation", message: data.message ?? "اطلاعات واردشده معتبر نیست." };
+    if (data.error === "VALIDATION") {
+      const first = data.issues?.[0]?.code;
+      const label = first ? issueLabel("nutrition", first, locale) : null;
+      return {
+        ok: false,
+        kind: "validation",
+        message:
+          label ??
+          apiErrorLabel("VALIDATION", locale) ??
+          genericIssueMessage(locale),
+      };
+    }
+    const label = data.error ? apiErrorLabel(data.error, locale) : null;
+    return {
+      ok: false,
+      kind: "validation",
+      message:
+        label ??
+        (locale === "en"
+          ? "The submitted information is not valid."
+          : "اطلاعات واردشده معتبر نیست."),
+    };
   } catch {
-    return { ok: false, message: "ارتباط با سرور برقرار نشد؛ اتصال خود را بررسی کنید." };
+    return nutritionNetFail();
   }
 }
 
@@ -73,19 +137,27 @@ export function useNutritionPlans(): UseNutritionPlansResult {
       const response = await fetch("/api/nutrition", { cache: "no-store" });
       if (!mounted.current) return;
       if (response.status === 401) {
-        setError("نشست شما منقضی شده است؛ صفحه را دوباره بارگذاری کنید.");
+        setError(
+          currentUiLocale() === "en"
+            ? "Your session has expired; please reload the page."
+            : "نشست شما منقضی شده است؛ صفحه را دوباره بارگذاری کنید."
+        );
         setPlans([]);
         return;
       }
       if (!response.ok) {
-        setError("خواندن برنامه‌های غذایی ممکن نشد؛ لطفاً دوباره تلاش کنید.");
+        setError(
+          currentUiLocale() === "en"
+            ? "Could not read the nutrition plans; please try again."
+            : "خواندن برنامه‌های غذایی ممکن نشد؛ لطفاً دوباره تلاش کنید."
+        );
         return;
       }
       const data = (await response.json()) as { plans: NutritionPlanSummaryClient[] };
       setPlans(Array.isArray(data.plans) ? data.plans : []);
     } catch {
       if (mounted.current) {
-        setError("ارتباط با سرور برقرار نشد؛ اتصال خود را بررسی کنید.");
+        setError(nutritionNetFail().message);
       }
     } finally {
       if (mounted.current) setLoading(false);
@@ -106,7 +178,7 @@ export function useNutritionPlans(): UseNutritionPlansResult {
         const response = await fetch("/api/nutrition/preview", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(settings),
+          body: JSON.stringify({ ...settings, contentLocale: currentUiLocale() }),
         });
         if (response.ok) {
           const data = (await response.json()) as { plan: GeneratedNutritionPlan };
@@ -114,7 +186,7 @@ export function useNutritionPlans(): UseNutritionPlansResult {
         }
         return await parseNutritionFailure(response);
       } catch {
-        return { ok: false, message: "ارتباط با سرور برقرار نشد؛ اتصال خود را بررسی کنید." };
+        return nutritionNetFail();
       }
     },
     []
@@ -127,7 +199,7 @@ export function useNutritionPlans(): UseNutritionPlansResult {
         const response = await fetch("/api/nutrition", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(settings),
+          body: JSON.stringify({ ...settings, contentLocale: currentUiLocale() }),
         });
         if (response.status === 201) {
           const data = (await response.json()) as { plan: NutritionPlanClient };
@@ -136,7 +208,7 @@ export function useNutritionPlans(): UseNutritionPlansResult {
         }
         return await parseNutritionFailure(response);
       } catch {
-        return { ok: false, message: "ارتباط با سرور برقرار نشد؛ اتصال خود را بررسی کنید." };
+        return nutritionNetFail();
       } finally {
         if (mounted.current) setCreating(false);
       }
@@ -162,7 +234,7 @@ export function useNutritionPlans(): UseNutritionPlansResult {
         }
         return await parseNutritionFailure(response);
       } catch {
-        return { ok: false, message: "ارتباط با سرور برقرار نشد؛ اتصال خود را بررسی کنید." };
+        return nutritionNetFail();
       }
     },
     [refresh]
@@ -181,7 +253,7 @@ export function useNutritionPlans(): UseNutritionPlansResult {
         }
         return await parseNutritionFailure(response);
       } catch {
-        return { ok: false, message: "ارتباط با سرور برقرار نشد؛ اتصال خود را بررسی کنید." };
+        return nutritionNetFail();
       } finally {
         if (mounted.current) setDeletingId(null);
       }

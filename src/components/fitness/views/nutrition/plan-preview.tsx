@@ -21,12 +21,18 @@ import {
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
 import { useLocale } from "@/lib/i18n/locale";
+import {
+  energyWarningLabel,
+  nutritionNoteLabel,
+  mealTitleLabel,
+  pregnancyWarningLabel,
+} from "@/lib/i18n/engine-content";
 import { useStrings } from "@/lib/i18n/use-strings";
 import { nutritionStrings } from "@/lib/i18n/sections/nutrition";
 import { sharedStrings } from "@/lib/i18n/sections/shared";
 import { localeNumber, localeDecimal } from "@/lib/i18n/format";
 import { cn } from "@/lib/utils";
-import { DIET_PATTERN_LABELS, type GeneratedNutritionPlan } from "@/lib/nutrition-engine/types";
+import type { GeneratedNutritionPlan } from "@/lib/nutrition-engine/types";
 import { FOOD_COUNT } from "@/lib/foods";
 
 interface Props {
@@ -71,7 +77,7 @@ export function NutritionPlanPreview({ plan, saving, saveError, onSave, onBack }
         {calc.caution ? (
           <p className="mt-3 text-xs leading-6 text-amber-200">
             {t.cautionIntro}
-            {calc.warnings.find((w) => w.includes("متخصص")) ?? ""}
+            {pregnancyWarningLabel(locale)}
           </p>
         ) : (
           <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
@@ -115,7 +121,7 @@ export function NutritionPlanPreview({ plan, saving, saveError, onSave, onBack }
             {calc.warnings.map((warning, index) => (
               <li key={index} className="flex items-start gap-2 text-[10px] leading-5 text-amber-200/90">
                 <AlertTriangle className="mt-0.5 size-3 shrink-0 text-amber-300" aria-hidden="true" />
-                {warning}
+                {energyWarningLabel(warning, locale)}
               </li>
             ))}
           </ul>
@@ -125,7 +131,7 @@ export function NutritionPlanPreview({ plan, saving, saveError, onSave, onBack }
       {/* خلاصه تنظیمات */}
       <p className="text-[11px] leading-6 text-muted-foreground">
         {plan.planLength === 7 ? t.weeklyPlanName : t.oneDayPlanName} — {t.mealsPerDayUnit(num(plan.mealsPerDay))} — {t.goalPrefix}
-        {DIET_PATTERN_LABELS[plan.dietPattern] === "معمولی" ? "" : t.patternPrefix(t.dietPatternOption(plan.dietPattern))}
+        {plan.dietPattern === "none" ? "" : t.patternPrefix(t.dietPatternOption(plan.dietPattern))}
         {t.engineFoodCountNote(num(FOOD_COUNT))}
       </p>
 
@@ -159,7 +165,7 @@ export function NutritionPlanPreview({ plan, saving, saveError, onSave, onBack }
                   {day.meals.map((meal) => (
                     <div key={meal.order} className="rounded-xl border border-border/40 bg-secondary/20 p-3.5">
                       <div className="flex flex-wrap items-center justify-between gap-2">
-                        <p className="text-xs font-bold text-primary">{meal.title}</p>
+                        <p className="text-xs font-bold text-primary">{mealTitleLabel(meal.type, meal.title, locale)}</p>
                         <span className="text-[10px] font-bold text-muted-foreground">
                           {num(meal.kcal)} {t.kcalUnit}
                         </span>
@@ -196,7 +202,7 @@ export function NutritionPlanPreview({ plan, saving, saveError, onSave, onBack }
           {plan.notes.map((note, index) => (
             <li key={index} className="flex items-start gap-2.5 text-[11px] leading-6 text-muted-foreground">
               <span className="mt-2.5 size-1.5 shrink-0 rounded-full bg-primary/70" aria-hidden="true" />
-              {note}
+              {nutritionNoteLabel(note, locale)}
             </li>
           ))}
         </ul>

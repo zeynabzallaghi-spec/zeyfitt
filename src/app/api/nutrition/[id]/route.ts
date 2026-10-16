@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getServerSession } from "@/lib/session";
 import { db } from "@/lib/db";
 import { nutritionPatchSchema } from "@/lib/nutrition-engine/schema";
+import { zodIssueCodes } from "@/lib/api-issues";
 import {
   findFood,
   isFoodCompatible,
@@ -92,7 +93,11 @@ export async function PATCH(
     const parsed = nutritionPatchSchema.safeParse(body);
     if (!parsed.success) {
       return NextResponse.json(
-        { error: "VALIDATION", message: parsed.error.issues[0]?.message ?? "درخواست نامعتبر است" },
+        {
+          error: "VALIDATION",
+          message: parsed.error.issues[0]?.message ?? "درخواست نامعتبر است",
+          issues: zodIssueCodes(parsed.error),
+        },
         { status: 400 }
       );
     }

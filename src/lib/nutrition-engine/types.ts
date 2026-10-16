@@ -20,6 +20,13 @@ export const NUTRITION_GOAL_LABELS: Record<NutritionGoal, string> = {
   maintain: "حفظ وزن",
 };
 
+/** برچسب انگلیسی هدف تغذیه — فقط برای تولید محتوا با locale="en" */
+export const NUTRITION_GOAL_LABELS_EN: Record<NutritionGoal, string> = {
+  weight_loss: "Gradual weight loss",
+  muscle_gain: "Muscle-gain support",
+  maintain: "Weight maintenance",
+};
+
 /** الگوی غذایی قابل‌پشتیبانی موتور فعلی */
 export type DietPattern = "none" | "vegetarian" | "vegan";
 
@@ -166,6 +173,16 @@ export const MEAL_TYPE_LABELS: Record<MealType, string> = {
   snack_pm: "میان‌وعده عصر",
   dinner: "شام",
   snack_ev: "میان‌وعده شب",
+};
+
+/** برچسب انگلیسی وعده‌ها — فقط برای تولید محتوا با locale="en" */
+export const MEAL_TYPE_LABELS_EN: Record<MealType, string> = {
+  breakfast: "Breakfast",
+  snack_am: "Morning snack",
+  lunch: "Lunch",
+  snack_pm: "Afternoon snack",
+  dinner: "Dinner",
+  snack_ev: "Evening snack",
 };
 
 /** یک وعده — مجموع از مقادیر واقعی اجزا محاسبه شده، نه عدد ثابت */

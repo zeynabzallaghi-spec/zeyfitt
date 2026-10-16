@@ -10,32 +10,75 @@ import type {
   ExerciseStatus,
 } from "@/lib/workout-session/types";
 import type { WorkoutStats, ExerciseProgressResult } from "@/lib/workout-session/stats";
+import { currentUiLocale } from "@/lib/i18n/locale-current";
+import { apiErrorLabel, issueLabel, genericIssueMessage } from "@/lib/i18n/sections/server-messages";
 
 /**
  * هوک‌های کلاینت ثبت تمرین واقعی — همه داده فقط از API متصل به نشست سرور
  * خوانده و نوشته می‌شود؛ هیچ ذخیره‌سازی محلی (localStorage) در کار نیست و
  * هیچ اقدامی بدون پاسخ واقعی سرور «موفق» اعلام نمی‌شود.
+ *
+ * پیام خطا هرگز متن خام سرور نیست؛ کد پایدار پاسخ با دیکشنری متمرکز به
+ * زبان فعلی رابط ترجمه می‌شود.
  */
 
 type Failure = { ok: false; message: string; code?: string };
 type Success<T> = { ok: true; data: T };
 type Result<T> = Success<T> | Failure;
 
-const NETWORK_ERROR = "ارتباط با سرور برقرار نشد؛ داده‌های شما ذخیره نشده و پس از بازگشت اتصال می‌توانید دوباره تلاش کنید.";
+function networkErrorMessage(): string {
+  const locale = currentUiLocale();
+  return locale === "en"
+    ? "Could not reach the server; your data was not saved and you can try again after the connection returns."
+    : "ارتباط با سرور برقرار نشد؛ داده‌های شما ذخیره نشده و پس از بازگشت اتصال می‌توانید دوباره تلاش کنید.";
+}
 
 async function parseFailure(response: Response): Promise<Failure> {
+  const locale = currentUiLocale();
   if (response.status === 401) {
-    return { ok: false, code: "UNAUTHENTICATED", message: "نشست شما منقضی شده است؛ دوباره وارد شوید." };
-  }
-  try {
-    const data = (await response.json()) as { message?: string; error?: string };
     return {
       ok: false,
-      code: data.error,
-      message: data.message ?? "درخواست پذیرفته نشد؛ لطفاً دوباره تلاش کنید.",
+      code: "UNAUTHENTICATED",
+      message:
+        locale === "en"
+          ? "Your session has expired; please sign in again."
+          : "نشست شما منقضی شده است؛ دوباره وارد شوید.",
+    };
+  }
+  try {
+    const data = (await response.json()) as {
+      message?: string;
+      error?: string;
+      issues?: { code: string; path: string }[];
+    };
+    const code = data.error;
+    if (code === "VALIDATION") {
+      const first = data.issues?.[0]?.code;
+      const label = first ? issueLabel("session", first, locale) : null;
+      return {
+        ok: false,
+        code,
+        message: label ?? apiErrorLabel("VALIDATION", locale) ?? genericIssueMessage(locale),
+      };
+    }
+    const label = code ? apiErrorLabel(code, locale) : null;
+    return {
+      ok: false,
+      code,
+      message:
+        label ??
+        (locale === "en"
+          ? "The request was not accepted; please try again."
+          : "درخواست پذیرفته نشد؛ لطفاً دوباره تلاش کنید."),
     };
   } catch {
-    return { ok: false, message: "درخواست پذیرفته نشد؛ لطفاً دوباره تلاش کنید." };
+    return {
+      ok: false,
+      message:
+        currentUiLocale() === "en"
+          ? "The request was not accepted; please try again."
+          : "درخواست پذیرفته نشد؛ لطفاً دوباره تلاش کنید.",
+    };
   }
 }
 
@@ -81,13 +124,17 @@ export function useActiveSession(): UseActiveSessionResult {
       const response = await fetch("/api/sessions/active", { cache: "no-store" });
       if (!mounted.current) return;
       if (!response.ok) {
-        setError("خواندن وضعیت جلسه ممکن نشد؛ لطفاً دوباره تلاش کنید.");
+        setError(
+          currentUiLocale() === "en"
+            ? "Could not read the session status; please try again."
+            : "خواندن وضعیت جلسه ممکن نشد؛ لطفاً دوباره تلاش کنید."
+        );
         return;
       }
       const data = (await response.json()) as { session: WorkoutSessionClient | null };
       setSession(data.session ?? null);
     } catch {
-      if (mounted.current) setError(NETWORK_ERROR);
+      if (mounted.current) setError(networkErrorMessage());
     } finally {
       if (mounted.current) setLoading(false);
     }
@@ -119,7 +166,7 @@ export function useActiveSession(): UseActiveSessionResult {
         }
         return await parseFailure(response);
       } catch {
-        return { ok: false as const, message: NETWORK_ERROR };
+        return { ok: false as const, message: networkErrorMessage() };
       }
     },
     []
@@ -139,7 +186,7 @@ export function useActiveSession(): UseActiveSessionResult {
       }
       return await parseFailure(response);
     } catch {
-      return { ok: false as const, message: NETWORK_ERROR };
+      return { ok: false as const, message: networkErrorMessage() };
     }
   }, []);
 
@@ -156,7 +203,7 @@ export function useActiveSession(): UseActiveSessionResult {
       }
       return await parseFailure(response);
     } catch {
-      return { ok: false as const, message: NETWORK_ERROR };
+      return { ok: false as const, message: networkErrorMessage() };
     }
   }, []);
 
@@ -178,7 +225,7 @@ export function useActiveSession(): UseActiveSessionResult {
         }
         return await parseFailure(response);
       } catch {
-        return { ok: false as const, message: NETWORK_ERROR };
+        return { ok: false as const, message: networkErrorMessage() };
       }
     },
     []
@@ -201,7 +248,7 @@ export function useActiveSession(): UseActiveSessionResult {
       }
       return await parseFailure(response);
     } catch {
-      return { ok: false as const, message: NETWORK_ERROR };
+      return { ok: false as const, message: networkErrorMessage() };
     }
   }, []);
 
@@ -223,7 +270,7 @@ export function useActiveSession(): UseActiveSessionResult {
         }
         return await parseFailure(response);
       } catch {
-        return { ok: false as const, message: NETWORK_ERROR };
+        return { ok: false as const, message: networkErrorMessage() };
       }
     },
     []
@@ -273,13 +320,17 @@ export function useSessionHistory(): UseSessionHistoryResult {
       const response = await fetch("/api/sessions?limit=100", { cache: "no-store" });
       if (!mounted.current) return;
       if (!response.ok) {
-        setError("خواندن تاریخچه ممکن نشد؛ لطفاً دوباره تلاش کنید.");
+        setError(
+          currentUiLocale() === "en"
+            ? "Could not read the history; please try again."
+            : "خواندن تاریخچه ممکن نشد؛ لطفاً دوباره تلاش کنید."
+        );
         return;
       }
       const data = (await response.json()) as { sessions: SessionSummaryClient[] };
       setSessions(Array.isArray(data.sessions) ? data.sessions : []);
     } catch {
-      if (mounted.current) setError(NETWORK_ERROR);
+      if (mounted.current) setError(networkErrorMessage());
     } finally {
       if (mounted.current) setLoading(false);
     }
@@ -306,7 +357,7 @@ export function useSessionHistory(): UseSessionHistoryResult {
         }
         return await parseFailure(response);
       } catch {
-        return { ok: false as const, message: NETWORK_ERROR };
+        return { ok: false as const, message: networkErrorMessage() };
       } finally {
         if (mounted.current) setDeletingId(null);
       }
@@ -356,13 +407,17 @@ export function useWorkoutStats(): UseWorkoutStatsResult {
       const response = await fetch("/api/sessions/stats", { cache: "no-store" });
       if (!mounted.current) return;
       if (!response.ok) {
-        setError("خواندن آمار ممکن نشد؛ لطفاً دوباره تلاش کنید.");
+        setError(
+          currentUiLocale() === "en"
+            ? "Could not read the stats; please try again."
+            : "خواندن آمار ممکن نشد؛ لطفاً دوباره تلاش کنید."
+        );
         return;
       }
       const data = (await response.json()) as { stats: WorkoutStats };
       setStats(data.stats);
     } catch {
-      if (mounted.current) setError(NETWORK_ERROR);
+      if (mounted.current) setError(networkErrorMessage());
     } finally {
       if (mounted.current) setLoading(false);
     }
@@ -389,7 +444,7 @@ export function useWorkoutStats(): UseWorkoutStatsResult {
         }
         return await parseFailure(response);
       } catch {
-        return { ok: false as const, message: NETWORK_ERROR };
+        return { ok: false as const, message: networkErrorMessage() };
       }
     },
     []

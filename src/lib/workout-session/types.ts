@@ -117,6 +117,8 @@ export interface SessionSummaryClient {
 export interface StartSessionInput {
   planDayId?: string;
   exercises?: { exerciseId: string }[];
+  /** زبان تولید عنوان جلسه (تمرین آزاد) — پیش‌فرض fa */
+  contentLocale?: "fa" | "en";
 }
 
 /** ورودی ثبت/اصلاح یک ست — upsert بر اساس (حرکت، شماره ست) */

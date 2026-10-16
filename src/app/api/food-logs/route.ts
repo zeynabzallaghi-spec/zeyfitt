@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { zodIssueCodes } from "@/lib/api-issues";
 import { getServerSession } from "@/lib/session";
 import {
   createFoodLogSchema,
@@ -64,7 +65,7 @@ export async function POST(request: Request) {
     const parsed = createFoodLogSchema.safeParse(body);
     if (!parsed.success) {
       return NextResponse.json(
-        { error: "VALIDATION", message: firstFoodLogError(parsed.error) },
+        { error: "VALIDATION", message: firstFoodLogError(parsed.error), issues: zodIssueCodes(parsed.error) },
         { status: 400 }
       );
     }

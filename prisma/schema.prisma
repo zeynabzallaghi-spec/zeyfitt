@@ -163,6 +163,8 @@ model WorkoutPlan {
   // وضعیت و ردیابی
   status          String   @default("active") // active | archived
   libraryVersion  String // نسخه بانک حرکات هنگام تولید
+  // زبان تولید محتوای برنامه (title/notes) — رکوردهای قدیمی «fa»؛ هرگز بازنویسی نمی‌شوند
+  contentLocale   String   @default("fa")
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
   user            user     @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -244,6 +246,8 @@ model NutritionPlan {
   caution          Boolean  @default(false) // حالت احتیاط (زیر ۱۸ یا بارداری) — بدون هدف کالری کاهشی
   status           String   @default("active") // active | archived
   engineVersion    String // نسخه موتور هنگام تولید
+  // زبان تولید محتوای برنامه (title/notes/هشدارها) — رکوردهای قدیمی «fa»؛ هرگز بازنویسی نمی‌شوند
+  contentLocale    String   @default("fa")
   foodsVersion     String // نسخه بانک مواد هنگام تولید
   createdAt        DateTime @default(now())
   updatedAt        DateTime @updatedAt

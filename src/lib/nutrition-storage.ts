@@ -81,6 +81,8 @@ export interface NutritionPlanClient {
   status: "active" | "archived";
   engineVersion: string;
   foodsVersion: string;
+  /** زبان تولید محتوای برنامه — رکوردهای قدیمی «fa» */
+  contentLocale: string;
   createdAt: string;
   updatedAt: string;
   days: NutritionPlanDayClient[];
@@ -97,6 +99,8 @@ export interface NutritionPlanSummaryClient {
   targetKcal: number | null;
   status: "active" | "archived";
   caution: boolean;
+  /** زبان تولید محتوا — رکوردهای قدیمی «fa» */
+  contentLocale: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -169,6 +173,7 @@ export function toClientPlan(plan: PlanRowWithDays): NutritionPlanClient {
     status: marshalStatus(plan.status),
     engineVersion: plan.engineVersion,
     foodsVersion: plan.foodsVersion,
+    contentLocale: plan.contentLocale === "en" ? "en" : "fa",
     createdAt: plan.createdAt.toISOString(),
     updatedAt: plan.updatedAt.toISOString(),
     days: plan.days
@@ -287,6 +292,7 @@ export async function listUserNutritionPlans(
       targetKcal: calc.targetKcal,
       status: marshalStatus(plan.status),
       caution: plan.caution,
+      contentLocale: plan.contentLocale === "en" ? "en" : "fa",
       createdAt: plan.createdAt.toISOString(),
       updatedAt: plan.updatedAt.toISOString(),
     } satisfies NutritionPlanSummaryClient;
@@ -327,7 +333,8 @@ export async function findOwnedNutritionPlan(
 export async function saveGeneratedNutritionPlan(
   userId: string,
   settings: NutritionSettings,
-  plan: GeneratedNutritionPlan
+  plan: GeneratedNutritionPlan,
+  contentLocale: "fa" | "en" = "fa"
 ): Promise<NutritionPlanClient> {
   const saved = await db.$transaction(async (tx) => {
     await tx.nutritionPlan.updateMany({
@@ -346,6 +353,7 @@ export async function saveGeneratedNutritionPlan(
         status: "active",
         engineVersion: NUTRITION_ENGINE_VERSION,
         foodsVersion: FOODS_VERSION,
+        contentLocale,
         days: {
           create: plan.days.map((day) => ({
             order: day.order,

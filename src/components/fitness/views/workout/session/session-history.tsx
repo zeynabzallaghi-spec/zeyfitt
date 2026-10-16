@@ -39,6 +39,7 @@ import {
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { useLocale, useDir } from "@/lib/i18n/locale";
+import { sessionTitleLabel } from "@/lib/i18n/engine-content";
 import { useStrings } from "@/lib/i18n/use-strings";
 import { workoutStrings } from "@/lib/i18n/sections/workout";
 import { localeFullLabel } from "@/lib/i18n/format";
@@ -212,7 +213,7 @@ function HistoryRow({
           </span>
           <div className="min-w-0 flex-1">
             <div className="flex flex-wrap items-center gap-2">
-              <p className="truncate text-xs font-bold text-foreground">{session.title}</p>
+              <p className="truncate text-xs font-bold text-foreground">{sessionTitleLabel(session.title, locale)}</p>
               <StatusChip status={session.status} />
             </div>
             <p className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-0.5 text-[10px] text-muted-foreground">

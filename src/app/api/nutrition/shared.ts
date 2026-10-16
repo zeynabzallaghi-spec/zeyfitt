@@ -69,13 +69,38 @@ export function missingEstimateLabels(
   return missing;
 }
 
-/** پاسخ استاندارد کمبود اطلاعات برآورد */
+/** کلیدهای پایدار کمبودها — UI از این‌ها ترجمه می‌سازد، نه از متن سرور */
+export function missingEstimateKeys(
+  profile: ProfileEstimateFields,
+  estimate: EstimateInfo | null
+): string[] {
+  const keys: string[] = [];
+  const has = (v: number | null) => Boolean(v && v > 0);
+  if (!estimate) {
+    if (!has(profile.age)) keys.push("age");
+    if (!has(profile.heightCm)) keys.push("heightCm");
+    if (!has(profile.weightKg)) keys.push("weightKg");
+    return keys;
+  }
+  if (!has(estimate.age)) keys.push("age");
+  if (!has(estimate.heightCm)) keys.push("heightCm");
+  if (!has(estimate.weightKg)) keys.push("weightKg");
+  return keys;
+}
+
+/** پاسخ استاندارد کمبود اطلاعات برآورد — متن به‌علاوه کلیدهای پایدار */
 export function insufficientDataResponse(missing: string[]): NextResponse {
+  const ESTIMATE_LABEL_TO_KEY: Record<string, string> = {
+    "سن": "age",
+    "قد": "heightCm",
+    "وزن": "weightKg",
+  };
   return NextResponse.json(
     {
       error: "INSUFFICIENT_DATA",
       message: `برای برآورد کالری شخصی، این اطلاعات لازم است: ${missing.join("، ")}.`,
       missing,
+      missingKeys: missing.map((label) => ESTIMATE_LABEL_TO_KEY[label] ?? label),
     },
     { status: 422 }
   );
