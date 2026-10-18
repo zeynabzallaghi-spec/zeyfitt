@@ -14,6 +14,9 @@ import {
   Box,
   CalendarCheck2,
   FileText,
+  KeyRound,
+  MailCheck,
+  Info,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -137,6 +140,145 @@ function ErrorBanner({ message }: { message: string }) {
   );
 }
 
+/* --------------------------- دیالوگ بازیابی رمز عبور --------------------------- */
+
+interface ForgotResult {
+  delivery: "email" | "sandbox-link";
+  resetUrl?: string;
+}
+
+function ForgotPasswordDialog() {
+  const t = useStrings(authStrings);
+  const [open, setOpen] = useState(false);
+  const [email, setEmail] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [result, setResult] = useState<ForgotResult | null>(null);
+
+  const resetState = () => {
+    setEmail("");
+    setError(null);
+    setResult(null);
+    setSubmitting(false);
+  };
+
+  const handleOpenChange = (next: boolean) => {
+    setOpen(next);
+    if (!next) resetState(); // هر بار باز شدن، جریان تازه
+  };
+
+  const handleSubmit = async (event: React.FormEvent) => {
+    event.preventDefault();
+    if (submitting) return;
+    if (!EMAIL_PATTERN.test(normalizeEmail(email))) {
+      setError(t.invalidEmail);
+      return;
+    }
+    setSubmitting(true);
+    setError(null);
+    try {
+      const res = await fetch("/api/auth/forgot-password", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: normalizeEmail(email) }),
+      });
+      const data: { status?: boolean; delivery?: ForgotResult["delivery"]; resetUrl?: string } | null =
+        await res.json().catch(() => null);
+      if (res.status === 429) {
+        setError(t.forgotRateLimited);
+        return;
+      }
+      if (!res.ok || !data?.status || !data.delivery) {
+        setError(t.resetGenericError);
+        return;
+      }
+      setResult({ delivery: data.delivery, resetUrl: data.resetUrl });
+    } catch {
+      setError(t.networkError);
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={handleOpenChange}>
+      <DialogTrigger asChild>
+        <button
+          type="button"
+          className="mx-auto flex items-center gap-1.5 text-xs font-semibold text-primary underline-offset-4 hover:underline outline-none focus-visible:ring-2 focus-visible:ring-ring/60 rounded"
+        >
+          <KeyRound className="size-3.5" aria-hidden="true" />
+          {t.forgotLink}
+        </button>
+      </DialogTrigger>
+      <DialogContent className="sm:max-w-md">
+        <DialogHeader>
+          <DialogTitle className="text-start">{t.forgotDialogTitle}</DialogTitle>
+          <DialogDescription className="text-start">{t.forgotDialogDescription}</DialogDescription>
+        </DialogHeader>
+
+        {!result ? (
+          <form onSubmit={handleSubmit} noValidate className="flex flex-col gap-4">
+            {error && <ErrorBanner message={error} />}
+            <div className="flex flex-col gap-1.5">
+              <Label htmlFor="forgot-email" className="text-xs font-semibold text-foreground/90">
+                {t.emailLabel}
+              </Label>
+              <Input
+                id="forgot-email"
+                type="email"
+                dir="ltr"
+                className="text-start"
+                placeholder="you@example.com"
+                value={email}
+                onChange={(event) => setEmail(event.target.value)}
+                autoComplete="email"
+                aria-invalid={error !== null}
+              />
+            </div>
+            <Button type="submit" disabled={submitting} className="h-10 font-bold text-primary-foreground glow-lime-sm">
+              {submitting ? (
+                <Loader2 className="size-4 animate-spin" aria-hidden="true" />
+              ) : (
+                <KeyRound className="size-4" aria-hidden="true" />
+              )}
+              {submitting ? t.forgotSubmitting : t.forgotSubmit}
+            </Button>
+          </form>
+        ) : result.delivery === "sandbox-link" && result.resetUrl ? (
+          <div className="flex flex-col gap-4">
+            <div
+              role="status"
+              className="flex items-start gap-2.5 rounded-xl border border-amber-500/30 bg-amber-500/10 p-3 text-xs font-medium leading-6 text-amber-600 dark:text-amber-400"
+            >
+              <Info className="mt-0.5 size-4 shrink-0" aria-hidden="true" />
+              <div className="space-y-1">
+                <p className="font-bold">{t.forgotSandboxTitle}</p>
+                <p className="leading-6">{t.forgotSandboxBody}</p>
+              </div>
+            </div>
+            <a
+              href={result.resetUrl}
+              className="flex h-10 items-center justify-center gap-2 rounded-md bg-primary font-bold text-sm text-primary-foreground transition-colors hover:bg-primary/90 glow-lime-sm"
+            >
+              <KeyRound className="size-4" aria-hidden="true" />
+              {t.forgotSandboxOpen}
+            </a>
+          </div>
+        ) : (
+          <div
+            role="status"
+            className="flex items-start gap-2.5 rounded-xl border border-primary/30 bg-primary/10 p-3 text-xs font-medium leading-6 text-foreground"
+          >
+            <MailCheck className="mt-0.5 size-4 shrink-0 text-primary" aria-hidden="true" />
+            <span>{t.forgotSentGeneric}</span>
+          </div>
+        )}
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 /* --------------------------------- فرم ورود --------------------------------- */
 
 function LoginForm() {
@@ -238,6 +380,8 @@ function LoginForm() {
         )}
         {submitting ? t.loginSubmitting : t.loginSubmit}
       </Button>
+
+      <ForgotPasswordDialog />
 
       <p className="flex items-start gap-1.5 text-[10px] leading-5 text-muted-foreground/70">
         <ShieldCheck className="mt-0.5 size-3.5 shrink-0" aria-hidden="true" />

@@ -37,6 +37,29 @@ export interface AuthStrings {
   loginSubmit: string;
   loginSubmitting: string;
   loginHint: string;
+  // بازیابی رمز عبور — دیالوگ فراموشی در فرم ورود
+  forgotLink: string;
+  forgotDialogTitle: string;
+  forgotDialogDescription: string;
+  forgotSubmit: string;
+  forgotSubmitting: string;
+  forgotSentGeneric: string;
+  forgotSandboxTitle: string;
+  forgotSandboxBody: string;
+  forgotSandboxOpen: string;
+  forgotRateLimited: string;
+  // صفحه تنظیم رمز جدید (/reset-password)
+  resetPageTitle: string;
+  resetCardTitle: string;
+  resetCardSubtitle: string;
+  newPasswordLabel: string;
+  resetSubmit: string;
+  resetSubmitting: string;
+  resetSuccessTitle: string;
+  resetSuccessBody: string;
+  backToLogin: string;
+  resetInvalidToken: string;
+  resetGenericError: string;
   // فرم ثبت‌نام
   nameLabel: string;
   namePlaceholder: string;
@@ -98,7 +121,32 @@ const FA: AuthStrings = {
   loginSubmit: "ورود به حساب",
   loginSubmitting: "در حال ورود…",
   loginHint:
-    "تأیید ایمیل و بازیابی رمز عبور هنوز فعال نیست و در مراحل بعدی اضافه می‌شود؛ در این نسخه برای بازیابی دسترسی با پشتیبانی هماهنگ شوید.",
+    "رمز عبور خود را فراموش کرده‌اید؟ در فرم ورود روی «رمز عبور را فراموش کرده‌اید؟» بزنید تا لینک بازیابی برایتان صادر شود.",
+  forgotLink: "رمز عبور را فراموش کرده‌اید؟",
+  forgotDialogTitle: "بازیابی رمز عبور",
+  forgotDialogDescription: "ایمیل حساب خود را وارد کنید تا لینک بازیابی رمز برایتان صادر شود.",
+  forgotSubmit: "صدور لینک بازیابی",
+  forgotSubmitting: "در حال صدور…",
+  forgotSentGeneric:
+    "اگر این ایمیل در سیستم ثبت شده باشد، لینک بازیابی برایتان ارسال شد؛ صندوق ورودی و پوشه هرزنامه را بررسی کنید.",
+  forgotSandboxTitle: "حالت بدون ایمیل (محیط ابری فعلی)",
+  forgotSandboxBody:
+    "ارسال ایمیل در این محیط هنوز پیکربندی نشده است؛ به‌جای ارسال، لینک بازیابی مستقیم در همین‌جا در دسترس است. پس از تنظیم سرویس ایمیل، همین جریان به‌صورت ایمیل واقعی ارسال می‌شود.",
+  forgotSandboxOpen: "تنظیم رمز عبور جدید",
+  forgotRateLimited: "تعداد درخواست‌ها زیاد است؛ لطفاً یک دقیقه بعد دوباره امتحان کنید.",
+  resetPageTitle: "بازیابی رمز عبور | AI Fitness Coach",
+  resetCardTitle: "تنظیم رمز عبور جدید",
+  resetCardSubtitle:
+    "رمز تازه‌ای برای حساب خود انتخاب کنید؛ پس از ثبت، همه نشست‌های فعال از سایر دستگاه‌ها هم خارج می‌شوند.",
+  newPasswordLabel: "رمز عبور جدید",
+  resetSubmit: "ثبت رمز جدید",
+  resetSubmitting: "در حال ثبت…",
+  resetSuccessTitle: "رمز عبور با موفقیت تغییر کرد",
+  resetSuccessBody: "حالا می‌توانید با رمز جدید وارد حساب شوید.",
+  backToLogin: "بازگشت به صفحه ورود",
+  resetInvalidToken:
+    "لینک بازیابی نامعتبر یا منقضی شده است؛ لطفاً دوباره درخواست بازیابی بدهید.",
+  resetGenericError: "عملیات انجام نشد؛ لطفاً دوباره تلاش کنید.",
   nameLabel: "نام نمایشی",
   namePlaceholder: "مثلاً علی رضایی",
   confirmPasswordLabel: "تکرار رمز عبور",
@@ -161,7 +209,32 @@ const EN: AuthStrings = {
   loginSubmit: "Sign in",
   loginSubmitting: "Signing in…",
   loginHint:
-    "Email verification and password recovery are not available yet and will be added in later stages; in this version, contact support to regain access.",
+    "Forgot your password? Use the “Forgot your password?” option in the sign-in form and a recovery link will be issued for you.",
+  forgotLink: "Forgot your password?",
+  forgotDialogTitle: "Password recovery",
+  forgotDialogDescription: "Enter your account email and a recovery link will be issued for you.",
+  forgotSubmit: "Issue recovery link",
+  forgotSubmitting: "Issuing…",
+  forgotSentGeneric:
+    "If this email is registered, a recovery link has been sent; check your inbox and spam folder.",
+  forgotSandboxTitle: "No-email mode (current cloud sandbox)",
+  forgotSandboxBody:
+    "Email delivery is not configured in this environment yet; instead of sending, the recovery link is shown right here. Once an email service is configured, the same flow is delivered by real email.",
+  forgotSandboxOpen: "Set a new password",
+  forgotRateLimited: "Too many requests; please try again in a minute.",
+  resetPageTitle: "Password recovery | AI Fitness Coach",
+  resetCardTitle: "Set a new password",
+  resetCardSubtitle:
+    "Choose a fresh password for your account; after saving, all active sessions on other devices are signed out.",
+  newPasswordLabel: "New password",
+  resetSubmit: "Save new password",
+  resetSubmitting: "Saving…",
+  resetSuccessTitle: "Password changed successfully",
+  resetSuccessBody: "You can now sign in with your new password.",
+  backToLogin: "Back to sign in",
+  resetInvalidToken:
+    "This recovery link is invalid or has expired; please request a new one.",
+  resetGenericError: "The operation failed; please try again.",
   nameLabel: "Display name",
   namePlaceholder: "e.g. Ali Rezaei",
   confirmPasswordLabel: "Confirm password",

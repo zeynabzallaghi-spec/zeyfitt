@@ -3,6 +3,7 @@ import { APIError, createAuthMiddleware } from "better-auth/api";
 import { betterAuth } from "better-auth";
 import { prismaAdapter } from "better-auth/adapters/prisma";
 import { db } from "@/lib/db";
+import { sendResetPasswordEmail } from "@/lib/email";
 
 /**
  * پیکربندی احراز هویت با کتابخانه better-auth:
@@ -22,6 +23,12 @@ export const auth = betterAuth({
     minPasswordLength: 8,
     maxPasswordLength: 128,
     autoSignIn: true,
+    /** بازیابی رمز عبور: توکن یک‌بارمصرف با اعتبار ۱ ساعت (جدول verification) */
+    resetPasswordTokenExpiresIn: 60 * 60,
+    /** پس از تغییر موفق رمز، همهٔ نشست‌های فعال کاربر باطل می‌شوند */
+    revokeSessionsOnPasswordReset: true,
+    /** ارسال ایمیل بازیابی — با حالت بدون ایمیل در src/lib/email.ts */
+    sendResetPassword: sendResetPasswordEmail,
     password: {
       hash: async (password: string) => bcrypt.hash(password, 12),
       verify: async ({ password, hash }: { password: string; hash: string }) =>
@@ -41,6 +48,8 @@ export const auth = betterAuth({
     customRules: {
       "/sign-in/email": { window: 60, max: 5 },
       "/sign-up/email": { window: 60, max: 5 },
+      "/request-password-reset": { window: 60, max: 5 },
+      "/reset-password": { window: 60, max: 5 },
     },
   },
 
@@ -93,12 +102,18 @@ export const auth = betterAuth({
         if (typeof body?.email === "string") {
           body.email = body.email.trim().toLowerCase();
         }
-        // سیاست پیچیدگی رمز عبور: حداقل ۸ کاراکتر (در پیکربندی) + حداقل یک حرف و یک رقم
-        if (ctx.path === "/sign-up/email" && typeof body?.password === "string") {
-          const pw = body.password;
-          if (!(/[A-Za-z]/.test(pw) && /[0-9]/.test(pw))) {
-            throw new APIError("BAD_REQUEST", { message: "PASSWORD_POLICY" });
-          }
+      }
+      // سیاست پیچیدگی رمز عبور: حداقل ۸ کاراکتر (در پیکربندی) + حداقل یک حرف و یک رقم
+      // — هم برای ثبت‌نام (password) و هم برای بازیابی رمز (newPassword)
+      const newPassword =
+        ctx.path === "/reset-password"
+          ? (ctx.body as { newPassword?: unknown })?.newPassword
+          : ctx.path === "/sign-up/email"
+            ? (ctx.body as { password?: unknown })?.password
+            : undefined;
+      if (typeof newPassword === "string") {
+        if (!(/[A-Za-z]/.test(newPassword) && /[0-9]/.test(newPassword))) {
+          throw new APIError("BAD_REQUEST", { message: "PASSWORD_POLICY" });
         }
       }
     }),
