@@ -674,3 +674,29 @@ Stage Summary:
 - git push/pull عادی با origin اکنون با توکن فعال کار می‌کند؛ main و origin/main همگام‌اند
 - توصیه امنیتی تکرارشده: توکن به‌صورت متنی در چت به‌اشتراک گذاشته شده — پس از اطمینان از عملیات، تعویض آن توصیه می‌شود
 - وضعیت: متوقف و در انتظار دستور بعدی کاربر
+
+---
+Task ID: 19
+Agent: Super Z (main agent)
+Task: برطرفی دائمی خرابی لینک سایت/پریویو (502/عدم دسترسی) + از دست رفتن مکرر دیتابیس و secret در بازیافت سندباکس
+
+Work Log:
+- تشخیص ورودی: سرور مرده (پورت 3000 بی‌پاسخ)، BETTER_AUTH_SECRET از .env حذف، db/custom.db اسکلت خالی، backups/ حذف — سومین بازیافت کانتینر (بوت 2026-10-18 05:59 UTC از repo.tar مورخ 10-17 20:26)
+- معماری بوت پلتفرم کشف و مستند شد: start.sh → بازیابی repo.tar (فاقد db/ و .env واقعی و node_modules — با tar tf راستی‌آزمایی شد) → بازنویسی .env به فقط DATABASE_URL → چون .zscripts/dev.sh وجود دارد اجرایش می‌کند (در subshell پس‌زمینه) → Caddy روی :81 به‌عنوان ingress FC → آپ‌استریم :3000
+- ریشه‌ی خرابی: dev.sh قدیمی سرور را با `bun run dev &` + disown اجرا و خارج می‌شد؛ سندباکس همه پروسس‌های زیرگروه subshell بوت را پس از خروج می‌کشد (disown فقط جدول job شل را ویرایش می‌کند و محافظت نمی‌کند) → سرور چند ثانیه پس از هر بوت می‌مرد → :81 چهل‌وپنج‌ثانیه‌ای 502 → لینک preview «عدم دسترسی» تا استارت دستی عامل؛ همین چرخه در بازیافت‌های قبل هم تکرار شده بود
+- ایراد ثانویه: `bun run db:push` قدیمی معادل `prisma db push --accept-data-loss` است (خطرناک برای داده) و هیچ ترمیمی برای secret/DB نداشت
+- لینک publish (r1dpd8r3xpk1-d.space-z.ai) زیرساخت FC جداگانه با snapshot دیتابیسِ لحظه push است (مطابق ثبت ops-fix-2) — مستقل از سلامت سندباکس پاسخ می‌دهد؛ لینک preview = همین سندباکس زنده
+- بازیابی فوری داده: blob مؤقت 99c5b10 (آخرین commit حاوی DB = 889a89e، وضعیت پایه تأییدشده) → integrity ok + fk 0 + ۴ کاربر/۴ حساب/۵ نشست/۴ پروفایل/۱ گفت‌وگوی ۸ پیامی؛ مهاجرت additive ستون‌های contentLocale با prisma db push بدون accept-data-loss؛ BETTER_AUTH_SECRET جدید (نشست‌های قبلی باطل — کاربران دوباره وارد می‌شوند)؛ اسنپ‌شات پیش/پس از بازیابی در backups/
+- راه‌حل دائمی — سه فایل در مخزن (با repo.tar بعدی هم منتقل می‌شود):
+  * scripts/ensure-app.sh (جدید): self-heal غیرمخرب — تضمین DATABASE_URL/BETTER_AUTH_SECRET در .env؛ بازیابی DB فقط هنگام ویران‌شدن قابل‌اثبات (فایل غایب/empty، integrity ≠ ok، یا غیبت جدول‌های هسته FitnessProfile/WorkoutPlan/NutritionPlan) از جدیدترین منبع سالم (بکاپ محلی تأییدشده → برنچ data-checkpoints → blob تاریخی گیت) با راستی‌آزمایی integrity+schema قبل از اعتماد؛ prisma db push همیشه بدون accept-data-loss (در drift مخرب خطا می‌دهد و از بین نمی‌برد)؛ اسنپ‌شات چرخشی keep-5؛ DB کامل ولی خالی هرگز بازنویسی نمی‌شود (احترام به حذف عمدی داده)
+  * .zscripts/dev.sh (بازنویسی کامل، نقطه بوت پلتفرم): گارد idempotency (سرور سالم → خروج فوری)، bun install با timeout 600 و بدون شکستن بوت، فراخوانی ensure-app، استارت سرور از طریق scripts/daemon-start.py (double-fork + setsid — بقا در برابر kill زیرگروه؛ همان روش اثبات‌شده فازهای قبل)، انتظار تا ۱۲۰ ثانیه + health check، همیشه exit 0
+  * scripts/db-checkpoint.sh (جدید): پیش‌چک سخت‌گیرانه (integrity+fk+schema) → اسنپ‌شات محلی → commit با git plumbing (hash-object/mktree/commit-tree/update-ref) روی برنچ اختصاصی data-checkpoints بدون هیچ لمسی به worktree/index (git status تمیز می‌ماند و DB زنده هرگز تصادفی commit نمی‌شود) → push به ریموت خصوصی
+- اجرای واقعی و راستی‌آزمایی: dev.sh جدید end-to-end (heal 1s + SERVER_READY پس از 12.1s)؛ بقا سرور بین tool-callها تأیید (حالت خرابی قبلی)؛ :81 → 200؛ هر دو URL عمومی 200؛ مرورگر واقعی روی preview: عنوان فارسی، فرم ورود/ثبت‌نام RTL، سوییچ زبان، بدون خطای صفحه؛ اسکرین‌شات download/p19-preview-public-ok.png
+- checkpoint اول روی برنچ data-checkpoints پوش شد (12c816d؛ users=4؛ integrity ok)
+
+Stage Summary:
+- هر دو لینک عمومی سالم: preview = نمونه زنده با دیتابیس بازیابی‌شده؛ publish = استقرار جدا با snapshot push (در push بعدی به‌روز می‌شود)
+- چرخه جدید بازیافت کانتینر (بدون نیاز به عامل انسانی): start.sh → dev.sh جدید → heal خودکار env+DB → سرور daemon زنده → preview خودکار بالا می‌آید
+- محدودیت صادقانه: داده‌های ساخته‌شده بین دو checkpoint در صورت بازیافت کانتینر قابل بازیابی نیستند؛ اجرای دوره‌ای scripts/db-checkpoint.sh (پیشنهاد: پایان هر نشست کاری) پنجره ریسک را کوچک می‌کند
+- نکته حریم خصوصی (شفاف): DB شامل ایمیل‌های واقعی فقط روی برنچ data-checkpoints ریپوی خصوصی خود کاربر نوشته می‌شود — سابقه مشابه: blob موجود در تاریخچه 889a89e؛ در صورت عدم تمایل، برنچ قابل حذف و مکانیزم قابل خاموش‌کردن است
+- وضعیت: خرابی دائمی برطرف شد — متوقف و در انتظار دستور بعدی کاربر
