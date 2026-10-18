@@ -19,6 +19,8 @@ import { WorkoutView } from "./views/workout/workout-view";
 import { NutritionView } from "./views/nutrition-view";
 import { ProgressView } from "./views/progress-view";
 import { AssistantView } from "./views/assistant-view";
+import { CoachesView } from "./views/coaches-view";
+import { CoachPanelView } from "./views/coach-panel-view";
 import { ProfileView } from "./views/profile-view";
 
 /** محتوای کامل نوار کناری — در دسکتاپ و منوی موبایل مشترک است */
@@ -72,6 +74,10 @@ function ActiveView() {
       return <ProgressView />;
     case "assistant":
       return <AssistantView />;
+    case "coaches":
+      return <CoachesView />;
+    case "coachPanel":
+      return <CoachPanelView />;
     case "profile":
       return <ProfileView />;
     default:

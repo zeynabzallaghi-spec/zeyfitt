@@ -28,6 +28,15 @@ export interface SharedStrings {
   allergyLabel: (value: string) => string;
   /** مقدار ناشناخته — به‌جای نمایش خام داده فنی */
   unknownValue: string;
+  // —— مرحله ۱۵: برچسب‌های مشترک اشتراک/مربی ——
+  /** برچسب سطح اشتراک — مقدار پایدار FREE | PREMIUM */
+  planTierLabel: (value: string) => string;
+  /** برچسب نوع همکاری — مقدار پایدار SEMI_PRIVATE | PRIVATE */
+  cooperationTypeLabel: (value: string) => string;
+  /** توضیح کوتاه نوع همکاری */
+  cooperationTypeHint: (value: string) => string;
+  /** برچسب تخصص مربی — کد پایدار */
+  specializationLabel: (value: string) => string;
 }
 
 const FA: SharedStrings = {
@@ -84,6 +93,32 @@ const FA: SharedStrings = {
   allergyLabel: (value) =>
     ({ dairy: "لبنیات", gluten: "گلوتن", nuts: "آجیل", seafood: "غذای دریایی", egg: "تخم‌مرغ" } as Record<string, string>)[value] ?? value,
   unknownValue: "—",
+  planTierLabel: (value) =>
+    ({ FREE: "رایگان", PREMIUM: "ویژه" } as Record<string, string>)[value] ?? value,
+  cooperationTypeLabel: (value) =>
+    ({ SEMI_PRIVATE: "نیمه‌خصوصی", PRIVATE: "خصوصی" } as Record<string, string>)[value] ?? value,
+  cooperationTypeHint: (value) =>
+    (
+      {
+        SEMI_PRIVATE:
+          "مربی برنامه استانداردشده ارائه میدهد و پیشرفت شما را پایش میکند",
+        PRIVATE:
+          "همکاری خصوصی با پشتیبانی نزدیکتر؛ تمرین آنلاین زنده در مراحل آینده",
+      } as Record<string, string>
+    )[value] ?? "",
+  specializationLabel: (value) =>
+    (
+      {
+        strength: "قدرت",
+        hypertrophy: "عضله‌سازی",
+        fat_loss: "کاهش چربی",
+        endurance: "استقامت",
+        mobility: "تحرک و انعطاف",
+        rehab: "توانبخشی و بازگشت به تمرین",
+        nutrition_coaching: "مشاوره تغذیه",
+        functional: "تمرین کارکردی",
+      } as Record<string, string>
+    )[value] ?? value,
 };
 
 const EN: SharedStrings = {
@@ -140,6 +175,32 @@ const EN: SharedStrings = {
   allergyLabel: (value) =>
     ({ dairy: "Dairy", gluten: "Gluten", nuts: "Nuts", seafood: "Seafood", egg: "Egg" } as Record<string, string>)[value] ?? value,
   unknownValue: "—",
+  planTierLabel: (value) =>
+    ({ FREE: "Free", PREMIUM: "Premium" } as Record<string, string>)[value] ?? value,
+  cooperationTypeLabel: (value) =>
+    ({ SEMI_PRIVATE: "Semi-private", PRIVATE: "Private" } as Record<string, string>)[value] ?? value,
+  cooperationTypeHint: (value) =>
+    (
+      {
+        SEMI_PRIVATE:
+          "The coach provides standardized plans and monitors your progress",
+        PRIVATE:
+          "Private cooperation with closer support; live online sessions in later stages",
+      } as Record<string, string>
+    )[value] ?? "",
+  specializationLabel: (value) =>
+    (
+      {
+        strength: "Strength",
+        hypertrophy: "Hypertrophy",
+        fat_loss: "Fat loss",
+        endurance: "Endurance",
+        mobility: "Mobility and flexibility",
+        rehab: "Rehab and return to training",
+        nutrition_coaching: "Nutrition coaching",
+        functional: "Functional training",
+      } as Record<string, string>
+    )[value] ?? value,
 };
 
 const STRINGS: Record<Locale, SharedStrings> = { fa: FA, en: EN };

@@ -53,6 +53,14 @@ export interface ProfileStrings {
   sectionLimitations: string;
   sectionDiet: string;
   sectionAccount: string;
+  // اشتراک دانشجو — مرحله ۱۵
+  sectionSubscription: string;
+  subscriptionFreeNote: string;
+  subscriptionPremiumNote: string;
+  subscriptionExpiredNote: string;
+  subscriptionSourceManual: string;
+  subscriptionExpiresOn: string;
+  subscriptionNoExpiry: string;
   // فیلدهای اطلاعات پایه
   labelDisplayName: string;
   placeholderDisplayName: string;
@@ -148,6 +156,13 @@ const FA: ProfileStrings = {
   sectionLimitations: "محدودیت‌های حرکتی و آسیب‌ها",
   sectionDiet: "ترجیحات غذایی",
   sectionAccount: "حساب کاربری و امنیت",
+  sectionSubscription: "اشتراک من",
+  subscriptionFreeNote: "شما روی پلن رایگان هستید؛ امکانات پایه شامل دستیار هوشمند، برنامه‌ساز و کتابخانه حرکات فعال است.",
+  subscriptionPremiumNote: "اشتراک ویژه شما فعال است؛ ارسال درخواست ارتباط با مربی برای شما باز است.",
+  subscriptionExpiredNote: "اشتراک ویژه شما منقضی شده است؛ سطح فعلی شما رایگان است.",
+  subscriptionSourceManual: "اعطای دستی توسط مدیریت — بدون درگاه پرداخت در این مرحله",
+  subscriptionExpiresOn: "تاریخ انقضا",
+  subscriptionNoExpiry: "بدون تاریخ انقضای مشخص",
   labelDisplayName: "نام نمایشی",
   placeholderDisplayName: "مثلاً علی",
   labelAge: "سن",
@@ -242,6 +257,13 @@ const EN: ProfileStrings = {
   sectionLimitations: "Movement limitations & injuries",
   sectionDiet: "Dietary preferences",
   sectionAccount: "Account & security",
+  sectionSubscription: "My subscription",
+  subscriptionFreeNote: "You are on the Free plan; base features including the AI assistant, plan builders, and the exercise library are active.",
+  subscriptionPremiumNote: "Your Premium subscription is active; sending coach connection requests is unlocked for you.",
+  subscriptionExpiredNote: "Your Premium subscription has expired; your current tier is Free.",
+  subscriptionSourceManual: "Manually granted by the administration — no payment gateway in this stage",
+  subscriptionExpiresOn: "Expires on",
+  subscriptionNoExpiry: "No specific expiry date",
   labelDisplayName: "Display name",
   placeholderDisplayName: "e.g. Ali",
   labelAge: "Age",

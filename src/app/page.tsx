@@ -30,6 +30,11 @@ export default async function Home() {
         id: session.user.id,
         name: session.user.name,
         email: session.user.email,
+        // نقش نمایشی از نشست — تصمیم مجوز همیشه سمت سرور با بازخوانی DB
+        role:
+          typeof (session.user as { role?: unknown }).role === "string"
+            ? ((session.user as { role: string }).role as string)
+            : "STUDENT",
       };
       const row = await db.fitnessProfile.findUnique({
         where: { userId: session.user.id },

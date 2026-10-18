@@ -1,6 +1,6 @@
 "use client";
 
-import { CURRENT_STAGE, NAV_ITEMS } from "@/lib/nav";
+import { CURRENT_STAGE, navItemsForRole } from "@/lib/nav";
 import { useAppStore } from "@/store/app-store";
 import { cn } from "@/lib/utils";
 import { Progress } from "@/components/ui/progress";
@@ -8,6 +8,7 @@ import { Dumbbell, Sparkles } from "lucide-react";
 import { useStrings } from "@/lib/i18n/use-strings";
 import { shellStrings } from "@/lib/i18n/sections/shell";
 import { useUiLang } from "@/lib/i18n/locale";
+import { useSessionData } from "./session-context";
 
 /** لوگو و نام برند — استفاده در نوار کناری و منوی موبایل */
 export function BrandMark({ className }: { className?: string }) {
@@ -32,19 +33,22 @@ export function BrandMark({ className }: { className?: string }) {
   );
 }
 
-/** فهرست ناوبری اصلی — ۸ بخش پنل کاربری */
+/** فهرست ناوبری اصلی — بخش‌های مجاز برای نقش کاربر جاری */
 export function SidebarNav() {
   const activeView = useAppStore((s) => s.activeView);
   const setActiveView = useAppStore((s) => s.setActiveView);
   const t = useStrings(shellStrings);
   const { locale } = useUiLang();
+  const { user } = useSessionData();
+  // فیلتر نمایشی سمت کلاینت؛ مجوز واقعی هر عملیات سمت سرور بررسی می‌شود
+  const items = navItemsForRole(user?.role ?? "STUDENT");
 
   return (
     <nav aria-label={t.navAria} className="flex flex-col gap-1">
       <p className="px-3 pb-2 text-[10px] font-bold tracking-wide text-muted-foreground/60">
         {t.sectionsLabel}
       </p>
-      {NAV_ITEMS.map((item) => {
+      {items.map((item) => {
         const Icon = item.icon;
         const active = activeView === item.id;
         const primary = locale === "fa" ? item.fa : item.en;

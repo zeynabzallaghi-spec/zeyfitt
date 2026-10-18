@@ -85,6 +85,57 @@ export const API_ERROR_LABELS: Record<string, Bi> = {
     fa: "سرویس دستیار درخواست را نپذیرفت؛ بعداً تلاش کنید.",
     en: "The assistant service rejected the request; try again later.",
   },
+
+  /* --------------------- مرحله ۱۵ — ارتباط دانشجو و مربی --------------------- */
+
+  SUBSCRIPTION_REQUIRED: {
+    fa: "ارسال درخواست ارتباط با مربی به اشتراک ویژه (PREMIUM) نیاز دارد.",
+    en: "Sending a coach connection request requires a PREMIUM subscription.",
+  },
+  ROLE_NOT_ALLOWED: {
+    fa: "این عملیات برای نقش حساب شما مجاز نیست.",
+    en: "This action is not allowed for your account role.",
+  },
+  COACH_UNAVAILABLE: {
+    fa: "این مربی در حال حاضر برای درخواست جدید در دسترس نیست.",
+    en: "This coach is not available for new requests right now.",
+  },
+  COOPERATION_TYPE_NOT_OFFERED: {
+    fa: "نوع همکاری انتخابی توسط این مربی ارائه نمی‌شود.",
+    en: "The selected cooperation type is not offered by this coach.",
+  },
+  COACH_NO_LONGER_ELIGIBLE: {
+    fa: "مربی در لحظه اجرای عملیات دیگر واجد شرایط نبود؛ وضعیت تازه را ببینید.",
+    en: "The coach was no longer eligible when the action ran; check the fresh status.",
+  },
+  CONNECTION_ALREADY_OPEN: {
+    fa: "شما یک درخواست یا ارتباط باز با این مربی دارید.",
+    en: "You already have an open request or connection with this coach.",
+  },
+  TOO_MANY_OPEN_REQUESTS: {
+    fa: "سقف درخواست‌های باز هم‌زمان شما پر است؛ ابتدا یکی را لغو کنید.",
+    en: "You have reached your cap of simultaneous open requests; cancel one first.",
+  },
+  CONNECTION_NOT_FOUND: {
+    fa: "این درخواست یا ارتباط یافت نشد یا به شما تعلق ندارد.",
+    en: "This request or connection was not found, or does not belong to you.",
+  },
+  INVALID_TRANSITION: {
+    fa: "وضعیت این درخواست در همین لحظه تغییر کرده است؛ فهرست را به‌روز کنید.",
+    en: "This request's status has just changed; please refresh the list.",
+  },
+  PROFILE_INCOMPLETE: {
+    fa: "اطلاعات عمومی پروفایل کامل نیست؛ حداقل اطلاعات لازم را تکمیل کنید.",
+    en: "Your public profile is incomplete; fill in the minimum required information.",
+  },
+  NOT_VERIFIED: {
+    fa: "حساب مربی شما هنوز تأیید نشده است.",
+    en: "Your coach account is not verified yet.",
+  },
+  APPLICATION_ALREADY_OPEN: {
+    fa: "شما یک درخواست مربی‌گری در جریان دارید.",
+    en: "You already have a coach application in progress.",
+  },
 };
 
 /* --------------------------- کدهای خطای موتورها --------------------------- */

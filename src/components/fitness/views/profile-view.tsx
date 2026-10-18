@@ -20,6 +20,7 @@ import {
   CircleCheck,
   Ruler,
   CloudUpload,
+  Crown,
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -61,6 +62,8 @@ import { useSessionData } from "../session-context";
 import { ViewIntro } from "../shared/view-intro";
 import { StageBadge } from "../shared/badges";
 import { Field, ChipToggle, ProfileSection } from "../shared/profile-fields";
+import { PlanTierBadge } from "../shared/badges";
+import { useSubscription } from "@/hooks/use-coaching";
 import { useLocale, useDir } from "@/lib/i18n/locale";
 import { useStrings } from "@/lib/i18n/use-strings";
 import { profileStrings } from "@/lib/i18n/sections/profile";
@@ -386,6 +389,9 @@ export function ProfileView() {
         </div>
       </div>
 
+      {/* اشتراک دانشجو — مقدار فقط از سرور؛ بدون هرگونه دکمه تغییر سطح */}
+      <SubscriptionSection />
+
       {formError && (
         <div
           role="alert"
@@ -692,5 +698,57 @@ export function ProfileView() {
         </p>
       </div>
     </motion.div>
+  );
+}
+
+/**
+ * بخش اشتراک دانشجو — سطح فعلی فقط از API خوانده می‌شود و در این مرحله
+ * هیچ مسیر تغییر سطح (پرداخت/ارتقا) وجود ندارد؛ صادقانه فقط وضعیت نشان
+ * داده می‌شود.
+ */
+function SubscriptionSection() {
+  const t = useStrings(profileStrings);
+  const { subscription, loading, error } = useSubscription(true);
+
+  return (
+    <ProfileSection icon={Crown} title={t.sectionSubscription}>
+      {loading ? (
+        <div className="h-10 animate-pulse rounded-lg border border-border/50 bg-secondary/30" aria-busy="true" aria-live="polite" />
+      ) : error ? (
+        <p className="text-xs leading-6 text-destructive">{error}</p>
+      ) : (
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="min-w-0 flex-1">
+            <p className="text-xs leading-6 text-muted-foreground">
+              {subscription?.expired
+                ? t.subscriptionExpiredNote
+                : subscription?.premium
+                  ? t.subscriptionPremiumNote
+                  : t.subscriptionFreeNote}
+            </p>
+            {subscription?.premium && subscription.source === "manual" && (
+              <p className="mt-1 text-[10px] text-muted-foreground/70">
+                {t.subscriptionSourceManual}
+              </p>
+            )}
+            {subscription?.expiresAt && (
+              <p className="mt-1 text-[10px] text-muted-foreground/70">
+                {t.subscriptionExpiresOn}: <LocaleDate iso={subscription.expiresAt} />
+                {!subscription.expiresAt && t.subscriptionNoExpiry}
+              </p>
+            )}
+            {!subscription?.expiresAt && subscription?.premium && (
+              <p className="mt-1 text-[10px] text-muted-foreground/70">
+                {t.subscriptionNoExpiry}
+              </p>
+            )}
+          </div>
+          <PlanTierBadge
+            tier={subscription?.tier ?? "FREE"}
+            expired={subscription?.expired ?? false}
+          />
+        </div>
+      )}
+    </ProfileSection>
   );
 }

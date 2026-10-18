@@ -7,6 +7,8 @@ import {
   TrendingUp,
   Bot,
   UserRoundCog,
+  Users,
+  ClipboardList,
   type LucideIcon,
 } from "lucide-react";
 
@@ -19,6 +21,8 @@ export type ViewId =
   | "nutrition"
   | "progress"
   | "assistant"
+  | "coaches"
+  | "coachPanel"
   | "profile";
 
 export interface NavItem {
@@ -34,6 +38,8 @@ export interface NavItem {
   stage: number;
   /** فهرست قابلیت‌هایی که در این بخش ساخته خواهد شد */
   features: string[];
+  /** نقش‌های مجاز برای دیدن این بخش — undefined یعنی همه */
+  roles?: ("STUDENT" | "COACH" | "ADMIN")[];
 }
 
 export const NAV_ITEMS: NavItem[] = [
@@ -145,6 +151,38 @@ export const NAV_ITEMS: NavItem[] = [
     ],
   },
   {
+    id: "coaches",
+    fa: "مربیان",
+    en: "Coaches",
+    description: "فهرست عمومی مربیان تأییدشده و مدیریت ارتباط با مربی",
+    descriptionEn:
+      "The public list of verified coaches and your coach connection manager",
+    icon: Users,
+    stage: 15,
+    features: [
+      "مشاهده رایگان پروفایل عمومی مربیان تأییدشده",
+      "نمایش وضعیت اشتراک FREE / PREMIUM",
+      "ارسال درخواست ارتباط برای کاربران اشتراک ویژه",
+      "پیگیری درخواست‌ها و ارتباط فعال با مربی در بخش ارتباط‌های من",
+    ],
+  },
+  {
+    id: "coachPanel",
+    fa: "پنل مربی",
+    en: "Coach Panel",
+    description: "مدیریت پروفایل حرفه‌ای مربی، درخواست‌های دریافتی و دانشجویان فعال",
+    descriptionEn:
+      "Manage the professional coach profile, incoming requests, and active students",
+    icon: ClipboardList,
+    stage: 15,
+    roles: ["COACH"],
+    features: [
+      "ویرایش پروفایل حرفه‌ای و کنترل انتشار عمومی",
+      "بررسی و پاسخ به درخواست‌های ارتباط دریافتی",
+      "فهرست دانشجویان فعال و وضعیت هر ارتباط",
+    ],
+  },
+  {
     id: "profile",
     fa: "پروفایل و تنظیمات",
     en: "Profile & Settings",
@@ -164,6 +202,13 @@ export const NAV_ITEMS: NavItem[] = [
 
 export function getNavItem(id: ViewId): NavItem {
   return NAV_ITEMS.find((item) => item.id === id) ?? NAV_ITEMS[0];
+}
+
+/** فهرست ناوبری مجاز برای یک نقش — فیلتر سمت کلاینت فقط نمایشی است */
+export function navItemsForRole(role: string | null | undefined): NavItem[] {
+  return NAV_ITEMS.filter(
+    (item) => !item.roles || (role !== null && item.roles.includes(role as never))
+  );
 }
 
 /** مرحله جاری توسعه — مرجع واحد برای داشبورد و کارت وضعیت */

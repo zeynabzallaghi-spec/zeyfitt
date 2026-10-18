@@ -29,6 +29,9 @@ model user {
   email         String    @unique
   emailVerified Boolean   @default(false)
   image         String?
+  // نقش کاربر — مرجع تصمیم همیشه سرور/دیتابیس است؛ هرگز از کلاینت پذیرفته نمیشود
+  // STUDENT (پیشفرض امن) | COACH | ADMIN
+  role          String    @default("STUDENT")
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
   sessions      session[]
@@ -40,6 +43,14 @@ model user {
   workoutSessions WorkoutSession[]
   assistantConversations AssistantConversation[]
   foodLogEntries FoodLogEntry[]
+  // مربی‌گری — یکپروگرام درخواست + یکپروفایل منتشرشده
+  coachApplications CoachApplication[]
+  coachProfile      CoachProfile?
+  // اشتراک دانشجو — یک به یک؛ سطح و انقضا فقط سمت سرور مدیریت میشود
+  subscription      StudentSubscription?
+  // ارتباط دانشجو-مربی — دو سر هر ارتباط
+  studentConnections CoachStudentConnection[] @relation("StudentConnection")
+  coachConnections   CoachStudentConnection[] @relation("CoachConnection")
 }
 
 model account {
@@ -502,4 +513,128 @@ model FoodLogEntry {
   @@unique([userId, clientRequestId])
   @@index([userId, localDay])
   @@index([userId, consumedAt])
+}
+
+// ----------------------------------------
+// درخواست مربی‌گری — ورودی کاربر به مسیر مربی شدن
+// ----------------------------------------
+// هر کاربر فقط یک رکورد درخواست دارد؛ وضعیت آن فقط سمت سرور (ابزار مدیریتی
+// امن، نه API عمومی) تغییر میکند. تأیید درخواست، نقش COACH و پروفایل اولیه
+// مربی را میسازد. هیچ سیستم تأیید موازیِ دیگری وجود ندارد.
+
+model CoachApplication {
+  id                 String    @id @default(cuid())
+  userId             String    @unique
+  // pending | approved | rejected
+  status             String    @default("pending")
+  // معرفی خودمتقاضی — اختیاری، سقف طول در لایه اعتبارسنجی
+  message            String?
+  experienceYears    Int?
+  certificationsJson String    @default("[]") // آرایه رشته — مدارک اعلامی متقاضی
+  decidedAt          DateTime?
+  decidedBy          String? // شناسه ادمین/ابزار مدیریتی — فقط ردیابی داخلی
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
+  user               user      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([status, createdAt])
+}
+
+// ----------------------------------------
+// پروفایل حرفه‌ای مربی — یک به یک با user
+// ----------------------------------------
+// دو پرچم جدا از هم:
+//  - verified: تأیید مدیریت (فقط سمت سرور با ابزار امن) — هرگز از کلاینت نمیآید
+//  - published: انتشار عمومی — خود مربی فقط در صورت verified بودن و کامل بودن
+//    حداقل اطلاعات، از طریق API مالکیت‌محور تغییرش میدهد
+// فهرست عمومی مربیان فقط رکوردهای verified+published را نشان میدهد.
+// از دست رفتن تأیید یا انتشار، ارتباطهای قبلی را نمیشکند (تاریخچه حفظ
+// میشود)؛ فقط درخواست جدید مسدود و نمایش در فهرست عمومی متوقف میشود.
+
+model CoachProfile {
+  id                   String   @id @default(cuid())
+  userId               String   @unique
+  displayName          String
+  headline             String? // عنوان حرفه‌ای کوتاه
+  bio                  String? // معرفی حرفه‌ای — سقف طول در اعتبارسنجی
+  specializationsJson  String   @default("[]") // آرایه کد تخصص
+  certificationsJson   String   @default("[]") // آرایه رشته مدارک منتشرشده
+  experienceYears      Int?
+  // انواع همکاری واقعاً ارائهشده: SEMI_PRIVATE | PRIVATE
+  cooperationTypesJson String   @default("[]")
+  verified             Boolean  @default(false)
+  published            Boolean  @default(false)
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+  user                 user     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([verified, published])
+}
+
+// ----------------------------------------
+// اشتراک دانشجو — سطح دسترسی FREE / PREMIUM
+// ----------------------------------------
+// هر کاربر دقیقاً یک رکورد اشتراک دارد (ساخت تنبل با پیشفرض امن FREE در
+// اولین نیاز سمت سرور). در این مرحله هیچ پرداختی وجود ندارد؛ اعطای
+// PREMIUM فقط با ابزار مدیریتی سمت سرور (منبع: manual) انجام میشود و
+// هیچ مسیر کلاینتی نمیتواند tier را تغییر دهد.
+// انقضا: اگر expiresAt در گذشته باشد، سطح مؤثر FREE است (بررسی قطعی و
+// تنبل در هر استفاده — بدون اتکا به حافظه فرایند)؛ رکورد دستنخورده
+// میماند تا وضعیت شفاف بماند.
+// اشتراک هیچ ارتباطی به نقش ندارد: COACH/ADMIN مشمول منطق دانشجو
+// نمیشوند و PREMIUM بودن هیچ مجوز مربی‌گری نمیدهد.
+
+model StudentSubscription {
+  id        String    @id @default(cuid())
+  userId    String    @unique
+  tier      String    @default("FREE") // FREE | PREMIUM
+  status    String    @default("active") // active | cancelled
+  // منبع اعطای سطح — بدون هیچ داده حساس پرداخت
+  source    String    @default("system") // system | manual
+  note      String? // یادداشت شفاف اعطای دستی (بدون داده حساس)
+  startsAt  DateTime  @default(now())
+  // انقضا اختیاری — null یعنی بدون پایان مشخص (پیشفرض FREE)
+  expiresAt DateTime?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  user      user      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([tier, status])
+}
+
+// ----------------------------------------
+// ارتباط دانشجو و مربی — چرخه درخواست تا پایان
+// ----------------------------------------
+// وضعیت‌ها و انتقالهای مجاز (فقط سمت سرور اعتبارسنجی میشود):
+//   PENDING -> ACTIVE    (پذیرش مربی مالک)
+//   PENDING -> REJECTED  (رد مربی مالک + دلیل اختیاری)
+//   PENDING -> CANCELLED (لغو دانشجو مالک)
+//   ACTIVE  -> ENDED     (پایان توسط هر دو طرف با سیاست صریح)
+//   REJECTED/CANCELLED/ENDED ترمینالاند — هیچ درخواست کلاینتی آنها را
+//   تغییر نمیدهد؛ درخواست جدید باید ساخته شود.
+// قید یکتایی «حداکثر یک ارتباط باز (PENDING/ACTIVE) به‌ازای هر جفت
+// دانشجو-مربی» با ایندکس partial سطح SQLite اعمال میشود (پس از db push
+// با scripts/apply-p15-indexes.mjs — همان الگوی جلسه تمرینی).
+// studentId از نشست سرور میآید و coachId فقط بهعنوان شناسه منبع عمومی
+// خوانده و سمت سرور بازبینی میشود؛ هیچکدام از کلاینت معتبر نیستند.
+
+model CoachStudentConnection {
+  id              String    @id @default(cuid())
+  studentId       String
+  coachId         String
+  status          String    @default("PENDING") // PENDING | ACTIVE | REJECTED | CANCELLED | ENDED
+  cooperationType String // SEMI_PRIVATE | PRIVATE — باید از انواع ارائهشده مربی باشد
+  message         String? // معرفی و هدف دانشجو — سقف طول در اعتبارسنجی
+  rejectionReason String? // دلیل رد مربی — اختیاری با سقف طول
+  requestedAt     DateTime  @default(now())
+  decidedAt       DateTime? // زمان تصمیم مربی (پذیرش یا رد)
+  endedAt         DateTime? // زمان لغو یا پایان ارتباط
+  endedBy         String? // «student» | «coach» — کدام طرف ارتباط را پایان داد
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  student         user      @relation("StudentConnection", fields: [studentId], references: [id], onDelete: Cascade)
+  coach           user      @relation("CoachConnection", fields: [coachId], references: [id], onDelete: Cascade)
+
+  @@index([studentId, status, requestedAt])
+  @@index([coachId, status, requestedAt])
 }

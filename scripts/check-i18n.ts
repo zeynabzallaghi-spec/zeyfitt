@@ -42,6 +42,8 @@ import { workoutStrings } from "../src/lib/i18n/sections/workout";
 import { nutritionStrings } from "../src/lib/i18n/sections/nutrition";
 import { assistantStrings } from "../src/lib/assistant/i18n";
 import { foodLogStrings } from "../src/lib/foodlog/i18n";
+import { coachesStrings } from "../src/lib/i18n/sections/coaches";
+import { coachPanelStrings } from "../src/lib/i18n/sections/coach-panel";
 import {
   apiErrorLabel,
   engineErrorLabel,
@@ -130,6 +132,8 @@ const DICTIONARIES: [string, (locale: "fa" | "en") => Dict][] = [
   ["nutrition", (l) => nutritionStrings(l) as unknown as Dict],
   ["assistant", (l) => assistantStrings(l) as unknown as Dict],
   ["foodlog", (l) => foodLogStrings(l) as unknown as Dict],
+  ["coaches", (l) => coachesStrings(l) as unknown as Dict],
+  ["coach-panel", (l) => coachPanelStrings(l) as unknown as Dict],
 ];
 
 let totalLeaves = 0;

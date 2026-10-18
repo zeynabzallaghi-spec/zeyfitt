@@ -41,6 +41,17 @@ export const auth = betterAuth({
     updateAge: 60 * 60 * 24, // تازه‌سازی اعتبار نشست هر ۲۴ ساعت
   },
 
+  /**
+   * فیلد افزوده نقش — فقط خواندنی از دید کلاینت:
+   *  - input: false یعنی ثبت‌نام/ورود هیچ مقداری از کلاینت برای نقش نمی‌پذیرد
+   *  - مقدار واقعی همیشه از دیتابیس بازخوانی می‌شود (هر Route Handler حساس)
+   */
+  user: {
+    additionalFields: {
+      role: { type: "string", defaultValue: "STUDENT", input: false },
+    },
+  },
+
   rateLimit: {
     enabled: true,
     window: 60,
@@ -125,4 +136,6 @@ export interface SessionUser {
   id: string;
   name: string;
   email: string;
+  /** نقش کاربر — نمایشی؛ تصمیم مجوز همیشه سمت سرور با بازخوانی دیتابیس */
+  role: string;
 }

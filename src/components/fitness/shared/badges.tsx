@@ -87,3 +87,30 @@ export function DifficultyBadge({ level }: { level: Difficulty }) {
     </span>
   );
 }
+
+/** نشان سطح اشتراک — مقدار پایدار FREE | PREMIUM فقط از سرور نمایش داده می‌شود */
+export function PlanTierBadge({
+  tier,
+  expired = false,
+  className,
+}: {
+  tier: string;
+  expired?: boolean;
+  className?: string;
+}) {
+  const t = useStrings(sharedStrings);
+  const premium = tier === "PREMIUM" && !expired;
+  return (
+    <span
+      className={cn(
+        "inline-flex items-center gap-1 rounded-md border px-2 py-0.5 text-[10px] font-bold",
+        premium
+          ? "border-primary/40 bg-primary/15 text-primary"
+          : "border-border/50 bg-secondary/40 text-muted-foreground",
+        className
+      )}
+    >
+      {t.planTierLabel(premium ? "PREMIUM" : "FREE")}
+    </span>
+  );
+}
