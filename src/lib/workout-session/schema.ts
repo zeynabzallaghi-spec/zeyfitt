@@ -61,6 +61,13 @@ export const startSessionSchema = z
     contentLocale: z.enum(["fa", "en"]).default("fa"),
     /** شروع از روز برنامه ذخیره‌شده کاربر */
     planDayId: z.string().trim().min(1).max(64).optional(),
+    /** شروع از روز برنامه اختصاصی مربی (نسخه ارسال‌شده) — مالکیت سمت سرور */
+    coachDeliveryId: z.string().trim().min(1).max(64).optional(),
+    coachDayOrder: intFromDigits()
+      .refine((v) => Number.isInteger(v) && v >= 1 && v <= 7, {
+        message: "شماره روز برنامه مربی باید بین ۱ تا ۷ باشد",
+      })
+      .optional(),
     /** تمرین آزاد — فقط حرکات واقعی بانک حرکات مرحله ۵ */
     exercises: z
       .array(z.object({ exerciseId: exerciseIdField }))
@@ -69,8 +76,20 @@ export const startSessionSchema = z
       .optional(),
   })
   .refine(
-    (data) => Boolean(data.planDayId) !== Boolean(data.exercises?.length),
-    { message: "جلسه باید یا از روز برنامه شروع شود یا فهرست حرکات تمرین آزاد داشته باشد" }
+    (data) => {
+      // دقیقاً یکی از سه مسیر: روز برنامه خودکار | روز برنامه مربی | تمرین آزاد
+      const modes = [
+        Boolean(data.planDayId),
+        Boolean(data.coachDeliveryId),
+        Boolean(data.exercises?.length),
+      ].filter(Boolean).length;
+      return modes === 1;
+    },
+    { message: "جلسه باید از یکی از مسیرهای روز برنامه، روز برنامه مربی یا تمرین آزاد شروع شود" }
+  )
+  .refine(
+    (data) => Boolean(data.coachDeliveryId) === Boolean(data.coachDayOrder),
+    { message: "برای شروع از برنامه مربی، شماره روز نیز لازم است" }
   );
 
 export type StartSessionPayload = z.output<typeof startSessionSchema>;

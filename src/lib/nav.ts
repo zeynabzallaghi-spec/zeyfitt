@@ -9,6 +9,7 @@ import {
   UserRoundCog,
   Users,
   ClipboardList,
+  FolderOpen,
   type LucideIcon,
 } from "lucide-react";
 
@@ -22,6 +23,7 @@ export type ViewId =
   | "progress"
   | "assistant"
   | "coaches"
+  | "coachPlans"
   | "coachPanel"
   | "profile";
 
@@ -167,6 +169,22 @@ export const NAV_ITEMS: NavItem[] = [
     ],
   },
   {
+    id: "coachPlans",
+    fa: "برنامه‌های اختصاصی مربی",
+    en: "Coach Custom Plans",
+    description: "برنامه‌های تمرینی و غذایی که مربی شما اختصاصاً برای شما ساخته و ارسال کرده است",
+    descriptionEn:
+      "Workout and nutrition plans your coach built and sent specifically for you",
+    icon: FolderOpen,
+    stage: 16,
+    features: [
+      "مشاهده برنامه‌های تمرینی دریافتی با روزها، ست، تکرار و یادداشت مربی",
+      "مشاهده برنامه‌های غذایی دریافتی با وعده‌ها و مقادیر پیشنهادی",
+      "شروع جلسه تمرین واقعی از روی روز برنامه مربی",
+      "ثبت مصرف واقعی اقلام برنامه غذایی از مسیر ثبت مصرف موجود",
+    ],
+  },
+  {
     id: "coachPanel",
     fa: "پنل مربی",
     en: "Coach Panel",
@@ -180,6 +198,7 @@ export const NAV_ITEMS: NavItem[] = [
       "ویرایش پروفایل حرفه‌ای و کنترل انتشار عمومی",
       "بررسی و پاسخ به درخواست‌های ارتباط دریافتی",
       "فهرست دانشجویان فعال و وضعیت هر ارتباط",
+      "ساخت و ارسال برنامه‌های تمرینی و غذایی اختصاصی",
     ],
   },
   {

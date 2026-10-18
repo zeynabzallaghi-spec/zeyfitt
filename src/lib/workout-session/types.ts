@@ -65,6 +65,8 @@ export interface SessionExerciseClient {
   targetRepsMin: number | null;
   targetRepsMax: number | null;
   restSeconds: number | null;
+  /** وزن پیشنهادی مربی (برنامه اختصاصی) — فقط نمایشی؛ جایگزین ثبت واقعی نمی‌شود */
+  targetWeightKg: number | null;
   status: ExerciseStatus;
   /** ست‌های ثبت‌شده واقعی — مرتب بر اساس شماره ست */
   sets: SetLogClient[];
@@ -76,6 +78,9 @@ export interface WorkoutSessionClient {
   userId: string;
   planId: string | null;
   planDayId: string | null;
+  /** نسخه ارسال‌شده برنامه اختصاصی مربی (مرحله ۱۶) — برای جلسات از برنامه مربی */
+  coachDeliveryId: string | null;
+  coachDeliveryDayOrder: number | null;
   title: string;
   status: SessionStatus;
   /** زمان واقعی شروع (ISO) */
@@ -113,9 +118,12 @@ export interface SessionSummaryClient {
 
 /* ------------------------------ محرک‌های API ------------------------------ */
 
-/** ورودی شروع جلسه — یا روز برنامه (planDayId) یا تمرین آزاد (فهرست حرکات بانک) */
+/** ورودی شروع جلسه — روز برنامه خودکار، روز برنامه مربی، یا تمرین آزاد */
 export interface StartSessionInput {
   planDayId?: string;
+  /** شروع از روز برنامه اختصاصی مربی (نسخه ارسال‌شده) — مالکیت سمت سرور بررسی می‌شود */
+  coachDeliveryId?: string;
+  coachDayOrder?: number;
   exercises?: { exerciseId: string }[];
   /** زبان تولید عنوان جلسه (تمرین آزاد) — پیش‌فرض fa */
   contentLocale?: "fa" | "en";

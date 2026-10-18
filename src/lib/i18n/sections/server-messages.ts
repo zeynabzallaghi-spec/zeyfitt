@@ -136,6 +136,49 @@ export const API_ERROR_LABELS: Record<string, Bi> = {
     fa: "شما یک درخواست مربی‌گری در جریان دارید.",
     en: "You already have a coach application in progress.",
   },
+
+  /* ------------------ مرحله ۱۶ — برنامه‌های اختصاصی مربی ------------------ */
+
+  COACH_NOT_VERIFIED: {
+    fa: "ساخت و ارسال برنامه اختصاصی به تأیید مربی‌گری نیاز دارد.",
+    en: "Building and sending custom plans requires coach verification.",
+  },
+  PLAN_NOT_FOUND: {
+    fa: "این برنامه یافت نشد یا متعلق به شما نیست.",
+    en: "This plan was not found, or does not belong to you.",
+  },
+  PLAN_ARCHIVED: {
+    fa: "این برنامه بایگانی شده است و دیگر قابل ویرایش یا ارسال نیست.",
+    en: "This plan is archived and can no longer be edited or sent.",
+  },
+  PLAN_CONTENT_EMPTY: {
+    fa: "این برنامه محتوای معتبری ندارد؛ ابتدا روزها و اقلام را کامل کنید.",
+    en: "This plan has no valid content; complete its days and items first.",
+  },
+  PLAN_ALREADY_SENT: {
+    fa: "این برنامه قبلاً با همین محتوا ارسال شده است؛ برای نسخه جدید ابتدا محتوا را ویرایش کنید.",
+    en: "This plan was already sent with the same content; edit the content first to send a new version.",
+  },
+  PLAN_STATE_CHANGED: {
+    fa: "وضعیت برنامه در همین لحظه تغییر کرده است؛ فهرست را به‌روز کنید.",
+    en: "The plan's state has just changed; please refresh the list.",
+  },
+  STUDENT_MISMATCH: {
+    fa: "این برنامه قبلاً به دانشجوی دیگری اختصاص یافته و قابل ارسال به دانشجوی دیگر نیست.",
+    en: "This plan is already assigned to another student and cannot be sent to a different one.",
+  },
+  DELIVERY_NOT_FOUND: {
+    fa: "این نسخه برنامه یافت نشد یا به شما تعلق ندارد.",
+    en: "This plan version was not found, or does not belong to you.",
+  },
+  FOOD_NOT_IN_BANK: {
+    fa: "یکی از مواد غذایی در بانک مواد یافت نشد؛ فقط مواد واقعی بانک مجازند.",
+    en: "One of the foods was not found in the food bank; only real bank foods are allowed.",
+  },
+  AMOUNT_OUT_OF_RANGE: {
+    fa: "مقدار واردشده برای یکی از مواد در بازه مجاز نیست.",
+    en: "One of the entered amounts is outside the allowed range.",
+  },
 };
 
 /* --------------------------- کدهای خطای موتورها --------------------------- */

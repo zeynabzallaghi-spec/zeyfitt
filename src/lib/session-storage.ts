@@ -36,6 +36,7 @@ import type {
   FinishSessionInput,
 } from "@/lib/workout-session/types";
 import { SESSION_EXERCISES_MAX as MAX_SESSION_EXERCISES } from "@/lib/workout-session/types";
+import { parseWorkoutContent } from "@/lib/coaching/plan-schemas";
 
 /* ------------------------------ خطاهای دامنه ------------------------------ */
 
@@ -87,6 +88,8 @@ function toClientSession(row: SessionRow): WorkoutSessionClient {
     userId: row.userId,
     planId: row.planId ?? null,
     planDayId: row.planDayId ?? null,
+    coachDeliveryId: row.coachDeliveryId ?? null,
+    coachDeliveryDayOrder: row.coachDeliveryDayOrder ?? null,
     title: row.title,
     status: marshalStatus(row.status),
     startedAt: row.startedAt.toISOString(),
@@ -111,6 +114,7 @@ function toClientSession(row: SessionRow): WorkoutSessionClient {
         targetRepsMin: ex.targetRepsMin ?? null,
         targetRepsMax: ex.targetRepsMax ?? null,
         restSeconds: ex.restSeconds ?? null,
+        targetWeightKg: ex.targetWeightKg ?? null,
         status: marshalExerciseStatus(ex.status),
         sets: ex.sets
           .slice()
@@ -291,7 +295,55 @@ export async function startSession(
     return { session: toClientSession(created), existing: false };
   }
 
-  // ۳) تمرین آزاد — فقط حرکات واقعی بانک مرحله ۵
+  if (input.coachDeliveryId) {
+    // ۳) شروع از روز برنامه اختصاصی مربی (مرحله ۱۶) — نسخه ارسال‌شده باید
+    // متعلق به همین کاربر باشد؛ محتوا از snapshot تغییرناپذیر delivery
+    // خوانده می‌شود تا ویرایش بعدی پیش‌نویس مربی جلسه در حال ساخت را تغییر ندهد.
+    const delivery = await db.coachPlanDelivery.findUnique({
+      where: { id: input.coachDeliveryId },
+    });
+    if (!delivery || delivery.studentId !== userId || delivery.planKind !== "workout") {
+      throw new SessionError("NOT_FOUND", "برنامه مربی یافت نشد یا متعلق به شما نیست");
+    }
+    const day = parseWorkoutContent(delivery.contentJson).days.find(
+      (d) => d.order === input.coachDayOrder
+    );
+    if (!day || day.exercises.length === 0) {
+      throw new SessionError("NOT_FOUND", "روز مورد نظر در این برنامه مربی یافت نشد");
+    }
+    const created = await db.workoutSession.create({
+      data: {
+        userId,
+        coachDeliveryId: delivery.id,
+        coachDeliveryDayOrder: day.order,
+        title: day.title,
+        status: "in_progress",
+        startedAt: new Date(),
+        exercises: {
+          create: day.exercises.map((ex) => ({
+            order: ex.order,
+            exerciseId: ex.exerciseId,
+            faName: ex.faName,
+            enName: ex.enName,
+            category: ex.category,
+            coach3dId: ex.coach3dId,
+            primaryMusclesJson: primaryMusclesSnapshot(ex.exerciseId),
+            note: ex.note,
+            targetSets: ex.sets,
+            targetRepsMin: ex.repsMin,
+            targetRepsMax: ex.repsMax,
+            restSeconds: ex.restSeconds,
+            targetWeightKg: ex.suggestedWeightKg,
+            status: "pending",
+          })),
+        },
+      },
+      include: SESSION_INCLUDE,
+    });
+    return { session: toClientSession(created), existing: false };
+  }
+
+  // ۴) تمرین آزاد — فقط حرکات واقعی بانک مرحله ۵
   const freeExercises = input.exercises ?? [];
   const missing: string[] = [];
   const resolved = freeExercises.map(({ exerciseId }) => {

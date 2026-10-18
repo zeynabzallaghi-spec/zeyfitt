@@ -51,6 +51,13 @@ model user {
   // ارتباط دانشجو-مربی — دو سر هر ارتباط
   studentConnections CoachStudentConnection[] @relation("StudentConnection")
   coachConnections   CoachStudentConnection[] @relation("CoachConnection")
+  // برنامه‌های اختصاصی مرحله ۱۶ — ساخت مربی، دریافت دانشجو
+  coachWorkoutPlansAuthored   CoachWorkoutPlan[]  @relation("CoachWorkoutPlans")
+  coachWorkoutPlansReceived   CoachWorkoutPlan[]  @relation("CoachWorkoutPlanStudents")
+  coachNutritionPlansAuthored CoachNutritionPlan[] @relation("CoachNutritionPlans")
+  coachNutritionPlansReceived CoachNutritionPlan[] @relation("CoachNutritionPlanStudents")
+  coachPlanDeliveriesSent     CoachPlanDelivery[] @relation("CoachPlanDeliveriesSent")
+  coachPlanDeliveriesReceived CoachPlanDelivery[] @relation("CoachPlanDeliveriesReceived")
 }
 
 model account {
@@ -342,6 +349,11 @@ model WorkoutSession {
   // ارجاع اختیاری به برنامه و روز برنامه — حذف برنامه تاریخچه را حذف نمی‌کند
   planId      String?
   planDayId   String?
+  // ارجاع اختیاری به نسخه ارسال‌شده برنامه اختصاصی مربی (مرحله ۱۶) —
+  // بدون FK؛ سرویس جلسه مالکیت و وجود آن را سمت سرور اعتبارسنجی می‌کند و
+  // delivery ها هرگز حذف نمی‌شوند (تاریخچه همیشه قابل بازیابی می‌ماند)
+  coachDeliveryId       String?
+  coachDeliveryDayOrder Int?
   title       String
   // وضعیت: in_progress | completed | abandoned — رهاشده با تکمیل‌شده یکی نیست
   status      String   @default("in_progress")
@@ -377,6 +389,9 @@ model WorkoutSessionExercise {
   targetRepsMin  Int?
   targetRepsMax  Int?
   restSeconds    Int?
+  // وزن پیشنهادی مربی در برنامه اختصاصی (مرحله ۱۶) — فقط نمایشی؛ هرگز
+  // جای مقدار واقعی ثبت‌شده کاربر را پر نمی‌کند و در آمار دخالت ندارد
+  targetWeightKg Float?
   // وضعیت اجرا: pending | done | skipped — ردکردن حرکت صادقانه ثبت می‌شود
   status     String @default("pending")
   session    WorkoutSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
@@ -637,4 +652,132 @@ model CoachStudentConnection {
 
   @@index([studentId, status, requestedAt])
   @@index([coachId, status, requestedAt])
+}
+
+// ----------------------------------------
+// برنامه تمرینی اختصاصی مربی — مرحله ۱۶
+// ----------------------------------------
+// مالکیت دوگانه روشن: سازنده همیشه coachId (از نشست سرور) و دریافتکننده
+// فقط پس از نخستین انتشار و با استخراج studentId از ارتباط ACTIVE سمت
+// سرور مشخص میشود — هیچکدام از کلاینت پذیرفته نمیشوند.
+//
+// چرخه وضعیت: draft -> published (نخستین ارسال) -> archived (بایگانی
+// یکطرفه). ویرایش محتوای برنامه پس از انتشار مجاز است، اما هرگز نسخههای
+// ارسالشده را تغییر نمیدهد؛ اعمال تغییرات فقط با «ارسال مجدد» و ساخت
+// نسخه جدید در CoachPlanDelivery ممکن است.
+//
+// محتوای روزها/حرکات در contentJson با همان الگوی snapshot پروژه ذخیره
+// میشود: نامها، دسته و شناسه سهبعدی هر حرکت هنگام ذخیره از بانک زنده
+// سمت سرور خوانده میشوند و داده ارسالی کلاینت برای این فیلدها هرگز
+// معتبر نیست. contentHash (sha256 محتوای نرمال) جلوگیری از ارسال مجدد
+// بدون تغییر را ممکن میکند.
+//
+// estimatedMinutes هر روز با همان فرمول موتور برنامهساز محاسبه میشود.
+
+model CoachWorkoutPlan {
+  id              String   @id @default(cuid())
+  coachId         String
+  // پس از نخستین انتشار پر میشود و هرگز تغییر دانشجو نمیکند
+  studentId       String?
+  connectionId    String?
+  title           String
+  description     String   @default("")
+  // fat_loss | muscle_gain | strength | maintain | fitness — همان واژگان موتور
+  goal            String
+  // beginner | intermediate | advanced — همان واژگان سطح
+  difficulty      String
+  // بازه زمانی تقریبی هر جلسه به دقیقه — اعلام مربی (نمایشی)
+  durationMinutes Int
+  // snapshot کامل روزها و حرکات — ساختار در لایه سرویس اعتبارسنجی میشود
+  contentJson     String
+  // sha256 محتوای نرمالشده — ارسال مجدد بدون تغییر محتوا را 409 میکند
+  contentHash     String   @default("")
+  // draft | published | archived
+  status          String   @default("draft")
+  currentVersion  Int      @default(0)
+  firstSentAt     DateTime?
+  lastSentAt      DateTime?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  coach   user @relation("CoachWorkoutPlans", fields: [coachId], references: [id], onDelete: Cascade)
+  student user? @relation("CoachWorkoutPlanStudents", fields: [studentId], references: [id], onDelete: SetNull)
+
+  @@index([coachId, status, updatedAt])
+  @@index([studentId, status])
+}
+
+// ----------------------------------------
+// برنامه غذایی اختصاصی مربی — مرحله ۱۶
+// ----------------------------------------
+// همان مالکیت و چرخه CoachWorkoutPlan. مقادیر انرژی و درشتمغذی هر قلم،
+// وعده و روز همیشه سمت سرور با macrosForGrams بانک غذا محاسبه و در
+// contentJson ذخیره میشوند؛ هر عدد تغذیهای ارسالی کلاینت نادیده گرفته
+// میشود. واحدهای مجاز فقط گرم و سهم متداول بانک است و تبدیل سهم هم
+// سمت سرور انجام میشود.
+
+model CoachNutritionPlan {
+  id              String   @id @default(cuid())
+  coachId         String
+  studentId       String?
+  connectionId    String?
+  title           String
+  description     String   @default("")
+  // weight_loss | muscle_gain | maintain — همان واژگان برنامه غذایی
+  goal            String
+  // بازه زمانی برنامه به روز — ۱ تا ۷ (همان محدوده برنامه غذایی موجود)
+  durationDays    Int
+  contentJson     String
+  contentHash     String   @default("")
+  // draft | published | archived
+  status          String   @default("draft")
+  currentVersion  Int      @default(0)
+  firstSentAt     DateTime?
+  lastSentAt      DateTime?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  coach   user @relation("CoachNutritionPlans", fields: [coachId], references: [id], onDelete: Cascade)
+  student user? @relation("CoachNutritionPlanStudents", fields: [studentId], references: [id], onDelete: SetNull)
+
+  @@index([coachId, status, updatedAt])
+  @@index([studentId, status])
+}
+
+// ----------------------------------------
+// نسخه ارسالشده برنامه اختصاصی — snapshot تغییرناپذیر
+// ----------------------------------------
+// هر «ارسال» یک ردیف جدید میسازد؛ این رکوردها هرگز ویرایش یا حذف
+// نمیشوند تا تاریخچه برنامههای قبلی دانشجو حتی پس از ویرایش پیشنویس
+// مربی یا تغییر آینده بانکها کامل بماند (نامها و مقادیر ضروری داخل
+// contentJson کپی شدهاند).
+//
+// قید یکتای (planId, version) با ایندکس یکتای معمولی SQLite اعمال
+// میشود و دو ارسال همزمانِ یک برنامه را ناممکن میکند — رقابت با
+// P2002 به 409 ترجمه میشود.
+//
+// planKind مشخص میکند planId به کدام جدول برنامه برمیگردد (workout
+// یا nutrition)؛ یکتایی نسخه درون هر نوع برنامه مستقل است.
+
+model CoachPlanDelivery {
+  id           String   @id @default(cuid())
+  // workout | nutrition
+  planKind     String
+  planId       String
+  version      Int
+  coachId      String
+  studentId    String
+  connectionId String
+  title        String
+  description  String   @default("")
+  goal         String
+  // workout: { difficulty, durationMinutes } — nutrition: { durationDays }
+  metaJson     String   @default("{}")
+  // snapshot کامل و تغییرناپذیر محتوای برنامه در لحظه ارسال
+  contentJson  String
+  sentAt       DateTime @default(now())
+  coach   user @relation("CoachPlanDeliveriesSent", fields: [coachId], references: [id], onDelete: Cascade)
+  student user @relation("CoachPlanDeliveriesReceived", fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@unique([planId, version])
+  @@index([studentId, planKind, sentAt])
+  @@index([coachId, sentAt])
 }

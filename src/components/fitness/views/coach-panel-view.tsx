@@ -19,6 +19,7 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Separator } from "@/components/ui/separator";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
 import {
   ClipboardList,
@@ -37,6 +38,7 @@ import {
 import { getNavItem } from "@/lib/nav";
 import { useStrings } from "@/lib/i18n/use-strings";
 import { coachPanelStrings } from "@/lib/i18n/sections/coach-panel";
+import { coachPlansStrings } from "@/lib/i18n/sections/coach-plans";
 import { sharedStrings } from "@/lib/i18n/sections/shared";
 import { useLocale } from "@/lib/i18n/locale";
 import { localeDateTimeLabel } from "@/lib/i18n/format";
@@ -52,6 +54,8 @@ import {
   saveCoachProfile,
   setCoachPublished,
 } from "@/hooks/use-coaching";
+import { CoachWorkoutPlansTab } from "./coach/workout-plans-tab";
+import { CoachNutritionPlansTab } from "./coach/nutrition-plans-tab";
 import { COACH_SPECIALIZATIONS } from "@/lib/coaching/constants";
 import type { CoachRequestItemClient } from "@/lib/coaching/client";
 
@@ -182,6 +186,7 @@ export function CoachPanelView() {
   const { profile, loading, error, refresh, setProfile } = useCoachProfile(isCoach);
   const { requests, loading: reqLoading, refresh: refreshReq } = useCoachRequests(isCoach);
   const { students, loading: stuLoading, refresh: refreshStu } = useCoachStudents(isCoach);
+  const plansT = useStrings(coachPlansStrings);
 
   // فرم پروفایل — همیشه مقدار واقعی سرور؛ بدون پیش‌فرض ساختگی
   const [displayName, setDisplayName] = useState("");
@@ -278,6 +283,21 @@ export function CoachPanelView() {
 
   return (
     <div>
+      <Tabs defaultValue="profile" className="gap-5">
+        <TabsList className="w-full flex-wrap justify-start gap-1 overflow-x-auto">
+          <TabsTrigger value="profile" className="text-[11px]">{plansT.existingTab}</TabsTrigger>
+          <TabsTrigger value="workoutPlans" className="text-[11px]">{plansT.workoutPlansTab}</TabsTrigger>
+          <TabsTrigger value="nutritionPlans" className="text-[11px]">{plansT.nutritionPlansTab}</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="workoutPlans">
+          <CoachWorkoutPlansTab />
+        </TabsContent>
+        <TabsContent value="nutritionPlans">
+          <CoachNutritionPlansTab />
+        </TabsContent>
+
+        <TabsContent value="profile">
       <ViewIntro item={item} />
 
       <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
@@ -612,6 +632,8 @@ export function CoachPanelView() {
           </Card>
         </div>
       </div>
+      </TabsContent>
+      </Tabs>
     </div>
   );
 }
