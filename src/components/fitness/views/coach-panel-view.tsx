@@ -39,6 +39,7 @@ import { getNavItem } from "@/lib/nav";
 import { useStrings } from "@/lib/i18n/use-strings";
 import { coachPanelStrings } from "@/lib/i18n/sections/coach-panel";
 import { coachPlansStrings } from "@/lib/i18n/sections/coach-plans";
+import { coachChatStrings } from "@/lib/i18n/sections/coach-chat";
 import { sharedStrings } from "@/lib/i18n/sections/shared";
 import { useLocale } from "@/lib/i18n/locale";
 import { localeDateTimeLabel } from "@/lib/i18n/format";
@@ -56,6 +57,7 @@ import {
 } from "@/hooks/use-coaching";
 import { CoachWorkoutPlansTab } from "./coach/workout-plans-tab";
 import { CoachNutritionPlansTab } from "./coach/nutrition-plans-tab";
+import { CoachMessagesTab } from "./coach/messages-tab";
 import { COACH_SPECIALIZATIONS } from "@/lib/coaching/constants";
 import type { CoachRequestItemClient } from "@/lib/coaching/client";
 
@@ -187,6 +189,7 @@ export function CoachPanelView() {
   const { requests, loading: reqLoading, refresh: refreshReq } = useCoachRequests(isCoach);
   const { students, loading: stuLoading, refresh: refreshStu } = useCoachStudents(isCoach);
   const plansT = useStrings(coachPlansStrings);
+  const chatT = useStrings(coachChatStrings);
 
   // فرم پروفایل — همیشه مقدار واقعی سرور؛ بدون پیش‌فرض ساختگی
   const [displayName, setDisplayName] = useState("");
@@ -288,6 +291,7 @@ export function CoachPanelView() {
           <TabsTrigger value="profile" className="text-[11px]">{plansT.existingTab}</TabsTrigger>
           <TabsTrigger value="workoutPlans" className="text-[11px]">{plansT.workoutPlansTab}</TabsTrigger>
           <TabsTrigger value="nutritionPlans" className="text-[11px]">{plansT.nutritionPlansTab}</TabsTrigger>
+          <TabsTrigger value="messages" className="text-[11px]">{chatT.messagesTab}</TabsTrigger>
         </TabsList>
 
         <TabsContent value="workoutPlans">
@@ -295,6 +299,9 @@ export function CoachPanelView() {
         </TabsContent>
         <TabsContent value="nutritionPlans">
           <CoachNutritionPlansTab />
+        </TabsContent>
+        <TabsContent value="messages">
+          <CoachMessagesTab />
         </TabsContent>
 
         <TabsContent value="profile">

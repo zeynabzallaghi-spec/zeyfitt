@@ -179,6 +179,17 @@ export const API_ERROR_LABELS: Record<string, Bi> = {
     fa: "مقدار واردشده برای یکی از مواد در بازه مجاز نیست.",
     en: "One of the entered amounts is outside the allowed range.",
   },
+
+  /* --------------- مرحله ۱۷ — پیام‌رسانی خصوصی مربی و دانشجو --------------- */
+
+  CONVERSATION_NOT_FOUND: {
+    fa: "این گفت‌وگو یافت نشد یا به شما تعلق ندارد.",
+    en: "This conversation was not found, or does not belong to you.",
+  },
+  CONNECTION_NOT_ACTIVE: {
+    fa: "این ارتباط فعال نیست؛ ارسال پیام جدید ممکن نیست و گفت‌وگو فقط‌خواندنی است.",
+    en: "This connection is not active; new messages are blocked and the conversation is read-only.",
+  },
 };
 
 /* --------------------------- کدهای خطای موتورها --------------------------- */

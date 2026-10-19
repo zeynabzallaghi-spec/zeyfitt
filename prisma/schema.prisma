@@ -24,40 +24,44 @@ datasource db {
 // ----------------------------------------
 
 model user {
-  id            String    @id
-  name          String
-  email         String    @unique
-  emailVerified Boolean   @default(false)
-  image         String?
+  id                          String                   @id
+  name                        String
+  email                       String                   @unique
+  emailVerified               Boolean                  @default(false)
+  image                       String?
   // نقش کاربر — مرجع تصمیم همیشه سرور/دیتابیس است؛ هرگز از کلاینت پذیرفته نمیشود
   // STUDENT (پیشفرض امن) | COACH | ADMIN
-  role          String    @default("STUDENT")
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
-  sessions      session[]
-  accounts      account[]
-  fitnessProfile FitnessProfile?
-  weightEntries weightEntry[]
-  workoutPlans  WorkoutPlan[]
-  nutritionPlans NutritionPlan[]
-  workoutSessions WorkoutSession[]
-  assistantConversations AssistantConversation[]
-  foodLogEntries FoodLogEntry[]
+  role                        String                   @default("STUDENT")
+  createdAt                   DateTime                 @default(now())
+  updatedAt                   DateTime                 @updatedAt
+  sessions                    session[]
+  accounts                    account[]
+  fitnessProfile              FitnessProfile?
+  weightEntries               weightEntry[]
+  workoutPlans                WorkoutPlan[]
+  nutritionPlans              NutritionPlan[]
+  workoutSessions             WorkoutSession[]
+  assistantConversations      AssistantConversation[]
+  foodLogEntries              FoodLogEntry[]
   // مربی‌گری — یکپروگرام درخواست + یکپروفایل منتشرشده
-  coachApplications CoachApplication[]
-  coachProfile      CoachProfile?
+  coachApplications           CoachApplication[]
+  coachProfile                CoachProfile?
   // اشتراک دانشجو — یک به یک؛ سطح و انقضا فقط سمت سرور مدیریت میشود
-  subscription      StudentSubscription?
+  subscription                StudentSubscription?
   // ارتباط دانشجو-مربی — دو سر هر ارتباط
-  studentConnections CoachStudentConnection[] @relation("StudentConnection")
-  coachConnections   CoachStudentConnection[] @relation("CoachConnection")
+  studentConnections          CoachStudentConnection[] @relation("StudentConnection")
+  coachConnections            CoachStudentConnection[] @relation("CoachConnection")
   // برنامه‌های اختصاصی مرحله ۱۶ — ساخت مربی، دریافت دانشجو
-  coachWorkoutPlansAuthored   CoachWorkoutPlan[]  @relation("CoachWorkoutPlans")
-  coachWorkoutPlansReceived   CoachWorkoutPlan[]  @relation("CoachWorkoutPlanStudents")
-  coachNutritionPlansAuthored CoachNutritionPlan[] @relation("CoachNutritionPlans")
-  coachNutritionPlansReceived CoachNutritionPlan[] @relation("CoachNutritionPlanStudents")
-  coachPlanDeliveriesSent     CoachPlanDelivery[] @relation("CoachPlanDeliveriesSent")
-  coachPlanDeliveriesReceived CoachPlanDelivery[] @relation("CoachPlanDeliveriesReceived")
+  coachWorkoutPlansAuthored   CoachWorkoutPlan[]       @relation("CoachWorkoutPlans")
+  coachWorkoutPlansReceived   CoachWorkoutPlan[]       @relation("CoachWorkoutPlanStudents")
+  coachNutritionPlansAuthored CoachNutritionPlan[]     @relation("CoachNutritionPlans")
+  coachNutritionPlansReceived CoachNutritionPlan[]     @relation("CoachNutritionPlanStudents")
+  coachPlanDeliveriesSent     CoachPlanDelivery[]      @relation("CoachPlanDeliveriesSent")
+  coachPlanDeliveriesReceived CoachPlanDelivery[]      @relation("CoachPlanDeliveriesReceived")
+  // پیام‌رسانی خصوصی مرحله ۱۷ — دو سر هر مکالمه + پیام‌های ارسالی
+  studentConversations        CoachConversation[]      @relation("ConversationStudent")
+  coachConversations          CoachConversation[]      @relation("ConversationCoach")
+  coachMessages               CoachMessage[]           @relation("CoachMessageSender")
 }
 
 model account {
@@ -78,16 +82,16 @@ model account {
 }
 
 model session {
-  id             String    @id
+  id             String   @id
   userId         String
-  token          String    @unique
+  token          String   @unique
   expiresAt      DateTime
   ipAddress      String?
   userAgent      String?
-  createdAt      DateTime  @default(now())
-  updatedAt      DateTime  @updatedAt
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
   impersonatedBy String?
-  user           user      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user           user     @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
 model verification {
@@ -163,31 +167,31 @@ model weightEntry {
 // FitnessProfile) و در لایه سرویس marshal/unmarshal می‌شوند.
 
 model WorkoutPlan {
-  id              String   @id @default(cuid())
-  userId          String
-  title           String
+  id                      String           @id @default(cuid())
+  userId                  String
+  title                   String
   // ورودی‌های موتور برنامه‌سازی (snapshot تنظیمات کاربر)
-  goal            String // fat_loss | muscle_gain | strength | maintain | fitness
-  experience      String // beginner | intermediate | advanced
-  daysPerWeek     Int // ۲ تا ۶
-  sessionMinutes  Int // ۳۰ | ۴۵ | ۶۰ | ۹۰
-  equipmentJson   String   @default("[]") // آرایه شناسه تجهیزات (واژگان بانک حرکات)
-  focus           String   @default("all") // all | upper | lower | شناسه دسته
-  preferredDaysJson String @default("[]") // آرایه ۰ تا ۶ (شنبه=۰) — اختیاری
-  excludedCategoriesJson String @default("[]") // دسته‌های حذف‌شده
-  excludedExerciseIdsJson String @default("[]") // حرکات حذف‌شده
-  limitationNotes String? // توضیح احتیاطی کاربر (snapshot اختیاری)
-  notesJson       String   @default("[]") // راهنماهای عمومی تولیدشده موتور (گرم‌کردن، پیشرفت، …)
+  goal                    String // fat_loss | muscle_gain | strength | maintain | fitness
+  experience              String // beginner | intermediate | advanced
+  daysPerWeek             Int // ۲ تا ۶
+  sessionMinutes          Int // ۳۰ | ۴۵ | ۶۰ | ۹۰
+  equipmentJson           String           @default("[]") // آرایه شناسه تجهیزات (واژگان بانک حرکات)
+  focus                   String           @default("all") // all | upper | lower | شناسه دسته
+  preferredDaysJson       String           @default("[]") // آرایه ۰ تا ۶ (شنبه=۰) — اختیاری
+  excludedCategoriesJson  String           @default("[]") // دسته‌های حذف‌شده
+  excludedExerciseIdsJson String           @default("[]") // حرکات حذف‌شده
+  limitationNotes         String? // توضیح احتیاطی کاربر (snapshot اختیاری)
+  notesJson               String           @default("[]") // راهنماهای عمومی تولیدشده موتور (گرم‌کردن، پیشرفت، …)
   // وضعیت و ردیابی
-  status          String   @default("active") // active | archived
-  libraryVersion  String // نسخه بانک حرکات هنگام تولید
+  status                  String           @default("active") // active | archived
+  libraryVersion          String // نسخه بانک حرکات هنگام تولید
   // زبان تولید محتوای برنامه (title/notes) — رکوردهای قدیمی «fa»؛ هرگز بازنویسی نمی‌شوند
-  contentLocale   String   @default("fa")
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
-  user            user     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  days            WorkoutPlanDay[]
-  sessions        WorkoutSession[]
+  contentLocale           String           @default("fa")
+  createdAt               DateTime         @default(now())
+  updatedAt               DateTime         @updatedAt
+  user                    user             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  days                    WorkoutPlanDay[]
+  sessions                WorkoutSession[]
 
   @@index([userId, status])
   @@index([userId, createdAt])
@@ -195,14 +199,14 @@ model WorkoutPlan {
 
 // روز یا جلسه تمرینی برنامه — ترتیب در هفته
 model WorkoutPlanDay {
-  id         String @id @default(cuid())
+  id         String                @id @default(cuid())
   planId     String
   order      Int // ترتیب جلسه در هفته (۱ تا N)
   weekday    Int? // ۰ تا ۶ (شنبه=۰) — فقط اگر کاربر روز ترجیحی داشته باشد
   title      String // عنوان جلسه مثل «پوش — سینه و پشت بازو»
   focusLabel String // برچسب تمرکز مثل «بالاتنه»
   estMinutes Int // زمان تقریبی جلسه شامل گرم‌کردن
-  plan       WorkoutPlan @relation(fields: [planId], references: [id], onDelete: Cascade)
+  plan       WorkoutPlan           @relation(fields: [planId], references: [id], onDelete: Cascade)
   exercises  WorkoutPlanExercise[]
 
   @@index([planId, order])
@@ -211,7 +215,7 @@ model WorkoutPlanDay {
 // حرکت داخل جلسه — شناسه پایدار بانک + snapshot حداقلی برای مقاومت در برابر
 // تغییر آینده بانک؛ جزئیات کامل اجرا در نمایش از بانک زنده خوانده می‌شود.
 model WorkoutPlanExercise {
-  id               String @id @default(cuid())
+  id               String         @id @default(cuid())
   dayId            String
   order            Int // ترتیب اجرا در جلسه
   exerciseId       String // شناسه پایدار در بانک حرکات
@@ -242,36 +246,36 @@ model WorkoutPlanExercise {
 // marshal/unmarshal می‌شوند (الگوی FitnessProfile و WorkoutPlan).
 
 model NutritionPlan {
-  id               String   @id @default(cuid())
-  userId           String
-  title            String
+  id                  String             @id @default(cuid())
+  userId              String
+  title               String
   // ورودی‌های موتور (snapshot تنظیمات کاربر)
-  goal             String // weight_loss | muscle_gain | maintain
-  activityLevel    String // sedentary | light | moderate | active | very_active
-  dietPattern      String   @default("none") // none | vegetarian | vegan
-  mealsPerDay      Int // ۳ تا ۶
-  planLength       Int // ۱ یا ۷ (روز)
-  allergensJson    String   @default("[]") // آلرژن‌های حذف‌شده
-  dislikedFoodIdsJson String @default("[]") // مواد نامطلوب
-  budget           String   @default("any") // any | low
-  prep             String   @default("any") // any | simple
-  estimateJson     String   @default("null") // اطلاعات برآورد استفاده‌شده (سن/قد/وزن/جنسیت)
+  goal                String // weight_loss | muscle_gain | maintain
+  activityLevel       String // sedentary | light | moderate | active | very_active
+  dietPattern         String             @default("none") // none | vegetarian | vegan
+  mealsPerDay         Int // ۳ تا ۶
+  planLength          Int // ۱ یا ۷ (روز)
+  allergensJson       String             @default("[]") // آلرژن‌های حذف‌شده
+  dislikedFoodIdsJson String             @default("[]") // مواد نامطلوب
+  budget              String             @default("any") // any | low
+  prep                String             @default("any") // any | simple
+  estimateJson        String             @default("null") // اطلاعات برآورد استفاده‌شده (سن/قد/وزن/جنسیت)
   // snapshot محاسبات انرژی و درشت‌مغذی — BMR/TDEE/هدف/مکروها/هشدارها
-  calcJson         String
+  calcJson            String
   // یادداشت‌های عمومی تولیدشده موتور (محدودیت‌ها، راهنماهای صادقانه)
-  notesJson        String   @default("[]")
+  notesJson           String             @default("[]")
   // وضعیت و ردیابی نسخه‌ها
-  caution          Boolean  @default(false) // حالت احتیاط (زیر ۱۸ یا بارداری) — بدون هدف کالری کاهشی
-  status           String   @default("active") // active | archived
-  engineVersion    String // نسخه موتور هنگام تولید
+  caution             Boolean            @default(false) // حالت احتیاط (زیر ۱۸ یا بارداری) — بدون هدف کالری کاهشی
+  status              String             @default("active") // active | archived
+  engineVersion       String // نسخه موتور هنگام تولید
   // زبان تولید محتوای برنامه (title/notes/هشدارها) — رکوردهای قدیمی «fa»؛ هرگز بازنویسی نمی‌شوند
-  contentLocale    String   @default("fa")
-  foodsVersion     String // نسخه بانک مواد هنگام تولید
-  createdAt        DateTime @default(now())
-  updatedAt        DateTime @updatedAt
-  user             user     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  days             NutritionPlanDay[]
-  foodLogEntries   FoodLogEntry[]
+  contentLocale       String             @default("fa")
+  foodsVersion        String // نسخه بانک مواد هنگام تولید
+  createdAt           DateTime           @default(now())
+  updatedAt           DateTime           @updatedAt
+  user                user               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  days                NutritionPlanDay[]
+  foodLogEntries      FoodLogEntry[]
 
   @@index([userId, status])
   @@index([userId, createdAt])
@@ -279,10 +283,10 @@ model NutritionPlan {
 
 // یک روز برنامه غذایی — ترتیب در برنامه (۱ تا ۷)
 model NutritionPlanDay {
-  id     String @id @default(cuid())
+  id     String          @id @default(cuid())
   planId String
   order  Int // ترتیب روز
-  plan   NutritionPlan @relation(fields: [planId], references: [id], onDelete: Cascade)
+  plan   NutritionPlan   @relation(fields: [planId], references: [id], onDelete: Cascade)
   meals  NutritionMeal[]
 
   @@index([planId, order])
@@ -290,17 +294,17 @@ model NutritionPlanDay {
 
 // وعده داخل روز — مجموع‌ها از اجزای واقعی محاسبه و هم‌زمان ذخیره می‌شوند
 model NutritionMeal {
-  id      String @id @default(cuid())
-  dayId   String
-  order   Int // ترتیب وعده در روز
-  type    String // breakfast | snack_am | lunch | snack_pm | dinner | snack_ev
-  title   String
-  kcal    Int
-  protein Float
-  carb    Float
-  fat     Float
-  day     NutritionPlanDay @relation(fields: [dayId], references: [id], onDelete: Cascade)
-  items   NutritionMealItem[]
+  id             String              @id @default(cuid())
+  dayId          String
+  order          Int // ترتیب وعده در روز
+  type           String // breakfast | snack_am | lunch | snack_pm | dinner | snack_ev
+  title          String
+  kcal           Int
+  protein        Float
+  carb           Float
+  fat            Float
+  day            NutritionPlanDay    @relation(fields: [dayId], references: [id], onDelete: Cascade)
+  items          NutritionMealItem[]
   foodLogEntries FoodLogEntry[]
 
   @@index([dayId, order])
@@ -309,20 +313,20 @@ model NutritionMeal {
 // ماده غذایی داخل وعده — شناسه پایدار بانک + مقدار گرم + snapshot ارزش
 // تخمینی همان مقدار؛ بازسازی نمایش کاملاً از همین snapshot ممکن است.
 model NutritionMealItem {
-  id      String @id @default(cuid())
-  mealId  String
-  order   Int // ترتیب نمایش
-  foodId  String // شناسه پایدار در بانک مواد
-  faName  String
-  enName  String
-  group   String
-  grams   Int
-  kcal    Int
-  protein Float
-  carb    Float
-  fat     Float
-  servingHint String // برچسب سهم متداول بانک هنگام تولید
-  meal    NutritionMeal @relation(fields: [mealId], references: [id], onDelete: Cascade)
+  id             String         @id @default(cuid())
+  mealId         String
+  order          Int // ترتیب نمایش
+  foodId         String // شناسه پایدار در بانک مواد
+  faName         String
+  enName         String
+  group          String
+  grams          Int
+  kcal           Int
+  protein        Float
+  carb           Float
+  fat            Float
+  servingHint    String // برچسب سهم متداول بانک هنگام تولید
+  meal           NutritionMeal  @relation(fields: [mealId], references: [id], onDelete: Cascade)
   foodLogEntries FoodLogEntry[]
 
   @@index([mealId, order])
@@ -344,27 +348,27 @@ model NutritionMealItem {
 // همه اطلاعات نمایشی حرکت در WorkoutSessionExercise snapshot شده است.
 
 model WorkoutSession {
-  id          String   @id @default(cuid())
-  userId      String
+  id                    String                   @id @default(cuid())
+  userId                String
   // ارجاع اختیاری به برنامه و روز برنامه — حذف برنامه تاریخچه را حذف نمی‌کند
-  planId      String?
-  planDayId   String?
+  planId                String?
+  planDayId             String?
   // ارجاع اختیاری به نسخه ارسال‌شده برنامه اختصاصی مربی (مرحله ۱۶) —
   // بدون FK؛ سرویس جلسه مالکیت و وجود آن را سمت سرور اعتبارسنجی می‌کند و
   // delivery ها هرگز حذف نمی‌شوند (تاریخچه همیشه قابل بازیابی می‌ماند)
   coachDeliveryId       String?
   coachDeliveryDayOrder Int?
-  title       String
+  title                 String
   // وضعیت: in_progress | completed | abandoned — رهاشده با تکمیل‌شده یکی نیست
-  status      String   @default("in_progress")
-  startedAt   DateTime @default(now()) // زمان واقعی شروع — هنگام ساخت رکورد
-  endedAt     DateTime? // زمان ثبت پایان — فقط پس از اقدام صریح کاربر
-  notes       String? // یادداشت اختیاری کاربر در پایان جلسه
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-  user        user         @relation(fields: [userId], references: [id], onDelete: Cascade)
-  plan        WorkoutPlan? @relation(fields: [planId], references: [id], onDelete: SetNull)
-  exercises   WorkoutSessionExercise[]
+  status                String                   @default("in_progress")
+  startedAt             DateTime                 @default(now()) // زمان واقعی شروع — هنگام ساخت رکورد
+  endedAt               DateTime? // زمان ثبت پایان — فقط پس از اقدام صریح کاربر
+  notes                 String? // یادداشت اختیاری کاربر در پایان جلسه
+  createdAt             DateTime                 @default(now())
+  updatedAt             DateTime                 @updatedAt
+  user                  user                     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  plan                  WorkoutPlan?             @relation(fields: [planId], references: [id], onDelete: SetNull)
+  exercises             WorkoutSessionExercise[]
 
   @@index([userId, status])
   @@index([userId, startedAt])
@@ -373,29 +377,29 @@ model WorkoutSession {
 // حرکت ثبت‌شده در جلسه — snapshot حداقلی از بانک/برنامه؛ تاریخچه حتی پس از
 // تغییر آینده بانک حرکات یا حذف برنامه از همین snapshot بازسازی می‌شود.
 model WorkoutSessionExercise {
-  id         String @id @default(cuid())
-  sessionId  String
-  order      Int // ترتیب اجرا در جلسه
-  exerciseId String // شناسه پایدار بانک حرکات (مرجع زنده برای جزئیات کامل)
+  id                 String          @id @default(cuid())
+  sessionId          String
+  order              Int // ترتیب اجرا در جلسه
+  exerciseId         String // شناسه پایدار بانک حرکات (مرجع زنده برای جزئیات کامل)
   // snapshot حداقلی نمایش — مقاوم به تغییر بانک
-  faName     String
-  enName     String
-  category   String
-  coach3dId  String? // snapshot — null یعنی واقعاً بدون انیمیشن سه‌بعدی
-  primaryMusclesJson String @default("[]") // آرایه شناسه عضلات اصلی (snapshot)
-  note       String? // یادداشت اجرا از برنامه (در صورت وجود)
+  faName             String
+  enName             String
+  category           String
+  coach3dId          String? // snapshot — null یعنی واقعاً بدون انیمیشن سه‌بعدی
+  primaryMusclesJson String          @default("[]") // آرایه شناسه عضلات اصلی (snapshot)
+  note               String? // یادداشت اجرا از برنامه (در صورت وجود)
   // تجویز برنامه — برای تمرین آزاد null است (هیچ مقدار ساختگی جایگزین نمی‌شود)
-  targetSets     Int?
-  targetRepsMin  Int?
-  targetRepsMax  Int?
-  restSeconds    Int?
+  targetSets         Int?
+  targetRepsMin      Int?
+  targetRepsMax      Int?
+  restSeconds        Int?
   // وزن پیشنهادی مربی در برنامه اختصاصی (مرحله ۱۶) — فقط نمایشی؛ هرگز
   // جای مقدار واقعی ثبت‌شده کاربر را پر نمی‌کند و در آمار دخالت ندارد
-  targetWeightKg Float?
+  targetWeightKg     Float?
   // وضعیت اجرا: pending | done | skipped — ردکردن حرکت صادقانه ثبت می‌شود
-  status     String @default("pending")
-  session    WorkoutSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
-  sets       WorkoutSetLog[]
+  status             String          @default("pending")
+  session            WorkoutSession  @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  sets               WorkoutSetLog[]
 
   @@index([sessionId, order])
 }
@@ -405,15 +409,15 @@ model WorkoutSessionExercise {
 // برای حرکات وزن بدن weightKg به‌صورت null ذخیره می‌شود (بدون بار خارجی) و
 // وزنه صفر هم مجاز است؛ هرگز وزن بدن با وزنه تمرینی جمع نمی‌شود.
 model WorkoutSetLog {
-  id                String  @id @default(cuid())
+  id                String                 @id @default(cuid())
   sessionExerciseId String
   setNumber         Int // شماره ست — از ۱؛ انتخاب نهایی با کاربر است
   reps              Int // تعداد تکرار واقعی انجام‌شده
   weightKg          Float? // بار خارجی به کیلوگرم — null یعنی بدون بار خارجی
   note              String? // یادداشت اختیاری ست
-  createdAt         DateTime @default(now())
-  updatedAt         DateTime @updatedAt
-  exercise WorkoutSessionExercise @relation(fields: [sessionExerciseId], references: [id], onDelete: Cascade)
+  createdAt         DateTime               @default(now())
+  updatedAt         DateTime               @updatedAt
+  exercise          WorkoutSessionExercise @relation(fields: [sessionExerciseId], references: [id], onDelete: Cascade)
 
   @@unique([sessionExerciseId, setNumber])
   @@index([sessionExerciseId, setNumber])
@@ -428,12 +432,12 @@ model WorkoutSetLog {
 // حذف مکالمه با حذف آبشاری همه پیام‌های آن همراه است.
 
 model AssistantConversation {
-  id        String   @id @default(cuid())
+  id        String             @id @default(cuid())
   userId    String
   title     String
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  user      user     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt DateTime           @default(now())
+  updatedAt DateTime           @updatedAt
+  user      user               @relation(fields: [userId], references: [id], onDelete: Cascade)
   messages  AssistantMessage[]
 
   @@index([userId, updatedAt])
@@ -445,7 +449,7 @@ model AssistantConversation {
 // کاربر را از بین نمی‌برد (پیام user پیش از فراخوانی مدل ذخیره می‌شود).
 
 model AssistantMessage {
-  id             String   @id @default(cuid())
+  id             String                @id @default(cuid())
   conversationId String
   // مالک پیام (denormalized از مکالمه) — برای کنترل مالکیت و شمارش محدودسازی
   // نرخ درخواست بدون join؛ هم‌اره با مالک مکالمه نوشته می‌شود و رکورد یتیم
@@ -454,7 +458,7 @@ model AssistantMessage {
   role           String // user | assistant
   content        String
   lang           String? // fa | en — زبان همان پیام
-  createdAt      DateTime @default(now())
+  createdAt      DateTime              @default(now())
   conversation   AssistantConversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
 
   @@index([conversationId, createdAt])
@@ -484,46 +488,46 @@ model AssistantMessage {
 // کلید محدودیتی ندارند).
 
 model FoodLogEntry {
-  id          String   @id @default(cuid())
-  userId      String
+  id               String             @id @default(cuid())
+  userId           String
   // زمان واقعی مصرف — لحظه UTC؛ نمایش محلی از همین مقدار
-  consumedAt  DateTime
+  consumedAt       DateTime
   // روز محلی YYYY-MM-DD با زمان رسمی ایران — کلید تجمیع روزانه
-  localDay    String
+  localDay         String
   // نوع وعده — همان enum وعده‌های برنامه غذایی برای سازگاری کامل
-  mealType    String   // breakfast | snack_am | lunch | snack_pm | dinner | snack_ev
+  mealType         String // breakfast | snack_am | lunch | snack_pm | dinner | snack_ev
   // منبع ثبت: بانک غذا یا قلم برنامه — هر دو foodId پایدار دارند
-  source      String   // bank | plan_item
-  foodId      String   // شناسه پایدار بانک مواد
+  source           String // bank | plan_item
+  foodId           String // شناسه پایدار بانک مواد
   // snapshot نمایشی و تغذیه‌ای — تاریخچه مستقل از تغییر آینده بانک
-  faName      String
-  enName      String
-  group       String
+  faName           String
+  enName           String
+  group            String
   // مقدار ثبت‌شده در واحد انتخابی کاربر + ضریب تبدیل سهم (اگر سهم)
-  unit        String   // g | serving
-  amount      Float
+  unit             String // g | serving
+  amount           Float
   servingGramsUsed Float? // snapshot ضریب تبدیل برای unit=serving
   // مقدار نهایی گرم — پس از تبدیل واحد سمت سرور
-  grams       Float
+  grams            Float
   // مقادیر تخمینی همان مقدار — محاسبه سمت سرور (kcal صحیح، مکرو یک اعشار)
-  kcal        Int
-  protein     Float
-  carb        Float
-  fat         Float
+  kcal             Int
+  protein          Float
+  carb             Float
+  fat              Float
   // ارجاع اختیاری به برنامه — حذف برنامه تاریخچه را دستکاری نمی‌کند
-  planId      String?
-  planMealId  String?
-  planItemId  String?
+  planId           String?
+  planMealId       String?
+  planItemId       String?
   // مقدار پیشنهادی برنامه هنگام ثبت — فقط برای مقایسه شفاف واقعی/پیشنهادی
-  planItemGrams Int?
+  planItemGrams    Int?
   // کلید ایدمپوتنسی سمت کلاینت — یکتا به‌ازای هر کاربر (null مجاز)
-  clientRequestId String?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-  user        user              @relation(fields: [userId], references: [id], onDelete: Cascade)
-  plan        NutritionPlan?    @relation(fields: [planId], references: [id], onDelete: SetNull)
-  planMeal    NutritionMeal?    @relation(fields: [planMealId], references: [id], onDelete: SetNull)
-  planItem    NutritionMealItem? @relation(fields: [planItemId], references: [id], onDelete: SetNull)
+  clientRequestId  String?
+  createdAt        DateTime           @default(now())
+  updatedAt        DateTime           @updatedAt
+  user             user               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  plan             NutritionPlan?     @relation(fields: [planId], references: [id], onDelete: SetNull)
+  planMeal         NutritionMeal?     @relation(fields: [planMealId], references: [id], onDelete: SetNull)
+  planItem         NutritionMealItem? @relation(fields: [planItemId], references: [id], onDelete: SetNull)
 
   @@unique([userId, clientRequestId])
   @@index([userId, localDay])
@@ -634,21 +638,23 @@ model StudentSubscription {
 // خوانده و سمت سرور بازبینی میشود؛ هیچکدام از کلاینت معتبر نیستند.
 
 model CoachStudentConnection {
-  id              String    @id @default(cuid())
+  id              String             @id @default(cuid())
   studentId       String
   coachId         String
-  status          String    @default("PENDING") // PENDING | ACTIVE | REJECTED | CANCELLED | ENDED
+  status          String             @default("PENDING") // PENDING | ACTIVE | REJECTED | CANCELLED | ENDED
   cooperationType String // SEMI_PRIVATE | PRIVATE — باید از انواع ارائهشده مربی باشد
   message         String? // معرفی و هدف دانشجو — سقف طول در اعتبارسنجی
   rejectionReason String? // دلیل رد مربی — اختیاری با سقف طول
-  requestedAt     DateTime  @default(now())
+  requestedAt     DateTime           @default(now())
   decidedAt       DateTime? // زمان تصمیم مربی (پذیرش یا رد)
   endedAt         DateTime? // زمان لغو یا پایان ارتباط
   endedBy         String? // «student» | «coach» — کدام طرف ارتباط را پایان داد
-  createdAt       DateTime  @default(now())
-  updatedAt       DateTime  @updatedAt
-  student         user      @relation("StudentConnection", fields: [studentId], references: [id], onDelete: Cascade)
-  coach           user      @relation("CoachConnection", fields: [coachId], references: [id], onDelete: Cascade)
+  createdAt       DateTime           @default(now())
+  updatedAt       DateTime           @updatedAt
+  student         user               @relation("StudentConnection", fields: [studentId], references: [id], onDelete: Cascade)
+  coach           user               @relation("CoachConnection", fields: [coachId], references: [id], onDelete: Cascade)
+  // مکالمه خصوصی مرحله ۱۷ — حداکثر یک مکالمه به‌ازای هر ارتباط (unique سمت مکالمه)
+  conversation    CoachConversation?
 
   @@index([studentId, status, requestedAt])
   @@index([coachId, status, requestedAt])
@@ -675,13 +681,13 @@ model CoachStudentConnection {
 // estimatedMinutes هر روز با همان فرمول موتور برنامهساز محاسبه میشود.
 
 model CoachWorkoutPlan {
-  id              String   @id @default(cuid())
+  id              String    @id @default(cuid())
   coachId         String
   // پس از نخستین انتشار پر میشود و هرگز تغییر دانشجو نمیکند
   studentId       String?
   connectionId    String?
   title           String
-  description     String   @default("")
+  description     String    @default("")
   // fat_loss | muscle_gain | strength | maintain | fitness — همان واژگان موتور
   goal            String
   // beginner | intermediate | advanced — همان واژگان سطح
@@ -691,16 +697,16 @@ model CoachWorkoutPlan {
   // snapshot کامل روزها و حرکات — ساختار در لایه سرویس اعتبارسنجی میشود
   contentJson     String
   // sha256 محتوای نرمالشده — ارسال مجدد بدون تغییر محتوا را 409 میکند
-  contentHash     String   @default("")
+  contentHash     String    @default("")
   // draft | published | archived
-  status          String   @default("draft")
-  currentVersion  Int      @default(0)
+  status          String    @default("draft")
+  currentVersion  Int       @default(0)
   firstSentAt     DateTime?
   lastSentAt      DateTime?
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
-  coach   user @relation("CoachWorkoutPlans", fields: [coachId], references: [id], onDelete: Cascade)
-  student user? @relation("CoachWorkoutPlanStudents", fields: [studentId], references: [id], onDelete: SetNull)
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  coach           user      @relation("CoachWorkoutPlans", fields: [coachId], references: [id], onDelete: Cascade)
+  student         user?     @relation("CoachWorkoutPlanStudents", fields: [studentId], references: [id], onDelete: SetNull)
 
   @@index([coachId, status, updatedAt])
   @@index([studentId, status])
@@ -716,27 +722,27 @@ model CoachWorkoutPlan {
 // سمت سرور انجام میشود.
 
 model CoachNutritionPlan {
-  id              String   @id @default(cuid())
-  coachId         String
-  studentId       String?
-  connectionId    String?
-  title           String
-  description     String   @default("")
+  id             String    @id @default(cuid())
+  coachId        String
+  studentId      String?
+  connectionId   String?
+  title          String
+  description    String    @default("")
   // weight_loss | muscle_gain | maintain — همان واژگان برنامه غذایی
-  goal            String
+  goal           String
   // بازه زمانی برنامه به روز — ۱ تا ۷ (همان محدوده برنامه غذایی موجود)
-  durationDays    Int
-  contentJson     String
-  contentHash     String   @default("")
+  durationDays   Int
+  contentJson    String
+  contentHash    String    @default("")
   // draft | published | archived
-  status          String   @default("draft")
-  currentVersion  Int      @default(0)
-  firstSentAt     DateTime?
-  lastSentAt      DateTime?
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
-  coach   user @relation("CoachNutritionPlans", fields: [coachId], references: [id], onDelete: Cascade)
-  student user? @relation("CoachNutritionPlanStudents", fields: [studentId], references: [id], onDelete: SetNull)
+  status         String    @default("draft")
+  currentVersion Int       @default(0)
+  firstSentAt    DateTime?
+  lastSentAt     DateTime?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+  coach          user      @relation("CoachNutritionPlans", fields: [coachId], references: [id], onDelete: Cascade)
+  student        user?     @relation("CoachNutritionPlanStudents", fields: [studentId], references: [id], onDelete: SetNull)
 
   @@index([coachId, status, updatedAt])
   @@index([studentId, status])
@@ -774,10 +780,79 @@ model CoachPlanDelivery {
   // snapshot کامل و تغییرناپذیر محتوای برنامه در لحظه ارسال
   contentJson  String
   sentAt       DateTime @default(now())
-  coach   user @relation("CoachPlanDeliveriesSent", fields: [coachId], references: [id], onDelete: Cascade)
-  student user @relation("CoachPlanDeliveriesReceived", fields: [studentId], references: [id], onDelete: Cascade)
+  coach        user     @relation("CoachPlanDeliveriesSent", fields: [coachId], references: [id], onDelete: Cascade)
+  student      user     @relation("CoachPlanDeliveriesReceived", fields: [studentId], references: [id], onDelete: Cascade)
 
   @@unique([planId, version])
   @@index([studentId, planKind, sentAt])
   @@index([coachId, sentAt])
+}
+
+// ----------------------------------------
+// مکالمه خصوصی مربی و دانشجو — مرحله ۱۷
+// ----------------------------------------
+// حداکثر یک مکالمه به‌ازای هر CoachStudentConnection (قید unique روی
+// connectionId — ساخت تنبل در نخستین «گشودن گفت‌وگو» یا نخستین پیام،
+// همیشه سمت سرور و همیشه پس از بازبینی مالکیت و وضعیت ارتباط).
+//
+// studentId/coachId کپی شناسه‌های همان ارتباط‌اند (سمت سرویس اعتبارسنجی
+// می‌شوند که با رکورد ارتباط برابرند) تا فهرست مکالمه‌ها بدون join زنجیره‌ای
+// و با ایندکس مستقیم خوانده شود.
+//
+// lastSeq شمارنده پایدار درون‌مکالمه است: هر پیام در یک تراکنش نوشتن با
+// lastSeq+1 ثبت میشود؛ چون SQLite تراکنش‌های نوشتن را کامل سری‌سازی میکند،
+// ترتیب seq دقیقاً همان ترتیب واقعی ارسال است — مبنای پایدار صفحه‌بندی و
+// polling بدون هیچ اتکایی به ساعت کلاینت یا دقت میلی‌ثانیه createdAt.
+//
+// پایان ارتباط یا انقضای اشتراک این رکورد و پیام‌هایش را حذف نمیکند
+// (سیاست شفاف پروژه: تاریخچه حفظ میشود، فقط ارسال جدید بسته میشود).
+
+model CoachConversation {
+  id            String                 @id @default(cuid())
+  connectionId  String                 @unique
+  studentId     String
+  coachId       String
+  // شمارنده پایدار پیام‌ها — در همان تراکنش نوشتن پیام افزایش مییابد
+  lastSeq       Int                    @default(0)
+  // زمان آخرین پیام — مرتب‌سازی فهرست مکالمه‌ها (null یعنی هنوز پیامی نیست)
+  lastMessageAt DateTime?
+  createdAt     DateTime               @default(now())
+  updatedAt     DateTime               @updatedAt
+  connection    CoachStudentConnection @relation(fields: [connectionId], references: [id], onDelete: Cascade)
+  student       user                   @relation("ConversationStudent", fields: [studentId], references: [id], onDelete: Cascade)
+  coach         user                   @relation("ConversationCoach", fields: [coachId], references: [id], onDelete: Cascade)
+  messages      CoachMessage[]
+
+  @@index([studentId, lastMessageAt])
+  @@index([coachId, lastMessageAt])
+}
+
+// ----------------------------------------
+// پیام خصوصی — رکورد تغییرناپذیر پس از نوشتن
+// ----------------------------------------
+// senderId همیشه از نشست سرور استخراج میشود و هر مقدار کلاینتی نادیده
+// گرفته میشود. هیچ مسیر ویرایش یا حذف در این مرحله وجود ندارد (سیاست:
+// تاریخچه مکالمه تغییرناپذیر است)؛ readAt فقط توسط سرور و فقط هنگام
+// خواندن پیام‌های طرف مقابل توسط گیرنده مجاز ثبت میشود.
+//
+// unique(conversationId, seq) محافظ دوم در برابر هرگونه رقابت همزمانی
+// است؛ رقابت با P2002 گرفته و با تلاش مجدد درون تراکنش حل میشود.
+// محتوای پیام متن ساده است (بدون هیچ HTML ای) و در نمایش با escape امن
+// React رندر میشود؛ سقف طول در اعتبارسنجی Zod سمت سرور اعمال میشود.
+
+model CoachMessage {
+  id             String            @id @default(cuid())
+  seq            Int
+  conversationId String
+  senderId       String
+  // متن ساده پیام — سقف کاراکتر در لایه اعتبارسنجی (CHAT_LIMITS.CONTENT_MAX)
+  content        String
+  // خوانده‌شدن — فقط گیرنده مجاز از مسیر سرور ثبت میکند (null = نخوانده)
+  readAt         DateTime?
+  createdAt      DateTime          @default(now())
+  conversation   CoachConversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  sender         user              @relation("CoachMessageSender", fields: [senderId], references: [id], onDelete: Cascade)
+
+  @@unique([conversationId, seq])
+  @@index([senderId, createdAt])
 }

@@ -48,10 +48,12 @@ import {
   Info,
   CalendarDays,
   GraduationCap,
+  MessagesSquare,
 } from "lucide-react";
 import { getNavItem } from "@/lib/nav";
 import { useStrings } from "@/lib/i18n/use-strings";
 import { coachesStrings } from "@/lib/i18n/sections/coaches";
+import { coachChatStrings } from "@/lib/i18n/sections/coach-chat";
 import { sharedStrings } from "@/lib/i18n/sections/shared";
 import { useLocale, useDir } from "@/lib/i18n/locale";
 import { localeDateTimeLabel } from "@/lib/i18n/format";
@@ -67,10 +69,13 @@ import {
   endConnection,
   sendConnectionRequest,
 } from "@/hooks/use-coaching";
+import { useChatConversationList } from "@/hooks/use-coach-chat";
+import { CoachChatPanel } from "../shared/coach-chat-panel";
 import type {
   ConnectionItemClient,
   PublicCoachClient,
 } from "@/lib/coaching/client";
+import type { ChatConversationClient } from "@/lib/coaching/chat-client";
 
 /* --------------------------- نشان وضعیت ارتباط --------------------------- */
 
@@ -378,12 +383,18 @@ function ConnectionRow({
   connection,
   onAction,
   busyId,
+  chatEntry,
+  onOpenChat,
 }: {
   connection: ConnectionItemClient;
   onAction: () => void;
   busyId: string | null;
+  /** ورودی مکالمه همین ارتباط از API چت — null یعنی مکالمه‌ای نیست */
+  chatEntry: ChatConversationClient | null;
+  onOpenChat: (connectionId: string) => void;
 }) {
   const t = useStrings(coachesStrings);
+  const chatT = useStrings(coachChatStrings);
   const shared = useStrings(sharedStrings);
   const locale = useLocale();
   const { toast } = useToast();
@@ -471,7 +482,21 @@ function ConnectionRow({
       )}
 
       {connection.status === "ACTIVE" && (
-        <div className="mt-3">
+        <div className="mt-3 flex flex-wrap items-center gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            className="gap-1.5 border-primary/40 text-primary hover:bg-primary/10"
+            onClick={() => onOpenChat(connection.id)}
+          >
+            <MessagesSquare className="size-3.5" aria-hidden="true" />
+            {chatT.openChat}
+            {chatEntry !== null && chatEntry.unreadCount > 0 && (
+              <span className="rounded-full bg-primary/20 px-1.5 text-[10px] font-bold">
+                {chatEntry.unreadCount}
+              </span>
+            )}
+          </Button>
           <Button
             variant="outline"
             size="sm"
@@ -483,6 +508,23 @@ function ConnectionRow({
           </Button>
         </div>
       )}
+
+      {/* تاریخچه گفت‌وگوی ارتباط پایان‌یافته — فقط وقتی مکالمه واقعی وجود دارد */}
+      {connection.status !== "ACTIVE" &&
+        connection.status !== "PENDING" &&
+        chatEntry?.conversationId && (
+          <div className="mt-3">
+            <Button
+              variant="ghost"
+              size="sm"
+              className="gap-1.5 text-muted-foreground"
+              onClick={() => onOpenChat(connection.id)}
+            >
+              <MessagesSquare className="size-3.5" aria-hidden="true" />
+              {chatT.viewChat}
+            </Button>
+          </div>
+        )}
 
       <AlertDialog open={confirm !== null} onOpenChange={(open) => !open && setConfirm(null)}>
         <AlertDialogContent>
@@ -529,6 +571,15 @@ export function CoachesView() {
     refresh: refreshConn,
   } = useMyConnections(user !== null);
   const [selected, setSelected] = useState<PublicCoachClient | null>(null);
+  // گفت‌وگوی باز — connectionId ارتباط انتخاب‌شده؛ null یعنی نمای فهرست
+  const [chatConnectionId, setChatConnectionId] = useState<string | null>(null);
+  // فهرست مکالمه‌ها از API چت — برای نشان خوانده‌نشده و دکمه تاریخچه
+  const {
+    conversations: chatConversations,
+    refresh: refreshChatList,
+  } = useChatConversationList(user !== null);
+  const chatEntryOf = (connectionId: string): ChatConversationClient | null =>
+    chatConversations?.find((c) => c.connectionId === connectionId) ?? null;
 
   const pending = useMemo(
     () => connections?.filter((c) => c.status === "PENDING") ?? [],
@@ -549,13 +600,29 @@ export function CoachesView() {
 
   const refreshAll = async () => {
     setBusyId(null);
-    await Promise.all([refreshConn(), refreshSub()]);
+    await Promise.all([refreshConn(), refreshSub(), refreshChatList()]);
+  };
+
+  // بستن گفت‌وگو — بازگشت به فهرست + تازه‌سازی نشان خوانده‌نشده
+  const closeChat = async () => {
+    setChatConnectionId(null);
+    await refreshChatList();
   };
 
   return (
     <div>
       <ViewIntro item={item} />
 
+      {/* پنل گفت‌وگو — جایگزین کامل تب‌ها تا بازگشت صریح کاربر */}
+      {chatConnectionId ? (
+        <CoachChatPanel
+          key={chatConnectionId}
+          connectionId={chatConnectionId}
+          myUserId={user?.id ?? null}
+          onBack={closeChat}
+        />
+      ) : (
+      <>
       {/* وضعیت اشتراک — مقدار همیشه از سرور */}
       <Card className="mb-6 border-border/60 bg-card/70">
         <CardContent className="flex flex-wrap items-center justify-between gap-3 p-4">
@@ -683,7 +750,14 @@ export function CoachesView() {
                 ) : (
                   <div className="space-y-3">
                     {active.map((c) => (
-                      <ConnectionRow key={c.id} connection={c} onAction={refreshAll} busyId={busyId} />
+                      <ConnectionRow
+                        key={c.id}
+                        connection={c}
+                        onAction={refreshAll}
+                        busyId={busyId}
+                        chatEntry={chatEntryOf(c.id)}
+                        onOpenChat={setChatConnectionId}
+                      />
                     ))}
                   </div>
                 )}
@@ -694,7 +768,14 @@ export function CoachesView() {
                   <h3 className="mb-2 text-xs font-bold text-foreground">{t.pendingSection}</h3>
                   <div className="space-y-3">
                     {pending.map((c) => (
-                      <ConnectionRow key={c.id} connection={c} onAction={refreshAll} busyId={busyId} />
+                      <ConnectionRow
+                        key={c.id}
+                        connection={c}
+                        onAction={refreshAll}
+                        busyId={busyId}
+                        chatEntry={null}
+                        onOpenChat={setChatConnectionId}
+                      />
                     ))}
                   </div>
                 </section>
@@ -705,7 +786,14 @@ export function CoachesView() {
                   <h3 className="mb-2 text-xs font-bold text-foreground">{t.historySection}</h3>
                   <div className="space-y-3">
                     {history.map((c) => (
-                      <ConnectionRow key={c.id} connection={c} onAction={refreshAll} busyId={busyId} />
+                      <ConnectionRow
+                        key={c.id}
+                        connection={c}
+                        onAction={refreshAll}
+                        busyId={busyId}
+                        chatEntry={chatEntryOf(c.id)}
+                        onOpenChat={setChatConnectionId}
+                      />
                     ))}
                   </div>
                 </section>
@@ -721,6 +809,8 @@ export function CoachesView() {
         onClose={() => setSelected(null)}
         onSent={refreshAll}
       />
+      </>
+      )}
     </div>
   );
 }
