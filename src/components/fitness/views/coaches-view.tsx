@@ -52,6 +52,9 @@ import {
 } from "lucide-react";
 import { getNavItem } from "@/lib/nav";
 import { useStrings } from "@/lib/i18n/use-strings";
+import { phase196Strings } from "@/lib/i18n/sections/phase196";
+import { useMyPayments, type PaymentRequestClient } from "@/hooks/use-p196";
+import { ExternalLink, CreditCard as CreditCardIcon } from "lucide-react";
 import { coachesStrings } from "@/lib/i18n/sections/coaches";
 import { coachChatStrings } from "@/lib/i18n/sections/coach-chat";
 import { sharedStrings } from "@/lib/i18n/sections/shared";
@@ -114,6 +117,34 @@ function ConnectionStatusBadge({ status }: { status: string }) {
   );
 }
 
+/* --------------------------- بلوک تعرفه عمومی --------------------------- */
+
+function TariffBlock({ tariff }: { tariff: PublicCoachClient["tariff"] }) {
+  const t = useStrings(coachesStrings);
+  const p196 = useStrings(phase196Strings);
+  if (!tariff) return null;
+  const rows: { label: string; irr: number | null; usd: number | null }[] = [
+    { label: p196.tariffPrivate, irr: tariff.privatePriceIrr, usd: tariff.privatePriceUsd },
+    { label: p196.tariffSemiPrivate, irr: tariff.semiPrivatePriceIrr, usd: tariff.semiPrivatePriceUsd },
+  ];
+  const fmt = (v: number | null, unit: string) =>
+    v === null ? p196.tariffUnset : `${new Intl.NumberFormat("fa-IR").format(v)} ${unit}`;
+  return (
+    <div className="min-w-0 space-y-1 rounded-lg border border-border/50 bg-secondary/20 p-2">
+      {rows.map((r) => (
+        <div key={r.label} className="flex items-center justify-between gap-2 text-[10px]">
+          <span className="font-bold text-foreground">{r.label}</span>
+          <span className="flex flex-wrap items-center gap-2 text-muted-foreground">
+            <span dir="ltr">{r.irr === null ? p196.tariffUnset : `${new Intl.NumberFormat("en-US").format(r.irr)} ${p196.tariffIrr}`}</span>
+            <span aria-hidden="true">·</span>
+            <span dir="ltr">{r.usd === null ? p196.tariffUnset : `$${new Intl.NumberFormat("en-US").format(r.usd)} ${p196.tariffUsd}`}</span>
+          </span>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 /* --------------------------- کارت مربی --------------------------- */
 
 function CoachCard({
@@ -169,6 +200,8 @@ function CoachCard({
           </div>
         )}
 
+
+
         <div className="mt-auto pt-1">
           <Button variant="outline" size="sm" className="w-full" onClick={() => onView(coach)}>
             {t.viewProfile}
@@ -186,13 +219,17 @@ function RequestDialog({
   premium,
   onClose,
   onSent,
+  existingStatus = null,
 }: {
   coach: PublicCoachClient | null;
   premium: boolean | null;
   onClose: () => void;
   onSent: () => void;
+  /** وضعیت ارتباط باز موجود با این مربی — جلوگیری UI از درخواست تکراری */
+  existingStatus: string | null;
 }) {
   const t = useStrings(coachesStrings);
+  const p196 = useStrings(phase196Strings);
   const shared = useStrings(sharedStrings);
   const locale = useLocale();
   const { user } = useSessionData();
@@ -288,7 +325,24 @@ function RequestDialog({
             </div>
           )}
 
+          {/* تعرفه عمومی مربی — نمایش شفاف پیش از درخواست */}
+          <TariffBlock tariff={coach.tariff} />
+
           <Separator className="bg-border/60" />
+
+          {/* درخواست باز موجود — دکمه ارسال مجدد غیرفعال و وضعیت نمایش داده میشود */}
+          {existingStatus === "PENDING" && (
+            <div className="flex items-start gap-2 rounded-xl border border-amber-400/30 bg-amber-400/10 p-3">
+              <Info className="mt-0.5 size-4 shrink-0 text-amber-300" aria-hidden="true" />
+              <p className="text-xs leading-6 text-amber-200/90">{t.statusPending}</p>
+            </div>
+          )}
+          {existingStatus === "ACTIVE" && (
+            <div className="flex items-start gap-2 rounded-xl border border-primary/30 bg-primary/10 p-3">
+              <Info className="mt-0.5 size-4 shrink-0 text-primary" aria-hidden="true" />
+              <p className="text-xs leading-6 text-primary">{t.statusActive}</p>
+            </div>
+          )}
 
           {isGuest && (
             <div className="flex items-start gap-2 rounded-xl border border-border/60 bg-secondary/30 p-3">
@@ -356,7 +410,11 @@ function RequestDialog({
 
               <p className="text-[11px] leading-5 text-muted-foreground">{t.requestConnectionHint}</p>
 
-              <Button className="w-full" onClick={submit} disabled={sending}>
+              <Button
+                className="w-full"
+                onClick={submit}
+                disabled={sending || existingStatus === "PENDING" || existingStatus === "ACTIVE"}
+              >
                 {sending ? t.sending : t.sendMessageRequest}
               </Button>
             </>
@@ -555,11 +613,110 @@ function ConnectionRow({
   );
 }
 
+/* --------------------------- ردیف درخواست پرداخت دانشجو --------------------------- */
+
+function paymentStatusTone(status: string): string {
+  switch (status) {
+    case "CONFIRMED":
+      return "border-primary/40 bg-primary/10 text-primary";
+    case "PENDING":
+      return "border-amber-400/30 bg-amber-400/10 text-amber-300";
+    case "DECLINED":
+      return "border-rose-400/30 bg-rose-400/10 text-rose-300";
+    default:
+      return "border-border/50 bg-secondary/40 text-muted-foreground";
+  }
+}
+
+function StudentPaymentRow({
+  payment,
+  onDecide,
+  busyId,
+}: {
+  payment: PaymentRequestClient;
+  onDecide: (id: string, decision: "confirm" | "decline") => void;
+  busyId: string | null;
+}) {
+  const t = useStrings(coachesStrings);
+  const shared = useStrings(sharedStrings);
+  const p196 = useStrings(phase196Strings);
+  const locale = useLocale();
+  const busy = busyId === payment.id;
+  const amountLabel = `${new Intl.NumberFormat(locale === "fa" ? "fa-IR" : "en-US").format(payment.amount)} ${
+    payment.currency === "IRR" ? p196.tariffIrr : p196.tariffUsd
+  }`;
+  const statusLabel =
+    payment.status === "PENDING"
+      ? p196.paymentStatusPending
+      : payment.status === "CONFIRMED"
+        ? p196.paymentStatusConfirmed
+        : payment.status === "DECLINED"
+          ? p196.paymentStatusDeclined
+          : p196.paymentStatusCancelled;
+  return (
+    <div className="rounded-xl border border-border/60 bg-card/70 p-4">
+      <div className="flex flex-wrap items-start justify-between gap-2">
+        <div className="min-w-0">
+          <p className="text-sm font-bold text-foreground">{payment.coach.displayName}</p>
+          <p className="mt-0.5 text-[11px] text-muted-foreground">
+            {shared.cooperationTypeLabel(payment.serviceType)} · {amountLabel}
+          </p>
+        </div>
+        <span className={`inline-flex items-center rounded-md border px-2 py-0.5 text-[10px] font-bold ${paymentStatusTone(payment.status)}`}>
+          {statusLabel}
+        </span>
+      </div>
+      {payment.description && (
+        <p className="mt-2 rounded-lg border border-border/50 bg-secondary/30 p-2 text-[11px] leading-6 text-muted-foreground">
+          {p196.paymentDescriptionLabel}: {payment.description}
+        </p>
+      )}
+      <div className="mt-3 flex flex-wrap items-center gap-2">
+        {payment.status === "PENDING" && (
+          <>
+            <Button size="sm" disabled={busy} onClick={() => onDecide(payment.id, "confirm")}>
+              {p196.paymentConfirmTitle}
+            </Button>
+            <Button
+              size="sm"
+              variant="outline"
+              className="border-rose-400/30 text-rose-300 hover:bg-rose-400/10"
+              disabled={busy}
+              onClick={() => onDecide(payment.id, "decline")}
+            >
+              {p196.paymentDecline}
+            </Button>
+            <p className="text-[10px] text-muted-foreground">{p196.paymentLinkLockedNote}</p>
+          </>
+        )}
+        {payment.status === "CONFIRMED" && (
+          <>
+            <a
+              href={payment.externalLink}
+              target="_blank"
+              rel="noreferrer noopener"
+              className="inline-flex items-center gap-1 rounded-lg border border-primary/40 bg-primary/10 px-3 py-1.5 text-[11px] font-bold text-primary hover:bg-primary/15"
+            >
+              <ExternalLink className="size-3.5" aria-hidden="true" />
+              {p196.paymentOpenLink}
+            </a>
+            <p className="text-[10px] text-muted-foreground">{p196.paymentLinkNote}</p>
+          </>
+        )}
+      </div>
+      <p className="mt-2 text-[10px] text-muted-foreground/70">
+        {t.requestedAt}: {localeDateTimeLabel(payment.createdAt, locale)}
+      </p>
+    </div>
+  );
+}
+
 /* --------------------------- نمای اصلی --------------------------- */
 
 export function CoachesView() {
   const item = getNavItem("coaches");
   const t = useStrings(coachesStrings);
+  const p196v = useStrings(phase196Strings);
   const dir = useDir();
   const { user } = useSessionData();
   const { subscription, loading: subLoading, refresh: refreshSub } = useSubscription(user !== null);
@@ -597,6 +754,17 @@ export function CoachesView() {
     [connections]
   );
   const [busyId, setBusyId] = useState<string | null>(null);
+  // درخواست‌های پرداخت دانشجو — مرحله ۱۹.۶
+  const { payments, loading: payLoading, decide, reload: reloadPayments } = useMyPayments(user !== null);
+  const [payBusyId, setPayBusyId] = useState<string | null>(null);
+  const decidePayment = async (id: string, decision: "confirm" | "decline") => {
+    setPayBusyId(id);
+    const result = await decide(id, decision);
+    setPayBusyId(null);
+    if (result.ok) {
+      await reloadPayments();
+    }
+  };
 
   const refreshAll = async () => {
     setBusyId(null);
@@ -652,9 +820,10 @@ export function CoachesView() {
       </Card>
 
       <Tabs defaultValue="browse" dir={dir}>
-        <TabsList className="mb-4 grid w-full max-w-md grid-cols-2">
+        <TabsList className="mb-4 grid w-full max-w-md grid-cols-3">
           <TabsTrigger value="browse">{t.browseTab}</TabsTrigger>
           <TabsTrigger value="mine">{t.myConnectionsTab}</TabsTrigger>
+          <TabsTrigger value="payments">{p196v.paymentsSectionTitle}</TabsTrigger>
         </TabsList>
 
         {/* ---------- فهرست مربیان ---------- */}
@@ -801,6 +970,39 @@ export function CoachesView() {
             </div>
           )}
         </TabsContent>
+
+        {/* ---------- درخواست‌های پرداخت من (دانشجو) — مرحله ۱۹.۶ ---------- */}
+        <TabsContent value="payments">
+          <div className="mb-3 flex items-center justify-between gap-2">
+            <div className="min-w-0">
+              <h2 className="text-sm font-bold text-foreground">{p196v.paymentsSectionTitle}</h2>
+              <p className="text-[11px] leading-5 text-muted-foreground">{p196v.paymentLinkNote}</p>
+            </div>
+            <Button variant="ghost" size="icon" className="size-8 shrink-0" onClick={() => void reloadPayments()} aria-label={t.refresh}>
+              <RefreshCw className="size-3.5" aria-hidden="true" />
+            </Button>
+          </div>
+
+          {payLoading ? (
+            <div className="space-y-3" aria-busy="true" aria-live="polite">
+              {[0, 1].map((i) => (
+                <div key={i} className="h-24 animate-pulse rounded-xl border border-border/50 bg-secondary/30" />
+              ))}
+            </div>
+          ) : !payments || payments.length === 0 ? (
+            <EmptyState
+              icon={CreditCardIcon}
+              title={p196v.paymentsSectionTitle}
+              description={p196v.paymentsEmpty}
+            />
+          ) : (
+            <div className="space-y-3">
+              {payments.map((p) => (
+                <StudentPaymentRow key={p.id} payment={p} onDecide={decidePayment} busyId={payBusyId} />
+              ))}
+            </div>
+          )}
+        </TabsContent>
       </Tabs>
 
       <RequestDialog
@@ -808,6 +1010,15 @@ export function CoachesView() {
         premium={subscription === null ? null : subscription.premium}
         onClose={() => setSelected(null)}
         onSent={refreshAll}
+        existingStatus={
+          selected
+            ? (connections?.find(
+                (c) =>
+                  c.coach.userId === selected.userId &&
+                  (c.status === "PENDING" || c.status === "ACTIVE")
+              )?.status ?? null)
+            : null
+        }
       />
       </>
       )}

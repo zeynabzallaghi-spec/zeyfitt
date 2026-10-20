@@ -55,6 +55,7 @@ import {
   updateCoachWorkoutPlan,
   getCoachWorkoutPlan,
 } from "@/hooks/use-coach-plans";
+import { useCoachExercises } from "@/hooks/use-p196";
 import type {
   BuilderDayInput,
   BuilderExerciseInput,
@@ -150,6 +151,14 @@ function ExercisePickerDialog({
   onPick: (ex: { id: string; fa: string; en: string; category: string }) => void;
 }) {
   const t = useStrings(coachPlansStrings);
+  // بانک شخصی مربی — مرحله ۱۹.۶؛ سوییچ منبع در انتخابگر نمایش داده میشود
+  const { exercises: personal } = useCoachExercises(open);
+  const personalList = (personal ?? []).map((ex) => ({
+    id: ex.id,
+    faName: ex.faName,
+    enName: ex.enName,
+    category: ex.category,
+  }));
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -157,12 +166,21 @@ function ExercisePickerDialog({
         <DialogHeader>
           <DialogTitle className="text-sm">{t.exercisePickerTitle}</DialogTitle>
         </DialogHeader>
-        {/* بانک عمومی کامل مرحله ۱۸ — جست‌وجو دو-زبانه روی داده زنده سرور */}
+        {/* بانک عمومی کامل مرحله ۱۸ + بانک شخصی مرحله ۱۹.۶ — جست‌وجو دو-زبانه */}
         <ExercisePicker
+          personalExercises={personalList}
           onPick={(id) => {
-            const card = useExerciseLibraryStore.getState().getById(id);
-            if (card) {
-              onPick({ id: card.id, fa: card.fa, en: card.en, category: card.category });
+            if (id.startsWith("cex-")) {
+              const personalId = id.slice(4);
+              const found = personalList.find((p) => p.id === personalId);
+              if (found) {
+                onPick({ id, fa: found.faName, en: found.enName, category: found.category });
+              }
+            } else {
+              const card = useExerciseLibraryStore.getState().getById(id);
+              if (card) {
+                onPick({ id: card.id, fa: card.fa, en: card.en, category: card.category });
+              }
             }
             onOpenChange(false);
           }}
@@ -457,7 +475,14 @@ function WorkoutBuilderDialog({
                         onClick={() => setPickerDay(dayIdx)}
                       >
                         {ex.exerciseId ? (
-                          <span dir="auto">{locale === "fa" ? ex.faName : ex.enName}</span>
+                          <span dir="auto" className="inline-flex items-center gap-1">
+                            {locale === "fa" ? ex.faName : ex.enName}
+                            {ex.exerciseId.startsWith("cex-") && (
+                              <span className="rounded border border-primary/30 bg-primary/10 px-1 text-[8px] font-bold text-primary">
+                                {locale === "fa" ? "شخصی" : "Personal"}
+                              </span>
+                            )}
+                          </span>
                         ) : (
                           <span className="font-normal text-muted-foreground">{t.addExercise}</span>
                         )}
@@ -543,22 +568,6 @@ function WorkoutBuilderDialog({
                             dir="ltr"
                             value={ex.restSeconds}
                             onChange={(e) => patchExercise(dayIdx, exIdx, { restSeconds: e.target.value })}
-                            className="h-8 text-xs"
-                          />
-                        </div>
-                        <div className="space-y-1">
-                          <Label className="text-[10px] font-bold text-muted-foreground">
-                            {t.suggestedWeightLabel}
-                            <span className="ms-1 font-normal">{t.suggestedWeightOptional}</span>
-                          </Label>
-                          <Input
-                            type="number"
-                            min={0}
-                            max={500}
-                            step="0.5"
-                            dir="ltr"
-                            value={ex.suggestedWeightKg}
-                            onChange={(e) => patchExercise(dayIdx, exIdx, { suggestedWeightKg: e.target.value })}
                             className="h-8 text-xs"
                           />
                         </div>

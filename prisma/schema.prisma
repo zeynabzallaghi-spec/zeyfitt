@@ -66,6 +66,18 @@ model user {
   premiumUpgradeRequest       PremiumUpgradeRequest?
   supportTickets              SupportTicket[]
   adminActionLogs             AdminActionLog[]
+  // مرحله ۱۹.۶ — اطلاعات بانکی خصوصی (JSON اعتبارسنجی‌شده سمت سرور؛ هرگز در API عمومی/مربی/ادمین افشا نمیشود)
+  bankingInfoJson             String?
+  // مرحله ۱۹.۶ — مرکز اعلان‌ها، مسدودسازی پیام‌رسان، تعرفه/پرداخت و بانک حرکات شخصی
+  notifications               Notification[]
+  chatBlocksSet               ChatBlock[]            @relation("ChatBlocksSet")
+  chatBlocksReceived          ChatBlock[]            @relation("ChatBlocksReceived")
+  coachTariff                 CoachTariff?
+  paymentsRequested          PaymentRequest[]       @relation("PaymentCoach")
+  paymentsReceived           PaymentRequest[]       @relation("PaymentStudent")
+  coachStudentNotes          CoachStudentNote[]     @relation("CoachNotes")
+  studentNotesAboutMe        CoachStudentNote[]     @relation("StudentNotes")
+  coachExercises             CoachExercise[]
 }
 
 model account {
@@ -822,6 +834,68 @@ model CoachPlanDelivery {
 }
 
 // ----------------------------------------
+// تعرفه مربی — مرحله ۱۹.۶
+// ----------------------------------------
+// قیمت خدمات خصوصی و نیمهخصوصی به ریال و دلار. ثبتنشده بودن قیمت = null
+// (هرگز صفر یا رایگان نمایش داده نمیشود). تعرفه داده عمومی مربی است و در
+// فهرست/جزئیات عمومی نمایش داده میشود — اطلاعات بانکی خصوصی هرگز اینجا نیست.
+// مبلغ درخواست پرداخت در لحظه ساخت داخل PaymentRequest کپی میشود؛ تغییر
+// بعدی تعرفه رکوردهای قبلی را تغییر نمیدهد.
+
+model CoachTariff {
+  id                  String   @id @default(cuid())
+  coachId             String   @unique
+  privatePriceIrr     Int?
+  privatePriceUsd     Int?
+  semiPrivatePriceIrr Int?
+  semiPrivatePriceUsd Int?
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+  coach               user     @relation(fields: [coachId], references: [id], onDelete: Cascade)
+}
+
+// ----------------------------------------
+// درخواست پرداخت — مرحله ۱۹.۶
+// ----------------------------------------
+// مربی برای دانشجوی متصل درخواست پرداخت با لینک خارجی میسازد. گردش کار:
+//   PENDING   (در انتظار تأیید دانشجو — لینک برای دانشجو فعال نیست)
+//   CONFIRMED (دانشجو تأیید کرد — لینک فعال؛ وضعیت همچنان «در انتظار پرداخت»
+//              تا اتصال درگاه واقعی در مرحله بعد)
+//   DECLINED  (دانشجو رد کرد)
+//   CANCELLED (لغو مربی)
+// باز کردن/کلیک روی لینک به هیچ وجه پرداخت موفق تلقی نمیشود و هیچ مسیری
+// وضعیت را PAID نمیکند. مبلغ/واحد در لحظه ساخت ثبت و تغییر تعرفه بعدی
+// رکوردهای قبلی را تغییر نمیدهد.
+
+model PaymentRequest {
+  id                String    @id @default(cuid())
+  coachId           String
+  studentId         String
+  connectionId      String
+  // PRIVATE | SEMI_PRIVATE — باید از انواع ارائهشده مربی باشد
+  serviceType       String
+  amount            Int
+  // IRR | USD
+  currency          String
+  description       String    @default("")
+  // لینک پرداخت خارجی — فقط https اعتبارسنجی میشود
+  externalLink      String
+  status            String    @default("PENDING")
+  studentConfirmedAt DateTime?
+  studentDeclinedAt  DateTime?
+  studentNote       String?
+  cancelledAt       DateTime?
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+  coach             user      @relation("PaymentCoach", fields: [coachId], references: [id], onDelete: Cascade)
+  student           user      @relation("PaymentStudent", fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@index([coachId, createdAt])
+  @@index([studentId, createdAt])
+  @@index([connectionId])
+}
+
+// ----------------------------------------
 // مکالمه خصوصی مربی و دانشجو — مرحله ۱۷
 // ----------------------------------------
 // حداکثر یک مکالمه به‌ازای هر CoachStudentConnection (قید unique روی
@@ -885,9 +959,53 @@ model CoachMessage {
   createdAt      DateTime          @default(now())
   conversation   CoachConversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
   sender         user              @relation("CoachMessageSender", fields: [senderId], references: [id], onDelete: Cascade)
+  // پیوست فایل مرحله ۱۹.۶ — چند فایل به‌ازای هر پیام (سقف مجموع ۲۰MB سمت سرور)
+  attachments    CoachMessageAttachment[]
 
   @@unique([conversationId, seq])
   @@index([senderId, createdAt])
+}
+
+// ----------------------------------------
+// پیوست فایل پیام — مرحله ۱۹.۶
+// ----------------------------------------
+// هر پیام حداکثر یک فایل دارد (سقف مجموع ۲۰MB سمت سرور اعمال میشود).
+// فایل روی دیسک خارج از public در data/uploads/chat/<conversationId> با نام
+// تصادفی غیرکاربر ذخیره میشود؛ خواندن فقط از مسیر API مالکیت‌محور برای
+// اعضای همان مکالمه. نوع فایل با امضای بایتها راستیآزمایی میشود (نه پسوند).
+
+model CoachMessageAttachment {
+  id          String       @id @default(cuid())
+  messageId   String
+  fileName    String
+  mimeType    String
+  sizeBytes   Int
+  storagePath String
+  createdAt   DateTime     @default(now())
+  message     CoachMessage @relation(fields: [messageId], references: [id], onDelete: Cascade)
+
+  @@index([messageId, createdAt])
+}
+
+// ----------------------------------------
+// مسدودسازی پیام‌رسان — مرحله ۱۹.۶
+// ----------------------------------------
+// مربی میتواند دانشجویی را که به او پیام میدهد مسدود کند: پس از مسدودسازی
+// دانشجو نمیتواند به آن مربی پیام جدید بفرستد (بررسی سمت سرور در هر ارسال)،
+// پیامهای قبلی و تاریخچه حفظ میشود و رابطه/اشتراک/برنامهها دستنخورده
+// میمانند. رفع مسدودیت = حذف رکورد. در گفتوگوی اولیه (PENDING) و فعال
+// (ACTIVE) رفتار یکسان است.
+
+model ChatBlock {
+  id        String   @id @default(cuid())
+  blockerId String
+  blockedId String
+  createdAt DateTime @default(now())
+  blocker   user     @relation("ChatBlocksSet", fields: [blockerId], references: [id], onDelete: Cascade)
+  blocked   user     @relation("ChatBlocksReceived", fields: [blockedId], references: [id], onDelete: Cascade)
+
+  @@unique([blockerId, blockedId])
+  @@index([blockedId])
 }
 
 // ----------------------------------------
@@ -1067,7 +1185,6 @@ model SupportTicket {
 model AdminActionLog {
   id        String   @id @default(cuid())
   adminId   String
-  // action | targetType free-form پایدار برای گزارش‌گیری
   action    String
   targetType String
   targetId  String
@@ -1077,4 +1194,93 @@ model AdminActionLog {
 
   @@index([adminId, createdAt])
   @@index([targetType, targetId])
+}
+
+// ----------------------------------------
+// مرکز اعلان‌ها — مرحله ۱۹.۶
+// ----------------------------------------
+// اعلان داخلی مبتنی بر رویدادهای واقعی پروژه. قید یکتای (userId, dedupeKey)
+// ضدتکرار است: یک رویداد واحد هرگز دو اعلان نمیسازد (رقابت با P2002 گرفته
+// و بیصدا نادیده گرفته میشود). readAt فقط سمت سرور ثبت میشود. هیچ ایمیل/
+// Push ادعا نمیشود.
+
+model Notification {
+  id          String    @id @default(cuid())
+  userId      String
+  type        String
+  dedupeKey   String
+  payloadJson String    @default("{}")
+  readAt      DateTime?
+  createdAt   DateTime  @default(now())
+  user        user      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, dedupeKey])
+  @@index([userId, readAt, createdAt])
+}
+
+// ----------------------------------------
+// یادداشت خصوصی مربی درباره دانشجو — مرحله ۱۹.۶
+// ----------------------------------------
+// هر جفت مربی-دانشجو حداکثر یک یادداشت (ویرایشپذیر). فقط مربی مالک میخواند
+// و مینویسد؛ دانشجو، مربیان دیگر و کاربران عمومی هیچ دسترسیای ندارند و
+// در هیچ API دیگری برگردانده نمیشود.
+
+model CoachStudentNote {
+  id        String   @id @default(cuid())
+  coachId   String
+  studentId String
+  content   String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  coach     user     @relation("CoachNotes", fields: [coachId], references: [id], onDelete: Cascade)
+  student   user     @relation("StudentNotes", fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@unique([coachId, studentId])
+  @@index([coachId, updatedAt])
+}
+
+// ----------------------------------------
+// بانک حرکات شخصی مربی — مرحله ۱۹.۶
+// ----------------------------------------
+// کاملاً جدا از بانک عمومی ۹۰۵ حرکتی (Exercise). فقط مالک و مسیرهای مجاز
+// سمت سرور میخوانند؛ هرگز وارد کتابخانه عمومی نمیشود و انیمیشن سهبعدی
+// ندارد (صادقانه). برنامههای مربی snapshot محتوایی میگیرند؛ حذف حرکت
+// شخصی نسخههای ارسالشده را نمیشکند (نامها در contentJson کپی شدهاند)
+// و از حذف آبشاری ناخواسته جلوگیری میشود.
+
+model CoachExercise {
+  id                    String   @id @default(cuid())
+  coachId               String
+  faName                String
+  enName                String
+  category              String
+  equipmentJson         String   @default("[]")
+  primaryMusclesJson    String   @default("[]")
+  secondaryMusclesJson  String   @default("[]")
+  description           String   @default("")
+  tips                  String   @default("")
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+  coach                 user     @relation(fields: [coachId], references: [id], onDelete: Cascade)
+  media                 CoachExerciseMedia[]
+
+  @@index([coachId, updatedAt])
+}
+
+// رسانه حرکت شخصی — تصویر (JPEG/PNG/WebP ≤۵MB) یا ویدئو (MP4/WebM ≤۵۰MB)
+// با امضای بایتها؛ فایل خارج از public با نام تصادفی، خواندن فقط مالک
+// (و مسیرهای مجاز سرور) از API احراز هویتشده.
+
+model CoachExerciseMedia {
+  id          String        @id @default(cuid())
+  exerciseId  String
+  kind        String
+  fileName    String
+  mimeType    String
+  sizeBytes   Int
+  storagePath String
+  createdAt   DateTime      @default(now())
+  exercise    CoachExercise @relation(fields: [exerciseId], references: [id], onDelete: Cascade)
+
+  @@index([exerciseId, createdAt])
 }

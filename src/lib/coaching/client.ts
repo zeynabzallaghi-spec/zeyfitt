@@ -12,6 +12,13 @@ export interface PublicCoachClient {
   certifications: string[];
   experienceYears: number | null;
   cooperationTypes: string[];
+  /** تعرفه عمومی — null یعنی «تعرفه ثبت نشده» (هرگز صفر تفسیر نمیشود) */
+  tariff: {
+    privatePriceIrr: number | null;
+    privatePriceUsd: number | null;
+    semiPrivatePriceIrr: number | null;
+    semiPrivatePriceUsd: number | null;
+  } | null;
 }
 
 export interface SubscriptionClient {

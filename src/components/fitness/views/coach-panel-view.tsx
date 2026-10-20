@@ -58,6 +58,12 @@ import {
 import { CoachWorkoutPlansTab } from "./coach/workout-plans-tab";
 import { CoachNutritionPlansTab } from "./coach/nutrition-plans-tab";
 import { CoachMessagesTab } from "./coach/messages-tab";
+import { CoachTariffPaymentsTab } from "./coach/tariff-payments-tab";
+import { CoachExercisesTab } from "./coach/exercises-tab";
+import { StudentDetailDialog } from "./coach/student-detail-dialog";
+import { phase196Strings } from "@/lib/i18n/sections/phase196";
+import { setChatBlock } from "@/hooks/use-p196";
+import { Users as UsersIcon, Wallet, Dumbbell, MessagesSquare } from "lucide-react";
 import { COACH_SPECIALIZATIONS } from "@/lib/coaching/constants";
 import type { CoachRequestItemClient } from "@/lib/coaching/client";
 
@@ -66,12 +72,16 @@ import type { CoachRequestItemClient } from "@/lib/coaching/client";
 function RequestCard({
   request,
   onDone,
+  onOpenChat,
 }: {
   request: CoachRequestItemClient;
   onDone: () => void;
+  /** گفت‌وگوی اولیه با متقاضی — پیش از تأیید یا رد (مرحله ۱۹.۶) */
+  onOpenChat: (connectionId: string) => void;
 }) {
   const t = useStrings(coachPanelStrings);
   const shared = useStrings(sharedStrings);
+  const p196r = useStrings(phase196Strings);
   const locale = useLocale();
   const { toast } = useToast();
   const [busy, setBusy] = useState<null | "accept" | "reject">(null);
@@ -147,6 +157,15 @@ function RequestCard({
       )}
 
       <div className="mt-3 flex flex-wrap gap-2">
+        <Button
+          size="sm"
+          variant="outline"
+          className="border-primary/40 text-primary hover:bg-primary/10"
+          onClick={() => onOpenChat(request.id)}
+        >
+          <MessagesSquare className="me-1 size-3.5" aria-hidden="true" />
+          {p196r.chatPreApprovalButton}
+        </Button>
         <Button size="sm" onClick={accept} disabled={busy !== null}>
           {busy === "accept" ? t.accepting : (
             <>
@@ -190,6 +209,17 @@ export function CoachPanelView() {
   const { students, loading: stuLoading, refresh: refreshStu } = useCoachStudents(isCoach);
   const plansT = useStrings(coachPlansStrings);
   const chatT = useStrings(coachChatStrings);
+  const p196 = useStrings(phase196Strings);
+
+  // فیلتر و جست‌وجوی دانشجویان + دیالوگ اطلاعات تکمیلی — مرحله ۱۹.۶
+  const [studentFilter, setStudentFilter] = useState<"all" | "PRIVATE" | "SEMI_PRIVATE">("all");
+  const [studentQuery, setStudentQuery] = useState("");
+  const [detailStudentId, setDetailStudentId] = useState<string | null>(null);
+  /** گفت‌وگوی مستقیم از درخواست/دانشجو — کلید تب پیام‌ها را عوض میکند */
+  const [chatJump, setChatJump] = useState<{ id: string; n: number } | null>(null);
+  const openChatWithConnection = (connectionId: string) => {
+    setChatJump({ id: connectionId, n: Date.now() });
+  };
 
   // فرم پروفایل — همیشه مقدار واقعی سرور؛ بدون پیش‌فرض ساختگی
   const [displayName, setDisplayName] = useState("");
@@ -283,6 +313,12 @@ export function CoachPanelView() {
   };
 
   const canPublish = profile?.canPublish ?? false;
+  const filteredStudents = (students ?? []).filter((s) => {
+    if (studentFilter !== "all" && s.cooperationType !== studentFilter) return false;
+    const q = studentQuery.trim();
+    if (q.length === 0) return true;
+    return s.student.displayName.includes(q);
+  });
 
   return (
     <div>
@@ -292,6 +328,8 @@ export function CoachPanelView() {
           <TabsTrigger value="workoutPlans" className="text-[11px]">{plansT.workoutPlansTab}</TabsTrigger>
           <TabsTrigger value="nutritionPlans" className="text-[11px]">{plansT.nutritionPlansTab}</TabsTrigger>
           <TabsTrigger value="messages" className="text-[11px]">{chatT.messagesTab}</TabsTrigger>
+          <TabsTrigger value="tariffs" className="text-[11px]">{p196.tariffSectionTitle}</TabsTrigger>
+          <TabsTrigger value="exercises" className="text-[11px]">{p196.exercisesSectionTitle}</TabsTrigger>
         </TabsList>
 
         <TabsContent value="workoutPlans">
@@ -301,7 +339,16 @@ export function CoachPanelView() {
           <CoachNutritionPlansTab />
         </TabsContent>
         <TabsContent value="messages">
-          <CoachMessagesTab />
+          <CoachMessagesTab
+            key={chatJump ? `${chatJump.id}-${chatJump.n}` : undefined}
+            initialConnectionId={chatJump?.id ?? null}
+          />
+        </TabsContent>
+        <TabsContent value="tariffs">
+          <CoachTariffPaymentsTab />
+        </TabsContent>
+        <TabsContent value="exercises">
+          <CoachExercisesTab />
         </TabsContent>
 
         <TabsContent value="profile">
@@ -586,7 +633,12 @@ export function CoachPanelView() {
               ) : (
                 <div className="space-y-3" aria-label={t.receivedRequestAria}>
                   {requests.map((r) => (
-                    <RequestCard key={r.id} request={r} onDone={refreshAll} />
+                    <RequestCard
+                      key={r.id}
+                      request={r}
+                      onDone={refreshAll}
+                      onOpenChat={openChatWithConnection}
+                    />
                   ))}
                 </div>
               )}
@@ -616,18 +668,60 @@ export function CoachPanelView() {
                 />
               ) : (
                 <div className="space-y-2">
-                  <p className="text-[10px] font-bold text-muted-foreground/70">{t.studentCount(students.length)}</p>
-                  {students.map((s) => (
-                    <div key={s.connectionId} className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-border/50 bg-secondary/20 p-2.5">
-                      <p className="text-xs font-bold text-foreground">{s.student.displayName}</p>
-                      <div className="flex items-center gap-2 text-[10px] text-muted-foreground">
-                        <span>{shared.cooperationTypeLabel(s.cooperationType)}</span>
-                        <span>
-                          {t.activeSinceLabel}: {localeDateTimeLabel(s.activeSince, locale)}
-                        </span>
+                  <p className="text-[10px] font-bold text-muted-foreground/70">{t.studentCount(filteredStudents.length)}</p>
+                  {/* فیلتر نوع خدمات + جست‌وجو — مرحله ۱۹.۶ */}
+                  <div className="flex flex-wrap items-center gap-1.5">
+                    {(["all", "PRIVATE", "SEMI_PRIVATE"] as const).map((f) => (
+                      <button
+                        key={f}
+                        type="button"
+                        aria-pressed={studentFilter === f}
+                        onClick={() => setStudentFilter(f)}
+                        className={`rounded-full border px-2.5 py-1 text-[10px] font-bold transition-colors ${
+                          studentFilter === f
+                            ? "border-primary/40 bg-primary/15 text-primary"
+                            : "border-border/50 bg-secondary/30 text-muted-foreground hover:text-foreground"
+                        }`}
+                      >
+                        {f === "all" ? p196.studentFilterAll : f === "PRIVATE" ? p196.studentFilterPrivate : p196.studentFilterSemiPrivate}
+                      </button>
+                    ))}
+                  </div>
+                  <Input
+                    dir={locale === "fa" ? "rtl" : "ltr"}
+                    value={studentQuery}
+                    onChange={(e) => setStudentQuery(e.target.value.slice(0, 60))}
+                    placeholder={p196.studentsSearchPlaceholder}
+                    className="h-8 text-xs"
+                    aria-label={p196.studentsSearchPlaceholder}
+                  />
+                  {filteredStudents.length === 0 ? (
+                    <p className="py-3 text-center text-[11px] text-muted-foreground">{p196.studentsEmpty}</p>
+                  ) : (
+                    filteredStudents.map((s) => (
+                      <div key={s.connectionId} className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-border/50 bg-secondary/20 p-2.5">
+                        <div className="min-w-0">
+                          <p className="text-xs font-bold text-foreground">{s.student.displayName}</p>
+                          <div className="flex flex-wrap items-center gap-2 text-[10px] text-muted-foreground">
+                            <span>{shared.cooperationTypeLabel(s.cooperationType)}</span>
+                            <span>
+                              {t.activeSinceLabel}: {localeDateTimeLabel(s.activeSince, locale)}
+                            </span>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-1.5">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="h-7 text-[10px]"
+                            onClick={() => setDetailStudentId(s.student.userId)}
+                          >
+                            {p196.studentInfoButton}
+                          </Button>
+                        </div>
                       </div>
-                    </div>
-                  ))}
+                    ))
+                  )}
                 </div>
               )}
 
@@ -641,6 +735,14 @@ export function CoachPanelView() {
       </div>
       </TabsContent>
       </Tabs>
+
+      {/* اطلاعات تکمیلی دانشجو — مرحله ۱۹.۶ */}
+      <StudentDetailDialog
+        studentId={detailStudentId}
+        open={detailStudentId !== null}
+        onOpenChange={(v) => !v && setDetailStudentId(null)}
+        onOpenChat={openChatWithConnection}
+      />
     </div>
   );
 }

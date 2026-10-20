@@ -29,6 +29,7 @@ import {
   requireEligibleCoachForRequest,
 } from "./coach";
 import { hasActivePremium } from "./subscription";
+import { emitNotification, NOTIFICATION_TYPES } from "@/lib/notifications/notifications";
 
 const OPEN_STATUSES = [
   CONNECTION_STATUSES.PENDING,
@@ -162,6 +163,13 @@ export async function createConnectionRequest(input: {
         message: input.message,
       },
     });
+    // اعلان درخواست جدید به مربی — ضدتکرار با dedupeKey پایدار
+    await emitNotification({
+      userId: input.coachId,
+      type: NOTIFICATION_TYPES.CONNECTION_REQUEST,
+      dedupeKey: `conn-req:${row.id}`,
+      payload: { connectionId: row.id, studentId: input.studentId, cooperationType: input.cooperationType },
+    });
     return toConnectionItem(row);
   } catch (error) {
     // رقابت هم‌زمان دو درخواست با ایندکس partial یکتا → تعارض وضعیت
@@ -226,6 +234,12 @@ export async function cancelPendingRequest(
       endedAt: new Date(),
       endedBy: "student",
     },
+  });
+  await emitNotification({
+    userId: updated.coachId,
+    type: NOTIFICATION_TYPES.CONNECTION_CANCELLED,
+    dedupeKey: `conn-cancelled:${updated.id}`,
+    payload: { connectionId: updated.id },
   });
   return toConnectionItem(updated);
 }
@@ -335,6 +349,13 @@ export async function acceptRequest(
       decidedAt: new Date(),
     },
   });
+  // اعلان تأیید به دانشجو
+  await emitNotification({
+    userId: updated.studentId,
+    type: NOTIFICATION_TYPES.CONNECTION_DECIDED,
+    dedupeKey: `conn-decided:${updated.id}:ACTIVE`,
+    payload: { connectionId: updated.id, status: "ACTIVE", coachId: coachId },
+  });
   const student = await db.user.findUnique({
     where: { id: updated.studentId },
     select: { id: true, name: true },
@@ -375,6 +396,13 @@ export async function rejectRequest(
       decidedAt: new Date(),
       rejectionReason: reason,
     },
+  });
+  // اعلان رد به دانشجو — درخواست مجدد برای همان مربی در آینده مجاز است
+  await emitNotification({
+    userId: updated.studentId,
+    type: NOTIFICATION_TYPES.CONNECTION_DECIDED,
+    dedupeKey: `conn-decided:${updated.id}:REJECTED`,
+    payload: { connectionId: updated.id, status: "REJECTED", coachId: coachId },
   });
   const student = await db.user.findUnique({
     where: { id: updated.studentId },

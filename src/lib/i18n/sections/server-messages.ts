@@ -172,6 +172,69 @@ export const API_ERROR_LABELS: Record<string, Bi> = {
     en: "This document was not found, or does not belong to you.",
   },
 
+  /* ---------------- مرحله ۱۹.۶ — اعلان، بانکی، پرداخت، چت، حرکات شخصی ---------------- */
+
+  BANKING_VALIDATION: {
+    fa: "اطلاعات بانکی نامعتبر است؛ ورودی‌ها را بررسی کنید.",
+    en: "Banking info is invalid; please check the fields.",
+  },
+  SERVICE_TYPE_NOT_OFFERED: {
+    fa: "این نوع خدمات جزو انواع ارائه‌شده شما نیست.",
+    en: "This service type is not among your offered types.",
+  },
+  PAYMENT_NOT_FOUND: {
+    fa: "درخواست پرداخت یافت نشد یا به شما تعلق ندارد.",
+    en: "Payment request not found, or does not belong to you.",
+  },
+  PAYMENT_ALREADY_DECIDED: {
+    fa: "این درخواست پرداخت قبلاً تعیین تکلیف شده است.",
+    en: "This payment request has already been decided.",
+  },
+  PAYMENT_LINK_INVALID: {
+    fa: "لینک پرداخت معتبر نیست؛ فقط لینک https مجاز است.",
+    en: "Invalid payment link; only https links are allowed.",
+  },
+  PAYMENT_LINK_TOO_LONG: {
+    fa: "لینک پرداخت بیش از حد طولانی است.",
+    en: "The payment link is too long.",
+  },
+  CONNECTION_CLOSED: {
+    fa: "این ارتباط دیگر باز نیست؛ ارسال پیام جدید ممکن نیست و تاریخچه فقط‌خواندنی است.",
+    en: "This connection is no longer open; new messages are disabled and history is read-only.",
+  },
+  CHAT_BLOCKED: {
+    fa: "ارسال پیام جدید ممکن نیست؛ دسترسی شما توسط طرف مقابل محدود شده است. تاریخچه حفظ شده است.",
+    en: "Sending new messages is disabled; the other party restricted your access. History is preserved.",
+  },
+  TOO_MANY_FILES: {
+    fa: "حداکثر ۳ فایل در هر ارسال مجاز است.",
+    en: "Up to 3 files per message are allowed.",
+  },
+  ATTACHMENT_TOO_LARGE: {
+    fa: "مجموع حجم پیوست‌های هر ارسال حداکثر ۲۰ مگابایت است.",
+    en: "Total attachments per message are limited to 20 MB.",
+  },
+  FILE_EMPTY: {
+    fa: "فایل خالی است؛ فایل معتبری انتخاب کنید.",
+    en: "The file is empty; choose a valid file.",
+  },
+  EXERCISE_NOT_FOUND: {
+    fa: "حرکت شخصی یافت نشد یا به شما تعلق ندارد.",
+    en: "Personal exercise not found, or does not belong to you.",
+  },
+  EXERCISE_MEDIA_LIMIT: {
+    fa: "سقف رسانه‌های این حرکت پر است؛ حداکثر ۴ فایل.",
+    en: "Media limit for this exercise is reached; up to 4 files.",
+  },
+  MEDIA_NOT_FOUND: {
+    fa: "رسانه یافت نشد یا به شما تعلق ندارد.",
+    en: "Media not found, or does not belong to you.",
+  },
+  NOTIFICATION_NOT_FOUND: {
+    fa: "اعلان یافت نشد یا به شما تعلق ندارد.",
+    en: "Notification not found, or does not belong to you.",
+  },
+
   /* ------------------ مرحله ۱۶ — برنامه‌های اختصاصی مربی ------------------ */
 
   COACH_NOT_VERIFIED: {

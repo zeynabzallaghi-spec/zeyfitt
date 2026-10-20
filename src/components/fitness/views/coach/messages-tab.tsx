@@ -84,11 +84,16 @@ function ConversationRow({
   );
 }
 
-export function CoachMessagesTab() {
+export function CoachMessagesTab({
+  initialConnectionId = null,
+}: {
+  /** گشودن مستقیم یک گفت‌وگو — برای ورود از درخواست/دانشجو (مرحله ۱۹.۶) */
+  initialConnectionId?: string | null;
+} = {}) {
   const t = useStrings(coachChatStrings);
   const { user } = useSessionData();
   const { conversations, loading, error, refresh } = useChatConversationList(user !== null);
-  const [selected, setSelected] = useState<string | null>(null);
+  const [selected, setSelected] = useState<string | null>(initialConnectionId);
 
   if (selected) {
     return (

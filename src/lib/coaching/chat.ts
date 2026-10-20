@@ -22,6 +22,7 @@ import {
   type ChatBlockReason,
 } from "./constants";
 import { hasActivePremium } from "./subscription";
+import { emitNotification, NOTIFICATION_TYPES } from "@/lib/notifications/notifications";
 import type { CoachConversation, CoachMessage, CoachStudentConnection } from "@prisma/client";
 
 /* ------------------------------ ابزارهای پایه ------------------------------ */
@@ -49,20 +50,32 @@ function sideOfUser(
  * دلیل مسدود بودن ارسال — همه داده‌ها تازه از دیتابیس؛ هیچ وضعیتی از
  * کلاینت یا نشست قدیمی پذیرفته نمیشود. null یعنی ارسال مجاز است.
  *
+ * سیاست گفت‌وگوی اولیه (مرحله ۱۹.۶): ارتباط PENDING هم قابل گفت‌وگوست —
+ * مربی میتواند پیش از تأیید/رد با متقاضی صحبت کند؛ شروع گفت‌وگو هرگز
+ * درخواست را خودکار تأیید نمیکند و تصمیم جداگانه است.
+ *
  * سیاست اشتراک (هم‌راستا با مرحله ۱۶): سطح مؤثر PREMIUM «دانشجوی همان
  * ارتباط» شرط هر پیام جدید در مکالمه است — هم سمت دانشجو و هم سمت مربی؛
  * انقضای اشتراک، ارسال جدید را در هر دو جهت با پیام شفاف می‌بندد و
  * تاریخچه دست‌نخورده فقط‌خواندنی میماند.
+ *
+ * مسدودسازی پیام‌رسان (مرحله ۱۹.۶): اگر مربی دانشجوی این ارتباط را مسدود
+ * کرده باشد، دانشجو نمیتواند پیام جدیدی بفرستد (در گفت‌وگوی اولیه و فعال
+ * یکسان)؛ پیام‌های قبلی و تاریخچه حفظ میشود و رابطه/اشتراک/برنامه‌ها
+ * دست‌نخورده میمانند.
  */
 export async function blockReasonForSend(
   conn: { status: string; studentId: string; coachId: string },
   user: { id: string; role: string }
 ): Promise<ChatBlockReason | null> {
-  if (conn.status !== CONNECTION_STATUSES.ACTIVE) {
-    return "CONNECTION_NOT_ACTIVE";
-  }
   const side = sideOfUser(conn, user.id);
   if (side === null) return "ROLE_NOT_ALLOWED";
+  if (
+    conn.status !== CONNECTION_STATUSES.ACTIVE &&
+    conn.status !== CONNECTION_STATUSES.PENDING
+  ) {
+    return "CONNECTION_CLOSED";
+  }
   if (side === "student") {
     if (user.role !== "STUDENT") return "ROLE_NOT_ALLOWED";
   } else {
@@ -73,6 +86,15 @@ export async function blockReasonForSend(
       select: { verified: true },
     });
     if (!profile?.verified) return "COACH_NOT_VERIFIED";
+  }
+  // مسدودسازی — فقط دانشجوی مسدودشده سمت مربی نمیتواند بفرستد؛ مربی
+  // مسدودکننده همچنان میتواند پیام بفرستد (سیاست یکطرفه بودن مسدودی)
+  if (side === "student") {
+    const blocked = await db.chatBlock.findUnique({
+      where: { blockerId_blockedId: { blockerId: conn.coachId, blockedId: conn.studentId } },
+      select: { id: true },
+    });
+    if (blocked) return "CHAT_BLOCKED";
   }
   // سطح مؤثر اشتراک دانشجوی همین ارتباط — در هر دو جهت ارسال
   if (!(await hasActivePremium(conn.studentId))) return "SUBSCRIPTION_REQUIRED";
@@ -145,6 +167,13 @@ export interface ChatConversationView {
   openedAt: string | null;
 }
 
+export interface ChatMessageAttachmentView {
+  id: string;
+  fileName: string;
+  mimeType: string;
+  sizeBytes: number;
+}
+
 export interface ChatMessageView {
   id: string;
   seq: number;
@@ -152,6 +181,8 @@ export interface ChatMessageView {
   content: string;
   createdAt: string;
   readAt: string | null;
+  /** پیوستهای پیام — فقط metadata؛ بایتها از مسیر جداگانه مالکیتمحور */
+  attachments: ChatMessageAttachmentView[];
 }
 
 export interface ChatMessagesPage {
@@ -167,7 +198,7 @@ function previewOf(content: string): string {
   return `${compact.slice(0, CHAT_LIMITS.PREVIEW_MAX - 1)}…`;
 }
 
-function toMessageView(row: CoachMessage): ChatMessageView {
+function toMessageView(row: CoachMessage & { attachments?: { id: string; fileName: string; mimeType: string; sizeBytes: number }[] }): ChatMessageView {
   return {
     id: row.id,
     seq: row.seq,
@@ -175,6 +206,12 @@ function toMessageView(row: CoachMessage): ChatMessageView {
     content: row.content,
     createdAt: row.createdAt.toISOString(),
     readAt: row.readAt ? row.readAt.toISOString() : null,
+    attachments: (row.attachments ?? []).map((a) => ({
+      id: a.id,
+      fileName: a.fileName,
+      mimeType: a.mimeType,
+      sizeBytes: a.sizeBytes,
+    })),
   };
 }
 
@@ -214,9 +251,12 @@ export async function listConversationsForUser(user: {
     where: { OR: [{ studentId: user.id }, { coachId: user.id }] },
   });
   const convByConnection = new Map(convs.map((c) => [c.connectionId, c]));
+  // گفت‌وگوی اولیه (۱۹.۶): ارتباط PENDING هم ورودی فهرست است — حتی بدون پیام؛
+  // پایانیافتهها فقط با سابقه واقعی (سیاست حفظ تاریخچه)
   const eligible = conns.filter(
     (c) =>
       c.status === CONNECTION_STATUSES.ACTIVE ||
+      c.status === CONNECTION_STATUSES.PENDING ||
       convByConnection.has(c.id)
   );
   if (eligible.length === 0) return [];
@@ -229,7 +269,11 @@ export async function listConversationsForUser(user: {
   const counterpartStudentIds = [
     ...new Set(
       eligible
-        .filter((c) => c.coachId === user.id && c.status === CONNECTION_STATUSES.ACTIVE)
+        .filter(
+          (c) =>
+            c.coachId === user.id &&
+            (c.status === CONNECTION_STATUSES.ACTIVE || c.status === CONNECTION_STATUSES.PENDING)
+        )
         .map((c) => c.studentId)
     ),
   ];
@@ -301,6 +345,14 @@ export async function listConversationsForUser(user: {
 
   const roleForStudentSide = user.role === "STUDENT";
   const coachVerified = myCoachProfile?.verified ?? false;
+  // مسدودسازی‌های من به‌عنوان مربی — برای شفافیت canSend سمت دانشجو نیست؛
+  // سمت دانشجو وضعیت مسدودی از blockReasonForSend در گشودن/ارسال میآید،
+  // اما برای فهرست هم به‌ازای هر ارتباط PENDING/ACTIVE محاسبه میکنیم
+  const myBlocks = await db.chatBlock.findMany({
+    where: { blockerId: user.id },
+    select: { blockedId: true },
+  });
+  const blockedByMe = new Set(myBlocks.map((b) => b.blockedId));
   // سطح مؤثر اشتراک دانشجویان — محاسبه قطعی انقضا در همین‌جا (بدون حافظه)
   const now = Date.now();
   const counterpartPremium = new Map(
@@ -317,11 +369,17 @@ export async function listConversationsForUser(user: {
     const side = sideOfUser(conn, user.id) as "student" | "coach";
     let canSend = false;
     let blockReason: ChatBlockReason | null;
-    if (conn.status !== CONNECTION_STATUSES.ACTIVE) {
-      blockReason = "CONNECTION_NOT_ACTIVE";
+    if (
+      conn.status !== CONNECTION_STATUSES.ACTIVE &&
+      conn.status !== CONNECTION_STATUSES.PENDING
+    ) {
+      blockReason = "CONNECTION_CLOSED";
     } else if (side === "student") {
       if (!roleForStudentSide) {
         blockReason = "ROLE_NOT_ALLOWED";
+      } else if (blockedByMe.has(conn.coachId)) {
+        // دانشجو هرگز خودش مربی را مسدود نمیکند — دفاعی
+        blockReason = "CHAT_BLOCKED";
       } else if (!mySubscription) {
         blockReason = "SUBSCRIPTION_REQUIRED";
       } else {
@@ -336,6 +394,8 @@ export async function listConversationsForUser(user: {
       } else if (!(counterpartPremium.get(conn.studentId) ?? false)) {
         blockReason = "SUBSCRIPTION_REQUIRED";
       } else {
+        // مربیِ مسدودکننده همچنان میتواند بفرستد (مسدودی یکطرفه است؛
+        // مدیریت مسدودی در UI جداگانه انجام میشود)
         canSend = true;
         blockReason = null;
       }
@@ -373,21 +433,33 @@ export async function listConversationsForUser(user: {
 /* ------------------------------ گشودن گفت‌وگو ------------------------------ */
 
 /**
- * گشودن (یا بازگشت) مکالمه یک ارتباط ACTIVE — نقطه ورود UI.
- * شرط: طرف بودن + ارتباط ACTIVE + عبور از ماتریس کامل مجوز ارسال؛
- * مکالمه‌ای که هرگز وجود نداشته برای کاربر بدون مجوز ارسال ساخته نمیشود.
+ * گشودن (یا بازگشت) مکالمه یک ارتباط — نقطه ورود UI.
+ * گفت‌وگوی اولیه (۱۹.۶): ارتباط PENDING هم قابل گشودن است.
+ * سیاست دسترسی:
+ *  - مکالمه موجود: هر طرف همیشه میتواند بازش کند (تاریخچه حفظ میشود) —
+ *    حتی پس از رد/پایان ارتباط یا مسدودی؛ canSend=false و blockReason
+ *    شفاف در پاسخ میآید.
+ *  - مکالمه ناموجود: فقط کاربرِ دارای مجوز ارسال مکالمه میسازد؛ شروع
+ *    گفت‌وگو هرگز درخواست را خودکار تأیید نمیکند.
  */
 export async function openConversation(
   connectionId: string,
   user: { id: string; role: string }
 ): Promise<ChatConversationView> {
   const conn = await connectionForParty(connectionId, user.id);
+  const existing = await db.coachConversation.findUnique({
+    where: { connectionId: conn.id },
+  });
   const blockReason = await blockReasonForSend(conn, user);
-  if (blockReason) {
-    throw new CoachingError(403, blockReason);
+  if (!existing) {
+    if (blockReason) {
+      throw new CoachingError(403, blockReason);
+    }
+    const conv = await ensureConversation(conn);
+    return conversationViewOf(conv, conn, user);
   }
-  const conv = await ensureConversation(conn);
-  return conversationViewOf(conv, conn, user);
+  // مکالمه موجود — خواندن تاریخچه همیشه مجاز؛ ارسال طبق blockReason
+  return conversationViewOf(existing, conn, user);
 }
 
 /** نمای کامل یک مکالمه واقعی برای یکی از دو طرف */
@@ -478,18 +550,21 @@ export async function listMessages(
   }
   await markOthersMessagesRead(conv.id, user.id);
   const take = query.limit ?? CHAT_LIMITS.PAGE_DEFAULT;
-  let rows: CoachMessage[];
+  let rows: (CoachMessage & { attachments: { id: string; fileName: string; mimeType: string; sizeBytes: number }[] })[];
+  const include = { attachments: { orderBy: { createdAt: "asc" as const } } } as const;
   if (query.after !== undefined) {
     rows = await db.coachMessage.findMany({
       where: { conversationId: conv.id, seq: { gt: query.after } },
       orderBy: { seq: "asc" },
       take,
+      include,
     });
   } else if (query.before !== undefined) {
     rows = await db.coachMessage.findMany({
       where: { conversationId: conv.id, seq: { lt: query.before } },
       orderBy: { seq: "desc" },
       take,
+      include,
     });
     rows.reverse();
   } else {
@@ -497,6 +572,7 @@ export async function listMessages(
       where: { conversationId: conv.id },
       orderBy: { seq: "desc" },
       take,
+      include,
     });
     rows.reverse();
   }
@@ -532,16 +608,28 @@ export async function assertSendRateAllowed(senderId: string): Promise<void> {
 }
 
 /**
- * ارسال پیام متنی — قلب مجوز مرحله ۱۷.
+ * ارسال پیام — قلب مجوز مرحله ۱۷ + پیوست فایل مرحله ۱۹.۶.
  * ترتیب کامل بررسی: طرف بودن مکالمه (404) → ماتریس ارسال با داده تازه
  * دیتابیس (403) → نرخ‌سنجی (429) → تراکنش نوشتن با بازبینی مجدد وضعیت
  * ارتباط درون تراکنش (403 در تغییر همزمان) و تخصیص seq پایدار.
  * readAt ارسالی کلاینت و هر فیلد دیگر نادیده گرفته میشود.
+ *
+ * پیوست (۱۹.۶): فایل‌ها پیش از تراکنش روی دیسک امن نوشته شده‌اند؛ اگر
+ * تراکنش شکست بخورد فایل‌ها پاک می‌شوند. رکوردهای پیوست در همان تراکنش
+ * ساخته می‌شوند تا پیام و فایل همیشه هم‌خوان باشند.
+ * گفت‌وگوی اولیه: ارتباط PENDING هم ارسال مجاز است (ماتریس تصمیم می‌گیرد).
  */
 export async function sendMessage(
   conversationId: string,
   user: { id: string; role: string },
-  content: string
+  content: string,
+  attachments: {
+    fileName: string;
+    mimeType: string;
+    sizeBytes: number;
+    /** مسیر امن روی دیسک — از لایه ذخیره‌سازی، هرگز از کلاینت */
+    storagePath: string;
+  }[] = []
 ): Promise<ChatMessageView> {
   const conv = await conversationForParty(conversationId, user.id);
   const conn = await db.coachStudentConnection.findUnique({
@@ -563,8 +651,12 @@ export async function sendMessage(
           where: { id: conv.connectionId },
           select: { status: true },
         });
-        if (!freshConn || freshConn.status !== CONNECTION_STATUSES.ACTIVE) {
-          throw new CoachingError(403, "CONNECTION_NOT_ACTIVE");
+        if (
+          !freshConn ||
+          (freshConn.status !== CONNECTION_STATUSES.ACTIVE &&
+            freshConn.status !== CONNECTION_STATUSES.PENDING)
+        ) {
+          throw new CoachingError(403, "CONNECTION_CLOSED");
         }
         const freshConv = await tx.coachConversation.findUnique({
           where: { id: conv.id },
@@ -581,17 +673,96 @@ export async function sendMessage(
             seq,
           },
         });
+        if (attachments.length > 0) {
+          await tx.coachMessageAttachment.createMany({
+            data: attachments.map((a) => ({
+              messageId: msg.id,
+              fileName: a.fileName,
+              mimeType: a.mimeType,
+              sizeBytes: a.sizeBytes,
+              storagePath: a.storagePath,
+            })),
+          });
+        }
         await tx.coachConversation.update({
           where: { id: conv.id },
           data: { lastSeq: seq, lastMessageAt: msg.createdAt },
         });
         return msg;
       });
-      return toMessageView(message);
+      // اعلان پیام جدید — فقط به گیرنده؛ شکستش هرگز ارسال را نمی‌شکند
+      const recipientId =
+        user.id === conn.studentId ? conn.coachId : conn.studentId;
+      await emitNotification({
+        userId: recipientId,
+        type: NOTIFICATION_TYPES.MESSAGE_NEW,
+        dedupeKey: `message:${message.id}`,
+        payload: { conversationId: conv.id, connectionId: conn.id, senderId: user.id },
+      });
+      const withAttachments = await db.coachMessage.findUnique({
+        where: { id: message.id },
+        include: { attachments: { orderBy: { createdAt: "asc" } } },
+      });
+      return toMessageView(withAttachments ?? message);
     } catch (error) {
-      // رقابت نادر دو ارسال همزمان روی همان seq — تلاش مجدد محدود
+      // رقابت نادر دو ارسال هم‌زمان روی همان seq — تلاش مجدد محدود
       if (isP2002(error) && attempt < 3) continue;
       throw error;
     }
   }
+}
+
+/* --------------- مسدودسازی پیام‌رسان — مرحله ۱۹.۶ --------------- */
+
+/**
+ * مسدود کردن دانشجو توسط مربی مالک ارتباط — بررسی طرف بودن سمت سرور.
+ * تاریخچه، رابطه، اشتراک و برنامه‌ها دست‌نخورده می‌مانند؛ فقط ارسال جدید
+ * دانشجو در گفت‌وگوی اولیه/فعال بسته می‌شود. مسدودی تکراری بی‌اثر است.
+ */
+export async function blockStudentInConversation(
+  connectionId: string,
+  coach: { id: string; role: string }
+): Promise<{ blocked: boolean }> {
+  const conn = await connectionForParty(connectionId, coach.id);
+  if (conn.coachId !== coach.id || coach.role !== "COACH") {
+    throw new CoachingError(403, "ROLE_NOT_ALLOWED");
+  }
+  try {
+    await db.chatBlock.create({
+      data: { blockerId: coach.id, blockedId: conn.studentId },
+    });
+  } catch (error) {
+    if (!isP2002(error)) throw error; // مسدودی تکراری — بی‌اثر
+  }
+  return { blocked: true };
+}
+
+/** رفع مسدودیت — فقط مربی مالک؛ نبود رکورد هم موفقیت صادقانه است */
+export async function unblockStudentInConversation(
+  connectionId: string,
+  coach: { id: string; role: string }
+): Promise<{ blocked: boolean }> {
+  const conn = await connectionForParty(connectionId, coach.id);
+  if (conn.coachId !== coach.id || coach.role !== "COACH") {
+    throw new CoachingError(403, "ROLE_NOT_ALLOWED");
+  }
+  await db.chatBlock.deleteMany({
+    where: { blockerId: coach.id, blockedId: conn.studentId },
+  });
+  return { blocked: false };
+}
+
+/** وضعیت مسدودی یک ارتباط برای مربی مالک — برای UI */
+export async function conversationBlockState(
+  connectionId: string,
+  coach: { id: string; role: string }
+): Promise<{ blockedByMe: boolean; canSend: boolean; blockReason: ChatBlockReason | null }> {
+  const conn = await connectionForParty(connectionId, coach.id);
+  const blockedByMe =
+    (await db.chatBlock.findUnique({
+      where: { blockerId_blockedId: { blockerId: coach.id, blockedId: conn.studentId } },
+      select: { id: true },
+    })) !== null;
+  const blockReason = await blockReasonForSend(conn, coach);
+  return { blockedByMe, canSend: blockReason === null, blockReason };
 }

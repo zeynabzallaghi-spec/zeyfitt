@@ -27,25 +27,40 @@ import {
   MessageSquare,
   ShieldAlert,
   History,
+  Paperclip,
+  X,
+  Ban,
+  ShieldOff,
+  FileText,
+  Download,
+  UserRound,
 } from "lucide-react";
 import { useStrings } from "@/lib/i18n/use-strings";
 import { coachChatStrings } from "@/lib/i18n/sections/coach-chat";
+import { phase196Strings } from "@/lib/i18n/sections/phase196";
 import { useLocale, useDir } from "@/lib/i18n/locale";
 import { localeDateTimeLabel, localeNumber } from "@/lib/i18n/format";
 import {
   useCoachChat,
   type PendingChatMessage,
 } from "@/hooks/use-coach-chat";
+import { setChatBlock } from "@/hooks/use-p196";
+import { useSessionData } from "../session-context";
+import { CoachStudentProfileDialog } from "./coach-student-profile-dialog";
+import type { ChatMessageAttachmentClient } from "@/lib/coaching/chat-client";
 
 /* --------------------------- بنر فقط‌خواندنی --------------------------- */
 
 function ReadOnlyBanner({ reason }: { reason: string }) {
   const t = useStrings(coachChatStrings);
+  const p196 = useStrings(phase196Strings);
   const map: Record<string, { title: string; note: string; icon: typeof Info }> = {
     CONNECTION_NOT_ACTIVE: { title: t.readOnlyEnded, note: t.readOnlyEndedNote, icon: History },
+    CONNECTION_CLOSED: { title: t.readOnlyEnded, note: t.readOnlyEndedNote, icon: History },
     SUBSCRIPTION_REQUIRED: { title: t.readOnlySubscription, note: t.readOnlySubscriptionNote, icon: ShieldAlert },
     COACH_NOT_VERIFIED: { title: t.readOnlyCoach, note: t.readOnlyCoachNote, icon: ShieldAlert },
     ROLE_NOT_ALLOWED: { title: t.readOnlyRole, note: t.readOnlyRoleNote, icon: ShieldAlert },
+    CHAT_BLOCKED: { title: p196.chatBlockedMeBanner, note: "", icon: Ban },
   };
   const entry = map[reason] ?? { title: t.readOnlyRole, note: t.readOnlyRoleNote, icon: Info };
   const Icon = entry.icon;
@@ -109,21 +124,53 @@ function MetaRow({
   );
 }
 
+function AttachmentChips({ attachments }: { attachments: ChatMessageAttachmentClient[] }) {
+  return (
+    <div className="mt-1.5 flex flex-wrap gap-1.5">
+      {attachments.map((a) => (
+        <a
+          key={a.id}
+          href={`/api/coach-chat/attachments/${encodeURIComponent(a.id)}`}
+          target="_blank"
+          rel="noreferrer noopener"
+          className="inline-flex max-w-56 items-center gap-1 rounded-lg border border-border/50 bg-background/50 px-2 py-1 text-[10px] font-bold text-foreground hover:border-primary/40 hover:text-primary"
+        >
+          {a.mimeType.startsWith("image/") ? (
+            <FileText className="size-3 shrink-0" aria-hidden="true" />
+          ) : (
+            <FileText className="size-3 shrink-0" aria-hidden="true" />
+          )}
+          <span className="truncate">{a.fileName}</span>
+          <span className="shrink-0 text-muted-foreground">
+            {localeNumber(Math.round(a.sizeBytes / 1024), "fa")}KB
+          </span>
+          <Download className="size-3 shrink-0" aria-hidden="true" />
+        </a>
+      ))}
+    </div>
+  );
+}
+
 function MessageBubble({
   own,
   content,
   time,
   read,
+  attachments = [],
 }: {
   own: boolean;
   content: string;
   time: string;
   read: boolean;
+  attachments?: ChatMessageAttachmentClient[];
 }) {
   return (
     <div className={`flex w-full ${own ? "justify-end" : "justify-start"}`}>
       <div className={`max-w-[85%] rounded-2xl border px-3 py-2 ${messageTone(own)}`}>
-        <p className="whitespace-pre-wrap break-words text-xs leading-6">{content}</p>
+        {content.length > 0 && (
+          <p className="whitespace-pre-wrap break-words text-xs leading-6">{content}</p>
+        )}
+        {attachments.length > 0 && <AttachmentChips attachments={attachments} />}
         <MetaRow own={own} read={read} time={time} tone="ok" />
       </div>
     </div>
@@ -180,12 +227,39 @@ export function CoachChatPanel({
   onBack: () => void;
 }) {
   const t = useStrings(coachChatStrings);
+  const p196 = useStrings(phase196Strings);
   const locale = useLocale();
   const dir = useDir();
+  const { user } = useSessionData();
   const chat = useCoachChat(connectionId, { myUserId, enabled: true });
   const [draft, setDraft] = useState("");
+  const [pickedFiles, setPickedFiles] = useState<File[]>([]);
+  const [blockBusy, setBlockBusy] = useState(false);
+  const [blockedByMe, setBlockedByMe] = useState(false);
+  const [profileOpen, setProfileOpen] = useState(false);
   const listRef = useRef<HTMLDivElement | null>(null);
   const stickToBottomRef = useRef(true);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const isCoachSide = chat.conversation?.side === "coach";
+  const isPending = chat.conversation?.connectionStatus === "PENDING";
+
+  const doBlock = async (action: "block" | "unblock") => {
+    setBlockBusy(true);
+    const result = await setChatBlock(connectionId, action);
+    setBlockBusy(false);
+    if (result.ok) {
+      setBlockedByMe(result.data.blockedByMe);
+      void chat.refresh();
+    }
+  };
+
+  const addFiles = (files: FileList | null) => {
+    if (!files) return;
+    setPickedFiles((prev) => [...prev, ...Array.from(files)].slice(0, 3));
+  };
+
+  const TOTAL_MAX = 20 * 1024 * 1024;
+  const pickedTotal = pickedFiles.reduce((s, f) => s + f.size, 0);
 
   const BackIcon = dir === "rtl" ? ArrowRight : ArrowLeft;
 
@@ -204,13 +278,15 @@ export function CoachChatPanel({
 
   const submit = useCallback(async () => {
     const text = draft.trim();
-    if (!text || !chat.canSend || chat.sending) return;
+    const files = pickedFiles;
+    if ((!text && files.length === 0) || !chat.canSend || chat.sending) return;
     stickToBottomRef.current = true;
     setDraft("");
-    await chat.sendMessage(text);
+    setPickedFiles([]);
+    await chat.sendMessage(text, files);
     // خطای ارسال روی خود پیام (failed) نمایش داده میشود؛ پیش‌نویس برنمی‌گردد
     // تا کاربر با دکمه تلاش مجدد یا پیام جدید ادامه دهد.
-  }, [draft, chat]);
+  }, [draft, pickedFiles, chat]);
 
   const onKeyDown = useCallback(
     (event: React.KeyboardEvent<HTMLTextAreaElement>) => {
@@ -232,12 +308,19 @@ export function CoachChatPanel({
         </Badge>
       );
     }
+    if (status === "PENDING") {
+      return (
+        <Badge className="border-amber-400/30 bg-amber-400/10 text-amber-300" variant="outline">
+          {p196.chatPreApprovalLabel}
+        </Badge>
+      );
+    }
     return (
       <Badge className="border-border/50 bg-secondary/40 text-muted-foreground" variant="outline">
         {t.statusEnded}
       </Badge>
     );
-  }, [chat.conversation?.connectionStatus, t]);
+  }, [chat.conversation?.connectionStatus, t, p196]);
 
   /* ---------- حالت‌های بارگذاری/خطا ---------- */
 
@@ -276,7 +359,7 @@ export function CoachChatPanel({
 
   return (
     <div className="flex flex-col gap-3">
-      {/* سربرگ */}
+      {/* سربرگ — نام دانشجو از چت قابل کلیک است (مرحله ۱۹.۶) */}
       <div className="flex items-center justify-between gap-2">
         <div className="flex min-w-0 items-center gap-2">
           <Button
@@ -290,7 +373,21 @@ export function CoachChatPanel({
           </Button>
           <div className="min-w-0">
             <p className="truncate text-sm font-bold text-foreground">
-              {t.chatTitle} · {counterpartName}
+              {t.chatTitle} ·{" "}
+              {isCoachSide ? (
+                <button
+                  type="button"
+                  className="inline-flex max-w-40 items-center gap-1 truncate rounded text-primary hover:underline"
+                  onClick={() => setProfileOpen(true)}
+                  aria-label={`${p196.chatViewProfile}: ${counterpartName}`}
+                  title={p196.chatViewProfile}
+                >
+                  <UserRound className="size-3.5 shrink-0" aria-hidden="true" />
+                  <span className="truncate">{counterpartName}</span>
+                </button>
+              ) : (
+                <span className="truncate">{counterpartName}</span>
+              )}
             </p>
             <p className="text-[10px] text-muted-foreground">
               {chat.conversation?.lastMessageAt
@@ -301,6 +398,19 @@ export function CoachChatPanel({
         </div>
         <div className="flex shrink-0 items-center gap-1.5">
           {statusBadge}
+          {isCoachSide && (
+            <Button
+              variant="ghost"
+              size="icon"
+              className={`size-8 ${blockedByMe ? "text-rose-300" : ""}`}
+              onClick={() => void doBlock(blockedByMe ? "unblock" : "block")}
+              disabled={blockBusy}
+              aria-label={blockedByMe ? p196.chatUnblockAction : p196.chatBlockAction}
+              title={blockedByMe ? p196.chatUnblockAction : p196.chatBlockAction}
+            >
+              {blockedByMe ? <ShieldOff className="size-4" aria-hidden="true" /> : <Ban className="size-4" aria-hidden="true" />}
+            </Button>
+          )}
           <Button
             variant="ghost"
             size="icon"
@@ -315,6 +425,13 @@ export function CoachChatPanel({
 
       {/* بنر فقط‌خواندنی — وضعیت از سرور */}
       {chat.blockReason && <ReadOnlyBanner reason={chat.blockReason} />}
+      {blockedByMe && isCoachSide && (
+        <Alert className="border-rose-400/30 bg-rose-400/10 text-rose-200">
+          <Ban className="size-4" aria-hidden="true" />
+          <AlertTitle className="text-xs font-bold">{p196.chatBlockedBanner}</AlertTitle>
+          <AlertDescription className="text-[11px] leading-5" />
+        </Alert>
+      )}
 
       {/* فهرست پیام‌ها */}
       <div
@@ -358,6 +475,7 @@ export function CoachChatPanel({
                   content={m.content}
                   time={localeDateTimeLabel(m.createdAt, locale)}
                   read={m.readAt !== null}
+                  attachments={m.attachments ?? []}
                 />
               );
             })}
@@ -375,8 +493,35 @@ export function CoachChatPanel({
         </p>
       )}
 
-      {/* ورودی پیام — فقط با مجوز واقعی سرور فعال میشود */}
+      {/* ورودی پیام — فقط با مجوز واقعی سرور فعال میشود؛ پیوست تا ۲۰MB */}
       <div className="space-y-1.5">
+        {pickedFiles.length > 0 && (
+          <div className="flex flex-wrap gap-1.5">
+            {pickedFiles.map((f, i) => (
+              <span
+                key={`${f.name}-${i}`}
+                className="inline-flex max-w-52 items-center gap-1 rounded-lg border border-border/50 bg-secondary/30 px-2 py-1 text-[10px]"
+              >
+                <Paperclip className="size-3 shrink-0 text-primary" aria-hidden="true" />
+                <span className="truncate font-bold text-foreground">{f.name}</span>
+                <span className="shrink-0 text-muted-foreground">
+                  {localeNumber(Math.round(f.size / 1024), locale)}KB
+                </span>
+                <button
+                  type="button"
+                  aria-label={`${t.back}: ${f.name}`}
+                  className="text-rose-300 hover:text-rose-200"
+                  onClick={() => setPickedFiles((prev) => prev.filter((_, j) => j !== i))}
+                >
+                  <X className="size-3" aria-hidden="true" />
+                </button>
+              </span>
+            ))}
+            {pickedTotal > TOTAL_MAX && (
+              <span className="text-[10px] font-bold text-rose-300">{p196.chatBlockedMeBanner ? "" : ""}⚠ 20MB</span>
+            )}
+          </div>
+        )}
         <Textarea
           value={draft}
           onChange={(e) => setDraft(e.target.value)}
@@ -389,20 +534,56 @@ export function CoachChatPanel({
           className="min-h-[52px] resize-none text-xs"
         />
         <div className="flex items-center justify-between gap-2">
-          <span className="text-[10px] text-muted-foreground" aria-live="off">
-            {localeNumber(draft.length, locale)}
-          </span>
+          <div className="flex min-w-0 items-center gap-1.5">
+            {chat.canSend && (
+              <>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="size-8 shrink-0"
+                  onClick={() => fileInputRef.current?.click()}
+                  aria-label={p196.exerciseMediaUpload}
+                  title={p196.exerciseMediaUpload}
+                >
+                  <Paperclip className="size-4" aria-hidden="true" />
+                </Button>
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  multiple
+                  className="sr-only"
+                  accept="image/jpeg,image/png,image/webp,image/gif,application/pdf,text/plain,.docx,.xlsx"
+                  onChange={(e) => {
+                    addFiles(e.target.files);
+                    e.currentTarget.value = "";
+                  }}
+                />
+              </>
+            )}
+            <span className="text-[10px] text-muted-foreground" aria-live="off">
+              {localeNumber(draft.length, locale)}
+            </span>
+          </div>
           <Button
             size="sm"
             className="gap-1.5"
             onClick={submit}
-            disabled={!chat.canSend || chat.sending || draft.trim().length === 0}
+            disabled={!chat.canSend || chat.sending || (draft.trim().length === 0 && pickedFiles.length === 0)}
           >
             <Send className="size-3.5" aria-hidden="true" />
             {chat.sending ? t.sending : t.send}
           </Button>
         </div>
       </div>
+
+      {/* پروفایل دانشجو از گفت‌وگو — فقط سمت مربی و با مجوز سرور */}
+      {isCoachSide && (
+        <CoachStudentProfileDialog
+          studentId={chat.conversation?.counterpart.userId ?? null}
+          open={profileOpen}
+          onOpenChange={setProfileOpen}
+        />
+      )}
     </div>
   );
 }

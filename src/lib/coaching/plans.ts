@@ -34,6 +34,7 @@ import type {
   CoachPlanMeta,
   CoachWorkoutContent,
 } from "./plan-schemas";
+import { emitNotification, NOTIFICATION_TYPES } from "@/lib/notifications/notifications";
 import type {
   CoachNutritionPlan,
   CoachPlanDelivery,
@@ -187,7 +188,7 @@ export async function createCoachWorkoutPlan(
 ): Promise<CoachPlanDetail> {
   // بانک کامل (ویرایشی + منبع آزاد) برای snapshot حرکات — مرحله ۱۸
   await ensureExerciseBank();
-  const content = buildWorkoutContent(input);
+  const content = await buildWorkoutContent(coachId, input);
   const row = await db.coachWorkoutPlan.create({
     data: {
       coachId,
@@ -245,7 +246,7 @@ export async function updateCoachWorkoutPlan(
     throw new CoachingError(409, "PLAN_ARCHIVED");
   }
   await ensureExerciseBank();
-  const content = buildWorkoutContent(input);
+  const content = await buildWorkoutContent(coachId, input);
   await db.coachWorkoutPlan.update({
     where: { id: planId },
     data: {
@@ -317,7 +318,7 @@ export async function publishCoachWorkoutPlan(
   }
 
   try {
-    return await db.$transaction(async (tx) => {
+    const result = await db.$transaction(async (tx) => {
       const fresh = await tx.coachWorkoutPlan.findUnique({ where: { id: planId } });
       if (!fresh || fresh.coachId !== coachId || fresh.status === "archived") {
         throw new CoachingError(409, "PLAN_STATE_CHANGED");
@@ -369,6 +370,14 @@ export async function publishCoachWorkoutPlan(
       });
       return delivery;
     });
+    // اعلان تحویل برنامه — شکستش هرگز ارسال را نمیشکند
+    await emitNotification({
+      userId: conn.studentId,
+      type: NOTIFICATION_TYPES.PLAN_DELIVERED,
+      dedupeKey: `plan-delivered:${result.id}`,
+      payload: { deliveryId: result.id, planKind: "workout", coachId },
+    });
+    return result;
   } catch (error) {
     if (
       typeof error === "object" &&
@@ -528,7 +537,7 @@ export async function publishCoachNutritionPlan(
   }
 
   try {
-    return await db.$transaction(async (tx) => {
+    const result = await db.$transaction(async (tx) => {
       const fresh = await tx.coachNutritionPlan.findUnique({ where: { id: planId } });
       if (!fresh || fresh.coachId !== coachId || fresh.status === "archived") {
         throw new CoachingError(409, "PLAN_STATE_CHANGED");
@@ -582,6 +591,14 @@ export async function publishCoachNutritionPlan(
       });
       return delivery;
     });
+    // اعلان تحویل برنامه غذایی — شکستش هرگز ارسال را نمیشکند
+    await emitNotification({
+      userId: conn.studentId,
+      type: NOTIFICATION_TYPES.PLAN_DELIVERED,
+      dedupeKey: `plan-delivered:${result.id}`,
+      payload: { deliveryId: result.id, planKind: "nutrition", coachId },
+    });
+    return result;
   } catch (error) {
     if (
       typeof error === "object" &&
@@ -608,6 +625,26 @@ export async function listCoachPlanDeliveries(
     orderBy: { version: "desc" },
     take: 50,
   });
+}
+
+/**
+ * فهرست نسخه‌های ارسال‌شده یک مربی به یک دانشجوی مشخص — برای صفحه
+ * «اطلاعات تکمیلی دانشجو» (مرحله ۱۹.۶). مالکیت مربی + جفت واقعی
+ * coachId/studentId در همان کوئری اعمال میشود؛ نشت برنامه مربیان دیگر
+ * ناممکن است.
+ */
+export async function listCoachPlanDeliveriesForStudent(
+  coachId: string,
+  studentId: string,
+  planKind: "workout" | "nutrition"
+): Promise<DeliveryListItem[]> {
+  const rows = await db.coachPlanDelivery.findMany({
+    where: { coachId, studentId, planKind },
+    orderBy: { sentAt: "desc" },
+    take: 100,
+  });
+  const names = await coachNamesOf(rows.map((r) => r.coachId));
+  return rows.map((r) => toDeliveryItem(r, names));
 }
 
 /* ------------------------------ سمت دانشجو ------------------------------ */

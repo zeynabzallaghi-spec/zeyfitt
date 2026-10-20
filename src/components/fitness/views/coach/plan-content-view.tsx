@@ -73,6 +73,11 @@ export function CoachWorkoutContentView({
                       <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-0.5">
                         <p className="text-xs font-bold text-foreground" dir="auto">
                           {locale === "fa" ? ex.faName : ex.enName}
+                          {(ex as { source?: string }).source === "personal" && (
+                            <span className="ms-1.5 inline-flex rounded border border-primary/30 bg-primary/10 px-1 align-middle text-[8px] font-bold text-primary">
+                              {locale === "fa" ? "شخصی" : "Personal"}
+                            </span>
+                          )}
                         </p>
                         <p className="text-[10px] font-medium text-muted-foreground" dir="ltr">
                           {t.setsRepsLabel(ex.sets, ex.repsMin, ex.repsMax)}

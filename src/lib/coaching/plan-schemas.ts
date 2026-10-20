@@ -16,6 +16,7 @@ import { createHash } from "node:crypto";
 import { getExerciseCardById, ensureExerciseBank } from "@/lib/exercises/bank";
 import { findFood, FOOD_BANK } from "@/lib/foods";
 import { macrosForGrams } from "@/lib/foods/types";
+import { getPersonalExerciseForPlan, PERSONAL_EXERCISE_PREFIX } from "./coach-exercises";
 import type { MuscleGroupId } from "@/lib/fitness3d/types";
 import { CoachingError } from "./constants";
 
@@ -78,6 +79,8 @@ export interface CoachPlanExerciseContent {
   enName: string;
   category: string;
   coach3dId: string | null;
+  /** منبع حرکت: بانک عمومی یا حرکت شخصی مربی (مرحله ۱۹.۶) — صادقانه */
+  source: "public" | "personal";
   sets: number;
   repsMin: number;
   repsMax: number;
@@ -285,23 +288,56 @@ export type CreateCoachNutritionPlanInput = z.infer<typeof createCoachNutritionP
 /* ------------------------------ سازنده محتوای تمرینی ------------------------------ */
 
 /**
- * ساخت snapshot محتوای تمرینی از ورودی مربی — نام‌ها و شناسه سه‌بعدی فقط
- * از بانک زنده؛ شناسه ناموجود کل برنامه را رد می‌کند (بدون اختراع داده).
+ * ساخت snapshot محتوای تمرینی از ورودی مربی — نام‌ها فقط از بانکهای زنده؛
+ * شناسه ناموجود کل برنامه را رد میکند (بدون اختراع داده).
+ *
+ * دو منبع (مرحله ۱۹.۶):
+ *  - بانک عمومی: شناسه خام (مثل pullup) — همان رفتار قبلی، عیناً.
+ *  - بانک شخصی مربی: شناسه با پیشوند cex- — فقط حرکت خود مربی؛ بدون
+ *    نگاشت سه‌بعدی (coach3dId همیشه null — صادقانه).
  */
-export function buildWorkoutContent(input: CreateCoachWorkoutPlanInput): CoachWorkoutContent {
-  const days: CoachPlanDayContent[] = input.days.map((day, dayIndex) => {
-    const exercises: CoachPlanExerciseContent[] = day.exercises.map((ex, exIndex) => {
-      const bank = getExerciseCardById(ex.exerciseId);
-      if (!bank) {
+export async function buildWorkoutContent(
+  coachId: string,
+  input: CreateCoachWorkoutPlanInput
+): Promise<CoachWorkoutContent> {
+  await ensureExerciseBank();
+  const personalCache = new Map<string, Awaited<ReturnType<typeof getPersonalExerciseForPlan>>>();
+  const days: CoachPlanDayContent[] = [];
+  for (let dayIndex = 0; dayIndex < input.days.length; dayIndex += 1) {
+    const day = input.days[dayIndex];
+    const exercises: CoachPlanExerciseContent[] = [];
+    for (let exIndex = 0; exIndex < day.exercises.length; exIndex += 1) {
+      const ex = day.exercises[exIndex];
+      let card: { id: string; fa: string; en: string; category: string } | null;
+      let coach3dId: string | null = null;
+      let source: "public" | "personal" = "public";
+      if (ex.exerciseId.startsWith(PERSONAL_EXERCISE_PREFIX)) {
+        const personalId = ex.exerciseId.slice(PERSONAL_EXERCISE_PREFIX.length);
+        let personal = personalCache.get(personalId);
+        if (personal === undefined) {
+          personal = await getPersonalExerciseForPlan(coachId, personalId);
+          personalCache.set(personalId, personal);
+        }
+        card = personal;
+        source = "personal";
+      } else {
+        const bank = getExerciseCardById(ex.exerciseId);
+        card = bank
+          ? { id: bank.id, fa: bank.fa, en: bank.en, category: bank.category }
+          : null;
+        coach3dId = bank?.coach3dId ?? null;
+      }
+      if (!card) {
         throw new CoachingError(422, "EXERCISE_NOT_IN_BANK");
       }
-      return {
+      exercises.push({
         order: exIndex + 1,
-        exerciseId: bank.id,
-        faName: bank.fa,
-        enName: bank.en,
-        category: bank.category,
-        coach3dId: bank.coach3dId ?? null,
+        exerciseId: card.id,
+        faName: card.fa,
+        enName: card.en,
+        category: card.category,
+        coach3dId,
+        source,
         sets: ex.sets,
         repsMin: ex.repsMin,
         repsMax: ex.repsMax,
@@ -312,17 +348,17 @@ export function buildWorkoutContent(input: CreateCoachWorkoutPlanInput): CoachWo
           typeof ex.suggestedWeightKg === "number" && ex.suggestedWeightKg > 0
             ? ex.suggestedWeightKg
             : null,
-      };
-    });
+      });
+    }
     const estMinutes =
       WARMUP_MINUTES + exercises.reduce((sum, ex) => sum + ex.estimatedMinutes, 0);
-    return {
+    days.push({
       order: dayIndex + 1,
       title: day.title,
       estMinutes,
       exercises,
-    };
-  });
+    });
+  }
   return { days };
 }
 

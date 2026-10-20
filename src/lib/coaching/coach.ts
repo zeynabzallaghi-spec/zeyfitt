@@ -70,6 +70,13 @@ export interface PublicCoach {
   certifications: string[];
   experienceYears: number | null;
   cooperationTypes: CooperationType[];
+  /** تعرفه عمومی (۱۹.۶) — فقط در مسیرهای عمومی فهرست/جزئیات پر میشود */
+  tariff?: {
+    privatePriceIrr: number | null;
+    privatePriceUsd: number | null;
+    semiPrivatePriceIrr: number | null;
+    semiPrivatePriceUsd: number | null;
+  } | null;
 }
 
 interface CoachProfileRow {
@@ -178,8 +185,33 @@ export async function listPublicCoaches(): Promise<PublicCoach[]> {
     where: { verified: true, published: true },
     orderBy: { updatedAt: "desc" },
   });
-  // حداقل اطلاعات باید کامل باشد؛ رکوردهای ناقص هرگز عمومی نمی‌شوند
-  return rows.filter(profileValidForPublishing).map(toPublicCoach);
+  const valid = rows.filter(profileValidForPublishing);
+  // تعرفه عمومی هر مربی (مرحله ۱۹.۶) — فقط مبالغ؛ هیچ داده بانکیای اینجا نیست
+  const tariffs = await db.coachTariff.findMany({
+    where: { coachId: { in: valid.map((r) => r.userId) } },
+    select: {
+      coachId: true,
+      privatePriceIrr: true,
+      privatePriceUsd: true,
+      semiPrivatePriceIrr: true,
+      semiPrivatePriceUsd: true,
+    },
+  });
+  const tariffByCoach = new Map(tariffs.map((t) => [t.coachId, t]));
+  return valid.map((row) => {
+    const t = tariffByCoach.get(row.userId) ?? null;
+    return {
+      ...toPublicCoach(row),
+      tariff: t
+        ? {
+            privatePriceIrr: t.privatePriceIrr ?? null,
+            privatePriceUsd: t.privatePriceUsd ?? null,
+            semiPrivatePriceIrr: t.semiPrivatePriceIrr ?? null,
+            semiPrivatePriceUsd: t.semiPrivatePriceUsd ?? null,
+          }
+        : null,
+    };
+  });
 }
 
 export async function getPublicCoach(
@@ -191,7 +223,26 @@ export async function getPublicCoach(
   if (!row || !row.verified || !row.published || !profileValidForPublishing(row)) {
     return null;
   }
-  return toPublicCoach(row);
+  const t = await db.coachTariff.findUnique({
+    where: { coachId: coachUserId },
+    select: {
+      privatePriceIrr: true,
+      privatePriceUsd: true,
+      semiPrivatePriceIrr: true,
+      semiPrivatePriceUsd: true,
+    },
+  });
+  return {
+    ...toPublicCoach(row),
+    tariff: t
+      ? {
+          privatePriceIrr: t.privatePriceIrr ?? null,
+          privatePriceUsd: t.privatePriceUsd ?? null,
+          semiPrivatePriceIrr: t.semiPrivatePriceIrr ?? null,
+          semiPrivatePriceUsd: t.semiPrivatePriceUsd ?? null,
+        }
+      : null,
+  };
 }
 
 /* ------------------------------ پذیرش درخواست ------------------------------ */

@@ -49,6 +49,8 @@ export function ExercisePicker({
   selectedIds = null,
   onToggle,
   showAddButton = true,
+  /** بانک شخصی مربی (مرحله ۱۹.۶) — فعال‌کننده سوییچ منبع */
+  personalExercises = null,
 }: {
   /** بازگشت true یعنی افزودن موفق و نشانگر پاک می‌شود */
   onPick?: (exerciseId: string) => Promise<boolean> | void;
@@ -62,6 +64,8 @@ export function ExercisePicker({
   onToggle?: (id: string) => void;
   /** پنهان‌کردن دکمه کنار هر ردیف (حالت انتخاب صرف) */
   showAddButton?: boolean;
+  /** حرکات شخصی مربی — وقتی داده شود، انتخاب منبع نمایش داده میشود */
+  personalExercises?: { id: string; faName: string; enName: string; category: string }[] | null;
 }) {
   const t = useStrings(workoutStrings);
   const shared = useStrings(sharedStrings);
@@ -80,6 +84,8 @@ export function ExercisePicker({
   const [query, setQuery] = useState("");
   const [category, setCategory] = useState<ExerciseCategoryId | "all">("all");
   const [visible, setVisible] = useState(PAGE_SIZE);
+  // منبع حرکت — بانک عمومی یا حرکات شخصی مربی (مرحله ۱۹.۶)
+  const [source, setSource] = useState<"public" | "personal">("public");
   // بازنشانی نمایش تدریجی با تغییر جست‌وجو/فیلتر — الگوی رسمی «مشتق در رندر»
   const [prevFilterKey, setPrevFilterKey] = useState("");
   const filterKey = `${query}|${category}`;
@@ -94,10 +100,28 @@ export function ExercisePicker({
   }, []);
 
   const results = useMemo(() => {
+    if (source === "personal" && personalExercises !== null) {
+      const q = query.trim().toLowerCase();
+      return personalExercises
+        .filter((ex) => (q.length === 0 ? true : ex.faName.includes(q) || ex.enName.toLowerCase().includes(q)))
+        .map((ex) => ({
+          id: ex.id,
+          fa: ex.faName,
+          en: ex.enName,
+          category: ex.category as ExerciseCategoryId,
+          difficulty: "intermediate" as const,
+          equipment: [] as string[],
+          primaryMuscles: [] as string[],
+          secondaryMuscles: [] as string[],
+          has3d: false,
+          coach3dId: null,
+          animation3d: null,
+        }));
+    }
     const filtered = filterCards(items, { query, category, muscles: [], equipment: [], difficulty: "all", pattern: "all", only3d: false });
     if (!bodyweightOnly) return filtered;
     return filtered.filter((ex) => ex.equipment.length > 0 && ex.equipment.every((e) => e === "bodyweight"));
-  }, [items, query, category, bodyweightOnly]);
+  }, [items, query, category, bodyweightOnly, source, personalExercises]);
 
   const visibleResults = results.slice(0, visible);
 
@@ -143,7 +167,32 @@ export function ExercisePicker({
         />
       </div>
 
-      {/* فیلتر دسته — چیپ‌های افقی قابل اسکرول */}
+      {/* انتخاب منبع — فقط وقتی بانک شخصی داده شده (برنامه‌ساز مربی) */}
+      {personalExercises !== null && (
+        <div className="flex items-center gap-1.5" role="group" aria-label={shared.categoryGroupAria}>
+          {(["public", "personal"] as const).map((s) => (
+            <button
+              key={s}
+              type="button"
+              aria-pressed={source === s}
+              onClick={() => {
+                setSource(s);
+                setVisible(PAGE_SIZE);
+              }}
+              className={`rounded-full border px-3 py-1 text-[10px] font-semibold transition-colors ${
+                source === s
+                  ? "border-primary/40 bg-primary/15 text-primary"
+                  : "border-border/50 bg-secondary/30 text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              {t.sourceLabel(s)}
+            </button>
+          ))}
+        </div>
+      )}
+
+      {/* فیلتر دسته — فقط بانک عمومی (حرکات شخصی دسته ساده دارند) */}
+      {source === "public" && (
       <div
         className="flex items-center gap-1.5 overflow-x-auto pb-1"
         role="group"
@@ -179,6 +228,7 @@ export function ExercisePicker({
           </button>
         ))}
       </div>
+      )}
 
       <div className={cn("overflow-y-auto rounded-xl border border-border/50", heightClass)}>
         {status === "loading" ? (
@@ -190,7 +240,9 @@ export function ExercisePicker({
           </div>
         ) : visibleResults.length === 0 ? (
           <p className="p-6 text-center text-[11px] leading-6 text-muted-foreground">
-            {t.noResults}
+            {source === "personal" && personalExercises !== null && personalExercises.length === 0
+              ? t.personalEmptyNote
+              : t.noResults}
           </p>
         ) : (
           <ul className="divide-y divide-border/40">

@@ -258,6 +258,9 @@ export interface WorkoutStrings {
   addExerciseDescription: string;
   capacityLine: (remaining: number, max: number) => string;
   searchPlaceholder: (count: number) => string;
+  /** منبع حرکت در انتخابگر (مرحله ۱۹.۶) — بانک عمومی یا شخصی */
+  sourceLabel: (source: "public" | "personal") => string;
+  personalEmptyNote: string;
   allCategories: string;
   searchAria: string;
   noResults: string;
@@ -584,6 +587,8 @@ const FA: WorkoutStrings = {
   capacityLine: (remaining, max) =>
     ` ظرفیت باقی‌مانده: ${localeNumber(remaining, "fa")} از حداکثر ${localeNumber(max, "fa")} حرکت جلسه.`,
   searchPlaceholder: (count) => `جست‌وجو در ${localeNumber(count, "fa")} حرکت — فارسی یا انگلیسی`,
+  sourceLabel: (source) => (source === "public" ? "بانک عمومی" : "حرکات شخصی من"),
+  personalEmptyNote: "هنوز حرکت شخصی ندارید؛ از بخش «بانک حرکات شخصی» پنل مربی بسازید.",
   allCategories: "همه دسته‌ها",
   searchAria: "جست‌وجوی حرکت",
   noResults: "حرکتی با این جست‌وجو یافت نشد.",
@@ -908,6 +913,8 @@ const EN: WorkoutStrings = {
   capacityLine: (remaining, max) =>
     ` Remaining capacity: ${remaining} of a maximum of ${max} session exercises.`,
   searchPlaceholder: (count) => `Search ${count} exercises — Persian or English`,
+  sourceLabel: (source) => (source === "public" ? "Public bank" : "My personal exercises"),
+  personalEmptyNote: "No personal exercises yet; create some in the coach panel’s exercise bank.",
   allCategories: "All categories",
   searchAria: "Search exercises",
   noResults: "No exercise matched this search.",

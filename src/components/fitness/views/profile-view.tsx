@@ -65,6 +65,7 @@ import { Field, ChipToggle, ProfileSection } from "../shared/profile-fields";
 import { PlanTierBadge } from "../shared/badges";
 import { useSubscription } from "@/hooks/use-coaching";
 import { PremiumRequestSection, CoachApplicationSection, SupportCenterSection } from "./profile-requests";
+import { BankingInfoSection } from "./profile-banking-section";
 import { useLocale, useDir } from "@/lib/i18n/locale";
 import { useStrings } from "@/lib/i18n/use-strings";
 import { profileStrings } from "@/lib/i18n/sections/profile";
@@ -397,6 +398,9 @@ export function ProfileView() {
       <PremiumRequestSection />
       <CoachApplicationSection />
       <SupportCenterSection />
+
+      {/* مرحله ۱۹.۶ — اطلاعات بانکی خصوصی (فقط خود کاربر) */}
+      <BankingInfoSection />
 
       {formError && (
         <div

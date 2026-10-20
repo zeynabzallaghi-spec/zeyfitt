@@ -64,7 +64,9 @@ export function coachingErrorResponse(error: unknown): NextResponse {
   }
   console.error(
     "[coaching]",
-    error instanceof Error ? error.name : "unknown"
+    error instanceof Error ? error.name : "unknown",
+    // فقط برای تشخیص؛ پیام خطای Prisma فیلد/مدل را میگوید و داده کاربر ندارد
+    error instanceof Error && error.name.startsWith("Prisma") ? error.message.slice(0, 400) : ""
   );
   return NextResponse.json({ error: "INTERNAL" }, { status: 500 });
 }

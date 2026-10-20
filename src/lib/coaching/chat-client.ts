@@ -21,6 +21,13 @@ export interface ChatConversationClient {
   openedAt: string | null;
 }
 
+export interface ChatMessageAttachmentClient {
+  id: string;
+  fileName: string;
+  mimeType: string;
+  sizeBytes: number;
+}
+
 export interface ChatMessageClient {
   id: string;
   seq: number;
@@ -28,6 +35,8 @@ export interface ChatMessageClient {
   content: string;
   createdAt: string;
   readAt: string | null;
+  /** پیوستهای پیام — مرحله ۱۹.۶ (بایتها از مسیر مالکیتمحور جداگانه) */
+  attachments: ChatMessageAttachmentClient[];
 }
 
 export interface ChatMessagesPageClient {

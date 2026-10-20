@@ -277,24 +277,36 @@ export function useCoachChat(
 
   /** ارسال پیام — خوش‌بینانه با وضعیت متمایز؛ پاسخ واقعی سرور مرجع است */
   const sendMessage = useCallback(
-    async (content: string): Promise<boolean> => {
+    async (content: string, files: File[] = []): Promise<boolean> => {
       const conv = conversationRef.current;
       if (!conv?.conversationId || !conv.canSend) return false;
       const trimmed = content.trim();
-      if (!trimmed) return false;
+      if (!trimmed && files.length === 0) return false;
       const tempId = `pending-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
       const seqAtSend = maxSeq();
       seqAtSendRef.current = seqAtSend;
-      setPendings((p) => [...p, { tempId, content: trimmed, state: "pending", seqAtSend }]);
+      setPendings((p) => [...p, { tempId, content: trimmed || (files.length > 0 ? "[📎]" : ""), state: "pending", seqAtSend }]);
       setSending(true);
-      const result = await jsonFetch<{ message: ChatMessageClient }>(
-        `/api/coach-chat/conversations/${conv.conversationId}/messages`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ content: trimmed }),
-        }
-      );
+      let result: Result<{ message: ChatMessageClient }>;
+      if (files.length > 0) {
+        // ارسال با پیوست — multipart؛ سقف ۲۰MB سمت سرور اعمال میشود
+        const form = new FormData();
+        form.append("content", trimmed);
+        for (const f of files) form.append("files", f);
+        result = await jsonFetch<{ message: ChatMessageClient }>(
+          `/api/coach-chat/conversations/${conv.conversationId}/messages`,
+          { method: "POST", body: form }
+        );
+      } else {
+        result = await jsonFetch<{ message: ChatMessageClient }>(
+          `/api/coach-chat/conversations/${conv.conversationId}/messages`,
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ content: trimmed }),
+          }
+        );
+      }
       setSending(false);
       if (result.ok) {
         // جایگزینی خوش‌بینانه با رکورد واقعی سرور (وضعیت sent)

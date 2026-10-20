@@ -7,6 +7,7 @@ import {
 } from "@/lib/coaching/server";
 import { ticketCreateSchema } from "@/lib/admin/schemas";
 import { db } from "@/lib/db";
+import { emitNotification, NOTIFICATION_TYPES } from "@/lib/notifications/notifications";
 
 /**
  * GET /api/support/tickets — تیکت‌های خود کاربر (۵۰ تای آخر، جدیدترین اول).
@@ -64,6 +65,19 @@ export async function POST(request: Request) {
         body: input.body,
       },
     });
+    // اعلان به همه ادمین‌ها — هر ادمین یک اعلان یکتا (dedupeKey به‌ازای ادمین)
+    const admins = await db.user.findMany({
+      where: { role: "ADMIN" },
+      select: { id: true },
+    });
+    for (const admin of admins) {
+      await emitNotification({
+        userId: admin.id,
+        type: NOTIFICATION_TYPES.SUPPORT_TICKET_NEW,
+        dedupeKey: `ticket-new:${row.id}:${admin.id}`,
+        payload: { ticketId: row.id, category: row.category, fromUserId: user.id },
+      });
+    }
     return NextResponse.json(
       {
         ticket: {

@@ -152,9 +152,68 @@ export const CHAT_LIMITS = {
  */
 export type ChatBlockReason =
   | "CONNECTION_NOT_ACTIVE"
+  | "CONNECTION_CLOSED"
   | "SUBSCRIPTION_REQUIRED"
   | "ROLE_NOT_ALLOWED"
-  | "COACH_NOT_VERIFIED";
+  | "COACH_NOT_VERIFIED"
+  | "CHAT_BLOCKED";
+
+/* ---------------- مرحله ۱۹.۶ — پیوست گفت‌وگو، تعرفه/پرداخت، حرکات شخصی ---------------- */
+
+export const CHAT_ATTACHMENT_LIMITS = {
+  /** حداکثر مجموع بایتهای پیوست در هر ارسال — ۲۰ مگابایت (سمت سرور) */
+  TOTAL_MAX_BYTES: 20 * 1024 * 1024,
+  /** حداکثر فایل در هر ارسال */
+  MAX_FILES: 3,
+  /** سقف کاراکتر نام فایل نمایشی (هرگز مسیر دیسک نیست) */
+  FILE_NAME_MAX: 120,
+  /**
+   * انواع مجاز — تصاویر و فایلهای مستند. ویدئو در این مرحله عمداً مجاز نیست
+   * (زیرساخت پخش امن/Range کامل هنوز تامین نشده — ادعای ناصادقانه نمیسازیم).
+   * امضای بایتها سمت سرور راستیآزمایی میشود؛ پسوند هرگز کافی نیست.
+   */
+  MIME_WHITELIST: [
+    "image/jpeg",
+    "image/png",
+    "image/webp",
+    "image/gif",
+    "application/pdf",
+    "text/plain",
+    "application/vnd.openxmlformats-officedocument.wordprocessingml.document", // docx
+    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", // xlsx
+  ] as const,
+} as const;
+
+export const CHAT_ATTACHMENT_MIME_ALLOWED = new Set<string>(
+  CHAT_ATTACHMENT_LIMITS.MIME_WHITELIST
+);
+
+export const PAYMENT_LIMITS = {
+  /** سقف مبلغ به واحد اصلی ارز — محافظ ورودی */
+  AMOUNT_MAX: 10_000_000_000,
+  AMOUNT_MIN: 1,
+  /** سقف کاراکتر توضیح پرداخت */
+  DESCRIPTION_MAX: 500,
+  /** سقف کاراکتر لینک پرداخت خارجی */
+  EXTERNAL_LINK_MAX: 1000,
+  CURRENCIES: ["IRR", "USD"] as const,
+} as const;
+
+export const COACH_EXERCISE_LIMITS = {
+  NAME_MAX: 80,
+  DESCRIPTION_MAX: 2000,
+  TIPS_MAX: 1000,
+  MUSCLES_MAX: 6,
+  EQUIPMENT_MAX: 6,
+  /** سقف فایل رسانه به‌ازای هر حرکت شخصی */
+  MEDIA_MAX_PER_EXERCISE: 4,
+  /** تصویر — ۵ مگابایت */
+  IMAGE_MAX_BYTES: 5 * 1024 * 1024,
+  /** ویدئو — ۵۰ مگابایت (فقط MP4/WebM با امضای بایت) */
+  VIDEO_MAX_BYTES: 50 * 1024 * 1024,
+  IMAGE_MIME_WHITELIST: ["image/jpeg", "image/png", "image/webp"] as const,
+  VIDEO_MIME_WHITELIST: ["video/mp4", "video/webm"] as const,
+} as const;
 
 /* --------------------------- خطای دامنه با وضعیت HTTP --------------------------- */
 

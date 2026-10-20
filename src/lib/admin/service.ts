@@ -12,6 +12,7 @@
  */
 
 import { db } from "@/lib/db";
+import { emitNotification, NOTIFICATION_TYPES } from "@/lib/notifications/notifications";
 import type { Prisma } from "@prisma/client";
 import { CoachingError } from "@/lib/coaching/constants";
 
@@ -350,6 +351,12 @@ export async function adminDecideCoachApplication(
       userId: app.userId,
       note: opts.note ?? null,
     });
+    await emitNotification({
+      userId: app.userId,
+      type: NOTIFICATION_TYPES.COACH_APPLICATION_DECIDED,
+      dedupeKey: `coach-app-decided:${app.id}:rejected`,
+      payload: { applicationId: app.id, status: "rejected" },
+    });
     return { status: row.status, role: null };
   }
 
@@ -408,6 +415,12 @@ export async function adminDecideCoachApplication(
     userId: app.userId,
     published,
     note: opts.note ?? null,
+  });
+  await emitNotification({
+    userId: app.userId,
+    type: NOTIFICATION_TYPES.COACH_APPLICATION_DECIDED,
+    dedupeKey: `coach-app-decided:${app.id}:approved`,
+    payload: { applicationId: app.id, status: "approved" },
   });
   return { status: "approved", role: "COACH" };
 }
@@ -478,6 +491,12 @@ export async function adminDecidePremiumRequest(
       userId: reqRow.userId,
       note: opts.note ?? null,
     });
+    await emitNotification({
+      userId: reqRow.userId,
+      type: NOTIFICATION_TYPES.PREMIUM_STATUS,
+      dedupeKey: `premium:${reqRow.id}:rejected`,
+      payload: { requestId: reqRow.id, status: "rejected" },
+    });
     return { status: row.status, tier: null };
   }
 
@@ -521,6 +540,12 @@ export async function adminDecidePremiumRequest(
     userId: reqRow.userId,
     days: opts.days ?? null,
     note: opts.note ?? null,
+  });
+  await emitNotification({
+    userId: reqRow.userId,
+    type: NOTIFICATION_TYPES.PREMIUM_STATUS,
+    dedupeKey: `premium:${reqRow.id}:approved`,
+    payload: { requestId: reqRow.id, status: "approved" },
   });
   return { status: "approved", tier: "PREMIUM" };
 }
@@ -612,6 +637,13 @@ export async function adminUpdateTicket(
   await logAdminAction(adminId, "update-ticket", "support-ticket", ticket.id, {
     status: input.status ?? null,
     replied: input.reply !== undefined,
+  });
+  // اعلان پاسخ/تغییر وضعیت تیکت به مالک آن — ضدتکرار با ترکیب وضعیت
+  await emitNotification({
+    userId: ticket.userId,
+    type: NOTIFICATION_TYPES.SUPPORT_REPLY,
+    dedupeKey: `ticket-update:${ticket.id}:${row.status}:${row.repliedAt?.toISOString() ?? "no-reply"}`,
+    payload: { ticketId: ticket.id, status: row.status, replied: input.reply !== undefined },
   });
   return {
     id: row.id,
