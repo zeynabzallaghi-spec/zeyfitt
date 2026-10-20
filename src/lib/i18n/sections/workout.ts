@@ -258,6 +258,7 @@ export interface WorkoutStrings {
   addExerciseDescription: string;
   capacityLine: (remaining: number, max: number) => string;
   searchPlaceholder: (count: number) => string;
+  allCategories: string;
   searchAria: string;
   noResults: string;
   has3d: string;
@@ -583,6 +584,7 @@ const FA: WorkoutStrings = {
   capacityLine: (remaining, max) =>
     ` ظرفیت باقی‌مانده: ${localeNumber(remaining, "fa")} از حداکثر ${localeNumber(max, "fa")} حرکت جلسه.`,
   searchPlaceholder: (count) => `جست‌وجو در ${localeNumber(count, "fa")} حرکت — فارسی یا انگلیسی`,
+  allCategories: "همه دسته‌ها",
   searchAria: "جست‌وجوی حرکت",
   noResults: "حرکتی با این جست‌وجو یافت نشد.",
   has3d: "سه‌بعدی دارد",
@@ -906,6 +908,7 @@ const EN: WorkoutStrings = {
   capacityLine: (remaining, max) =>
     ` Remaining capacity: ${remaining} of a maximum of ${max} session exercises.`,
   searchPlaceholder: (count) => `Search ${count} exercises — Persian or English`,
+  allCategories: "All categories",
   searchAria: "Search exercises",
   noResults: "No exercise matched this search.",
   has3d: "3D available",

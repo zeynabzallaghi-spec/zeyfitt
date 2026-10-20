@@ -13,7 +13,7 @@
 
 import { z } from "zod";
 import { createHash } from "node:crypto";
-import { getExerciseById } from "@/lib/exercises";
+import { getExerciseCardById, ensureExerciseBank } from "@/lib/exercises/bank";
 import { findFood, FOOD_BANK } from "@/lib/foods";
 import { macrosForGrams } from "@/lib/foods/types";
 import type { MuscleGroupId } from "@/lib/fitness3d/types";
@@ -291,7 +291,7 @@ export type CreateCoachNutritionPlanInput = z.infer<typeof createCoachNutritionP
 export function buildWorkoutContent(input: CreateCoachWorkoutPlanInput): CoachWorkoutContent {
   const days: CoachPlanDayContent[] = input.days.map((day, dayIndex) => {
     const exercises: CoachPlanExerciseContent[] = day.exercises.map((ex, exIndex) => {
-      const bank = getExerciseById(ex.exerciseId);
+      const bank = getExerciseCardById(ex.exerciseId);
       if (!bank) {
         throw new CoachingError(422, "EXERCISE_NOT_IN_BANK");
       }
@@ -466,5 +466,11 @@ export function contentHashOf(content: unknown): string {
 
 /** عضلات اصلی حرکت برای snapshot جلسه — از بانک زنده؛ نبود یعنی آرایه خالی */
 export function primaryMusclesOf(exerciseId: string): MuscleGroupId[] {
-  return getExerciseById(exerciseId)?.primaryMuscles ?? [];
+  const card = getExerciseCardById(exerciseId);
+  if (!card) return [];
+  // فقط گروه‌های سه‌بعدی (۱۲ گروه) به snapshot جلسه می‌روند؛ گروه‌های
+  // کتابخانه‌ای (مرحله ۱۸) Mesh سه‌بعدی ندارند و صادقانه حذف می‌شوند
+  return card.primaryMuscles.filter((m): m is MuscleGroupId =>
+    ["chest", "shoulders", "biceps", "triceps", "forearms", "abs", "back", "traps", "glutes", "quads", "hamstrings", "calves"].includes(m)
+  );
 }

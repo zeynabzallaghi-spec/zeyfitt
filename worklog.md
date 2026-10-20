@@ -845,3 +845,32 @@ Stage Summary:
 - پیام‌های جدید بدون بارگذاری کامل صفحه با polling کنترل‌شده ۴ثانیه‌ای فقط در مکالمه باز و تب فعال بازیابی می‌شوند — بدون ادعای realtime؛ ورودی کاربر FREE/منقضی/ارتباط پایان‌یافته با بنر شفاف فقط‌خواندنی می‌شود و تاریخچه هرگز حذف نمیشود
 - مرز مرحله رعایت شد: بدون فایل/صدا/ویدئو/اعلان خارجی/E2E؛ هیچ دکمه نمایشی برای قابلیت‌های ناموجود ساخته نشد؛ سیستم‌های قبلی (ارتباط، اشتراک، برنامه اختصاصی، جلسه، ثبت غذا، دستیار) بدون رگرسیون سالم ماندند
 - وضعیت: مرحله ۱۷ کامل شد — گزارش ارائه و منتظر تأیید مرحله بعد
+
+---
+Task ID: 26
+Agent: Super Z (main agent)
+Task: مرحله ۱۸ — کتابخانه عمومی گسترده حرکات و اتصال کامل به سیستم مربی (پیاده‌سازی کامل + تست + مرورگر + گزارش)
+
+Work Log:
+- بررسی معماری: ۴۸ حرکت استاتیک، plan-engine سنکرون، snapshot های مرحله ۱۶، مربی سه‌بعدی ۶ حرکته؛ تحلیل همه ۱۱ نقطه import از بانک (سرور/کلاینت)
+- پژوهش منبع داده: Free Exercise DB (Unlicense — مالکیت عمومی، ۸۷۶ رکورد) تنها منبع آزاد قابل‌استفاده تجاری؛ RepDB (تجاری) و wger (AGPL/CC-BY-SA) مستند شدند؛ Kaggle/ExerciseDB به‌دلیل مجوز نامشخص رد شدند — سند کامل: data/exercises/free-exercise-db/PROVENANCE.md
+- پیش‌گیت: بکاپ scripts/p18-db-backup.py → backups/p18-pre-phase18-20261020-075513.db (integrity ok، FK=0، ۳۰ جدول پس از push)
+- شِما (افزایشی غیرمخرب): مدل Exercise (شناسه پایدار، نام‌ها، واژگان بانک، محتوای چندزبانه، sourceKey/sourceLicense/sourceRef/datasetVersion، animation3dStatus، videoStatus/origin/ownerUserId/publishState برای مراحل ۱۹/۲۰) + ExerciseImportBatch (accepted/duplicates/rejected/reportJson) با unique(sourceKey,sourceRef) و ایندکس‌ها؛ prisma db push بدون accept-data-loss؛ ۳۰ جدول؛ integrity ok + FK=0
+- واژگان افزوده: ۶ تجهیزات (kettlebell/medicine_ball/stability_ball/foam_roll/ez_barbell/other)، ۲ الگو (stretch/other)، نوع تمرین ۷گانه از منبع، ۳ عضله «فقط کتابخانه» (adductors/lower-back/neck — بدون Mesh سه‌بعدی، صادقانه)
+- import idempotent (scripts/p18-import-exercises.ts + واژه‌نامه scripts/p18-glossary.ts با ~۱۱۰۰ توکن): ۴۸ ویرایشی همگام (شناسه‌ها عیناً)، ۸۵۷ رکورد fbd- (پیشوند ضدبرخورد)، ۱۴ تکراری هم‌نام skip (ویرایشی کانن)، ۵ رکورد بی‌دستورالعمل رد با دلیل در گزارش، ۱۵ نزدیک‌تکراری (Jaccard≥0.8) به‌عنوان واریانت واقعی حفظ، پوشش نام فارسی ۱۰۰٪ (۸۷۶/۸۷۶ — توکن ناشناخته = null صادقانه، هیچ نام ساختگی)؛ اجرای سوم import: new=0 (idempotency اثباتی)
+- بانک کامل سرور (src/lib/exercises/bank.ts): کش درون‌حافظه + ensureExerciseBank در session-storage (startSession/addSessionExercise/upsertSet) و coaching/plans (create/update) و APIها؛ getExerciseCardById از DB — حرکت منبع آزاد اکنون در برنامه مربی و جلسه معتبر است
+- API: GET /api/exercises (scope=index | search: q/دسته/عضله/تجهیزات/سطح/الگو/نوع/only3d + page/pageSize≤60 با Zod→422) و GET /api/exercises/[id] (جزئیات + مشابه ≤۳ + sourceKey شفاف) — نشست اجباری 401، خروجی whitelist بدون metadata داخلی
+- کلاینت: store/exercise-library-store (کش ایندکس + 不变量 total==items.length → پاسخ ناقص = خطا)؛ shared/exercise-picker (تک/چندانتخاب، load-more، loading/error/retry واقعی)؛ library-view بازنویسی (فیلتر روی کش، IntersectionObserver + دکمه، دیالوگ جزئیات on-demand با خط شفاف منبع/مجوز و اطلاع‌رسانی «محتوا انگلیسی است»، بخش‌های خالی صادقانه)؛ ۴ انتخابگر (مربی/جلسه/آزاد/پیشرفت) به بانک کامل وصل شدند؛ active-session و plan-detail تصمیم ۳بعدی و قاعده وزن بدن را از داده زنده سرور می‌گیرند
+- i18n: shared + library + workout — کلیدهای جدید FA/EN متقارن (نشان شمارش، خط منبع، اطلاع زبان محتوا، حالت‌های خالی تنفس/اشتباهات/ایمنی، انتخابگر) → check-i18n ۵۴/۵۴
+- تست p18-library-test.ts = ۶۸/۶۸ سبز: idempotency (اجرای دوباره new=0)، حفظ ۴۸ شناسه و محتوا بدون رانش، منبع/مجوز کامل، has3d دقیقاً ۶، مهمان 401 (۳ مسیر)، whitelist بدون metadata، only3d=۶، جست‌وجو FA/EN روی بانک بزرگ، فیلتر ترکیبی، صفحه‌بندی بدون همپوشانی، 422 ورودی نامعتبر، جزئیات ویرایشی/آزاد/404، عینیت رشته (XSS خام)، برنامه مربی با حرکت منبع آزاد (snapshot نام از DB + coach3dId واقعاً null + یادداشت)، نام جعلی کلاینت بی‌اثر، شناسه جعلی 422، نسخه‌بندی (v1 دست‌نخورده پس از v2)، IDOR چهارجهته، جلسه از برنامه مربی با عضلات ۱۲گانه سه‌بعدی، دسترسی FREE به کتابخانه (تفکیک مجوز)، پاک‌سازی fixture + integrity/fk
+- رگرسیون کامل: i18n ۵۴ + plan ۳۴ + nutrition ۷۹ + session ۴۰ + foodlog ۵۰ + library ۴۲ (با دو断言 به‌روزشده: تجهیزات ویرایشی فقط واژگان معتبر؛ kettlebell→["kettlebell"] چون بانک اکنون کتل‌بل واقعی دارد) + assistant ۳۸ + p15 ۶۲ + p16 ۷۹ + p17 ۱۱۳ = ۵۹۱ سبز + p18 ۶۸ = **۶۵۹**
+- tsc صفر خطا در src؛ ESLint پاک (سه خطای set-state-in-effect با الگوی رسمی «مشتق در رندر» رفع شد)؛ build تولیدی موفق (۲۲ صفحه + /api/exercises و /[id])
+- مرورگر واقعی (390×844): دانشجوی جدید → onboarding کامل → کتابخانه «۹۰۵ حرکت ساختاریافته» → جست‌وجوی FA (شنا/کتل‌بل) → load-more (۲۴→۴۷) → دیالوگ حرکت منبع آزاد با «محتوای آموزشی فعلاً انگلیسی است» + «منبع داده آموزشی: Free Exercise DB — مجوز Unlicense» + «راهنمای تنفس ثبت نشده است» (صادقانه) → دیالوگ ویرایشی کامل FA → EN/LTR با نام‌های انگلیسی → scrollWidth=۳۹۰ در هر دو زبان → کنسول پاک پس از reload (هشدار hydration موقت فقط در حین HMR توسعه بود) → انتخابگر مربی بانک کامل را با جست‌وجو نشان داد (۳۰/۱۰۱ برای press؛ Band Face Pull و…) — چرخه کامل «افزودن→انتشار→نمایش دانشجو» به‌دلیل ناپایداری sandbox (Resource temporarily unavailable روی spawn thread) در UI تکمیل نشد اما دقیقاً همان مسیر در سطح API با ۶۸ تست سبز پوشش داده شد؛ اسکرین‌شات‌ها download/p18-ui-*.png
+- تصفیه حساب: ۲ حساب p18ui مرورگر حذف شد → ۴ کاربر واقعی دست‌نخورده؛ بکاپ پس از پایان: backups/p18-post-phase18-20261020-095006.db (integrity ok، FK=0، ۹۰۵ حرکت)
+- طبق قانون قطعی کاربر هیچ عملیات Git/GitHub/remote/push انجام نشد
+
+Stage Summary:
+- بانک عمومی از ۴۸ به ۹۰۵ حرکت معتبر رسید (۴۸ ویرایشی کامل + ۸۵۷ منبع آزاد Unlicense) با معماری DB-محور: شناسه‌های قدیمی عیناً حفظ، import تکرارپذیر با گزارش کامل، جست‌وجو/فیلتر/صفحه‌بندی دوزبانه سمت سرور و کلاینت، و اتصال کامل به برنامه‌ساز مربی (یادداشت اختصاصی هر حرکت در snapshot تحویل حفظ می‌شود)
+- صداقت داده در هر لایه: فیلد بدون منبع خالی می‌ماند، ۳بعدی فقط برای ۶ حرکت واقعی ادعا می‌شود، محتوای انگلیسی با اطلاع‌رسانی صریح نمایش داده می‌شود، هیچ داده ساختگی برای پر کردن فاصله تا ۱۵۰۰ ساخته نشد (مسیر قانونی رسیدن به ۱۵۰۰ مستند شد)
+- زیرساخت مراحل ۱۹/۲۰ آماده است: animation3dStatus/profileId برای پوشش سه‌بعدی، و جداسازی origin/ownerUserId/publishState/videoStatus برای مشارکت مربیان — بدون هیچ قابلیت نیم‌ساخته نمایشی
+- وضعیت: مرحله ۱۸ کامل شد — گزارش ارائه و منتظر تأیید مرحله بعد

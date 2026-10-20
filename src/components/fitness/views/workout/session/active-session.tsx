@@ -55,7 +55,10 @@ import { useStrings } from "@/lib/i18n/use-strings";
 import { workoutStrings } from "@/lib/i18n/sections/workout";
 import { localeNumber, localeFullLabel } from "@/lib/i18n/format";
 import { cn } from "@/lib/utils";
-import { getExerciseById, hasCoach3dAnimation } from "@/lib/exercises";
+import {
+  useExerciseLibraryStore,
+  ensureExerciseIndex,
+} from "@/store/exercise-library-store";
 import type { SessionExerciseClient, WorkoutSessionClient } from "@/lib/workout-session/types";
 import type { UseActiveSessionResult } from "@/hooks/use-workout-sessions";
 import { computeSessionSummary } from "@/lib/workout-session/stats";
@@ -313,9 +316,15 @@ function SessionExerciseCard({
   const setCoachExercise = useCoach3DStore((s) => s.setExercise);
   const setActiveView = useAppStore((s) => s.setActiveView);
 
-  // ۳بعدی فقط با تأیید بانک زنده — snapshot به‌تنهایی مجوز نمایش انیمیشن نمی‌دهد
-  const live = getExerciseById(ex.exerciseId);
-  const has3d = Boolean(live && live.coach3dId && hasCoach3dAnimation(live));
+  // بانک زنده سرور (مرحله ۱۸) — ۳بعدی فقط با تأیید has3d بانک؛ snapshot
+  // به‌تنهایی مجوز نمایش انیمیشن نمی‌دهد. قاعده وزن بدن هم از همان داده.
+  useEffect(() => {
+    ensureExerciseIndex();
+  }, []);
+  const getBankExercise = useExerciseLibraryStore((s) => s.getById);
+  const bankStatus = useExerciseLibraryStore((s) => s.status);
+  const live = getBankExercise(ex.exerciseId);
+  const has3d = bankStatus === "ready" && Boolean(live?.has3d && live.coach3dId);
   // حرکاتی که بانک آن‌ها فقط وزن بدن است — ورودی وزنه ندارند (قاعده وزن بدن)
   const bodyweightOnly = Boolean(
     live && live.equipment.length > 0 && live.equipment.every((e) => e === "bodyweight")

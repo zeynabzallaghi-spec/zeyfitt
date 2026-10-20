@@ -15,19 +15,12 @@
 import { useCallback, useEffect, useState } from "react";
 import { Activity, CalendarRange, RotateCcw, TrendingUp } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { cn } from "@/lib/utils";
 import { useLocale, useDir } from "@/lib/i18n/locale";
 import { useStrings } from "@/lib/i18n/use-strings";
 import { workoutStrings } from "@/lib/i18n/sections/workout";
 import { localeNumber, localeFullLabel } from "@/lib/i18n/format";
-import { EXERCISE_LIBRARY } from "@/lib/exercises";
+import { ExercisePicker } from "@/components/fitness/shared/exercise-picker";
 import type { ExerciseProgressResult } from "@/lib/workout-session/stats";
 import { useWorkoutStats } from "@/hooks/use-workout-sessions";
 
@@ -112,24 +105,16 @@ function ExerciseProgressPicker() {
   return (
     <div className="flex flex-col gap-3">
       <div className="flex flex-wrap items-center gap-2">
-        <Select
-          value={selected}
-          onValueChange={(v) => {
-            setSelected(v);
-            void fetchProgress(v);
+        {/* انتخاب حرکت از بانک عمومی کامل — جست‌وجو به‌جای فهرست ثابت */}
+        <ExercisePicker
+          onPick={(id) => {
+            setSelected(id);
+            void fetchProgress(id);
           }}
-        >
-          <SelectTrigger className="w-full text-xs sm:w-72" aria-label={t.pickerAria}>
-            <SelectValue placeholder={t.pickerPlaceholder} />
-          </SelectTrigger>
-          <SelectContent dir={dir} className="max-h-72">
-            {EXERCISE_LIBRARY.map((ex) => (
-              <SelectItem key={ex.id} value={ex.id} className="text-xs">
-                {locale === "fa" ? ex.fa : ex.en} — {t.categoryName(ex.category)}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+          pickedId={selected === "" ? null : selected}
+          heightClass="h-56"
+          showAddButton={false}
+        />
         {selected !== "" && (
           <Button
             size="sm"

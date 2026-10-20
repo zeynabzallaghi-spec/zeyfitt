@@ -15,14 +15,16 @@
 
 import type { Locale } from "../shared";
 import { localeNumber } from "../format";
-import { MUSCLE_GROUPS } from "@/lib/fitness3d/muscles";
-import type { MuscleGroupId } from "@/lib/fitness3d/types";
 import {
   EQUIPMENT_TYPES,
   EXERCISE_CATEGORIES,
+  EXERCISE_TYPES,
+  LIBRARY_MUSCLE_GROUPS,
   MOVEMENT_PATTERNS,
   type EquipmentId,
   type ExerciseCategoryId,
+  type ExerciseTypeId,
+  type LibraryMuscleId,
   type MovementPatternId,
 } from "@/lib/exercises/types";
 
@@ -57,10 +59,12 @@ export interface LibraryStrings {
   only3dChipAria: string;
   only3dChipLabel: string;
   // نقشه‌های نمایشی روی شناسه‌های پایدار
-  muscleLabel: (id: MuscleGroupId) => string;
+  muscleLabel: (id: LibraryMuscleId) => string;
   equipmentLabel: (id: EquipmentId) => string;
   categoryLabel: (id: ExerciseCategoryId) => string;
   patternLabel: (id: MovementPatternId) => string;
+  /** برچسب نوع تمرین — قدرتی/کششی/… (عین واژگان منبع) */
+  exerciseTypeLabel: (id: ExerciseTypeId) => string;
   /** فهرست تجهیزات با جداکننده متناسب با زبان */
   equipmentList: (ids: EquipmentId[]) => string;
   // شمارش نتایج
@@ -85,6 +89,7 @@ export interface LibraryStrings {
   patternSpecLabel: string;
   structureSpecLabel: string;
   levelSpecLabel: string;
+  typeSpecLabel: string;
   secondaryMusclesLabel: string;
   secondaryEmpty: string;
   stepsTitle: string;
@@ -96,6 +101,20 @@ export interface LibraryStrings {
   viewIn3dButton: string;
   noAnimationNote: string;
   backToLibraryButton: string;
+  // مرحله ۱۸ — شفافیت زبان محتوا و منبع + بارگذاری جزئیات
+  /** اطلاع‌رسانی صادقانه: محتوای آموزشی این حرکت فعلاً انگلیسی است */
+  contentLanguageNotice: string;
+  /** خط منبع برای رکوردهای منبع آزاد */
+  sourceLine: (sourceName: string, license: string) => string;
+  sourceDisplayName: string;
+  sourceLicenseName: string;
+  /** بارگذاری جزئیات */
+  detailLoadingLabel: string;
+  detailLoadError: string;
+  /** بدون اطلاعات منبع در دسترس نیست (نبود بخش‌ها) */
+  breathingEmpty: string;
+  mistakesEmpty: string;
+  safetyEmpty: string;
   // حالت خالی
   emptyTitle: string;
   emptyDescription: string;
@@ -103,12 +122,12 @@ export interface LibraryStrings {
 
 /* ---------------------- نقشه‌های نمایشی بر اساس شناسه‌های پایدار ---------------------- */
 
-const FA_MUSCLE: Record<MuscleGroupId, string> = Object.fromEntries(
-  MUSCLE_GROUPS.map((m) => [m.id, m.fa])
-) as Record<MuscleGroupId, string>;
-const EN_MUSCLE: Record<MuscleGroupId, string> = Object.fromEntries(
-  MUSCLE_GROUPS.map((m) => [m.id, m.en])
-) as Record<MuscleGroupId, string>;
+const FA_MUSCLE: Record<string, string> = Object.fromEntries(
+  LIBRARY_MUSCLE_GROUPS.map((m) => [m.id, m.fa])
+);
+const EN_MUSCLE: Record<string, string> = Object.fromEntries(
+  LIBRARY_MUSCLE_GROUPS.map((m) => [m.id, m.en])
+);
 
 const FA_CATEGORY: Record<ExerciseCategoryId, string> = Object.fromEntries(
   EXERCISE_CATEGORIES.map((c) => [c.id, c.fa])
@@ -130,6 +149,13 @@ const FA_PATTERN: Record<MovementPatternId, string> = Object.fromEntries(
 const EN_PATTERN: Record<MovementPatternId, string> = Object.fromEntries(
   MOVEMENT_PATTERNS.map((p) => [p.id, p.en])
 ) as Record<MovementPatternId, string>;
+
+const FA_TYPE: Record<ExerciseTypeId, string> = Object.fromEntries(
+  EXERCISE_TYPES.map((t) => [t.id, t.fa])
+) as Record<ExerciseTypeId, string>;
+const EN_TYPE: Record<ExerciseTypeId, string> = Object.fromEntries(
+  EXERCISE_TYPES.map((t) => [t.id, t.en])
+) as Record<ExerciseTypeId, string>;
 
 /* ---------------------------------- فارسی ---------------------------------- */
 
@@ -164,6 +190,7 @@ const FA: LibraryStrings = {
   equipmentLabel: (id) => FA_EQUIPMENT[id] ?? id,
   categoryLabel: (id) => FA_CATEGORY[id] ?? id,
   patternLabel: (id) => FA_PATTERN[id] ?? id,
+  exerciseTypeLabel: (id) => FA_TYPE[id] ?? id,
   equipmentList: (ids) => ids.map((id) => FA_EQUIPMENT[id] ?? id).join(" ، "),
   showingPrefix: "نمایش",
   showingMid: "حرکت از",
@@ -184,6 +211,7 @@ const FA: LibraryStrings = {
   patternSpecLabel: "الگوی حرکتی",
   structureSpecLabel: "ساختار",
   levelSpecLabel: "سطح",
+  typeSpecLabel: "نوع تمرین",
   secondaryMusclesLabel: "عضلات کمکی:",
   secondaryEmpty: "—",
   stepsTitle: "راهنمای اجرای صحیح",
@@ -197,6 +225,16 @@ const FA: LibraryStrings = {
   noAnimationNote:
     "برای این حرکت هنوز انیمیشن اختصاصی سه‌بعدی ساخته نشده است؛ آموزش آن از طریق همین راهنمای متنی انجام می‌شود و هیچ انیمیشن جایگزینی برای آن پخش نخواهد شد.",
   backToLibraryButton: "بازگشت به کتابخانه",
+  contentLanguageNotice:
+    "محتوای آموزشی این حرکت فعلاً به زبان انگلیسی است (برگرفته از منبع آزاد)؛ ترجمه ویرایشی آن در به‌روزرسانی‌های بعدی تکمیل می‌شود.",
+  sourceLine: (sourceName, license) => `منبع داده آموزشی: ${sourceName} — مجوز ${license}`,
+  sourceDisplayName: "Free Exercise DB",
+  sourceLicenseName: "Unlicense (مالکیت عمومی)",
+  detailLoadingLabel: "در حال بارگذاری جزئیات حرکت…",
+  detailLoadError: "بارگذاری جزئیات حرکت ناموفق بود.",
+  breathingEmpty: "برای این حرکت راهنمای تنفس از منبع داده ثبت نشده است.",
+  mistakesEmpty: "فهرست اشتباهات رایج برای این حرکت در دسترس نیست.",
+  safetyEmpty: "نکته ایمنی ثبت‌شده‌ای برای این حرکت در منبع وجود ندارد.",
   emptyTitle: "حرکتی یافت نشد",
   emptyDescription:
     "با ترکیب فعلی جست‌وجو و فیلترها هیچ حرکتی مطابقت ندارد. عبارت جست‌وجو را کوتاه‌تر کنید، برخی فیلترها را بردارید یا همه را بازنشانی کنید.",
@@ -235,6 +273,7 @@ const EN: LibraryStrings = {
   equipmentLabel: (id) => EN_EQUIPMENT[id] ?? id,
   categoryLabel: (id) => EN_CATEGORY[id] ?? id,
   patternLabel: (id) => EN_PATTERN[id] ?? id,
+  exerciseTypeLabel: (id) => EN_TYPE[id] ?? id,
   equipmentList: (ids) => ids.map((id) => EN_EQUIPMENT[id] ?? id).join(", "),
   showingPrefix: "Showing",
   showingMid: "of",
@@ -255,6 +294,7 @@ const EN: LibraryStrings = {
   patternSpecLabel: "Movement pattern",
   structureSpecLabel: "Structure",
   levelSpecLabel: "Level",
+  typeSpecLabel: "Exercise type",
   secondaryMusclesLabel: "Secondary muscles:",
   secondaryEmpty: "—",
   stepsTitle: "Correct form guide",
@@ -268,6 +308,16 @@ const EN: LibraryStrings = {
   noAnimationNote:
     "No dedicated 3D animation has been built for this exercise yet; it is taught through this written guide and no substitute animation will be played.",
   backToLibraryButton: "Back to library",
+  contentLanguageNotice:
+    "The instructional content for this exercise is currently in English (sourced from the open dataset); its editorial translation will be completed in future updates.",
+  sourceLine: (sourceName, license) => `Instructional data source: ${sourceName} — license: ${license}`,
+  sourceDisplayName: "Free Exercise DB",
+  sourceLicenseName: "Unlicense (public domain)",
+  detailLoadingLabel: "Loading exercise details…",
+  detailLoadError: "Loading exercise details failed.",
+  breathingEmpty: "No breathing guidance was recorded for this exercise in the source data.",
+  mistakesEmpty: "No common-mistakes list is available for this exercise.",
+  safetyEmpty: "No safety notes were recorded for this exercise in the source data.",
   emptyTitle: "No exercises found",
   emptyDescription:
     "No exercise matches the current combination of search and filters. Try a shorter search term, remove some filters, or reset them all.",

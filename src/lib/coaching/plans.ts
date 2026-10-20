@@ -20,6 +20,7 @@ import {
   CoachingError,
 } from "./constants";
 import { hasActivePremium } from "./subscription";
+import { ensureExerciseBank } from "@/lib/exercises/bank";
 import {
   buildNutritionContent,
   buildWorkoutContent,
@@ -184,6 +185,8 @@ export async function createCoachWorkoutPlan(
   coachId: string,
   input: CreateCoachWorkoutPlanInput
 ): Promise<CoachPlanDetail> {
+  // بانک کامل (ویرایشی + منبع آزاد) برای snapshot حرکات — مرحله ۱۸
+  await ensureExerciseBank();
   const content = buildWorkoutContent(input);
   const row = await db.coachWorkoutPlan.create({
     data: {
@@ -241,6 +244,7 @@ export async function updateCoachWorkoutPlan(
   if (existing.status === "archived") {
     throw new CoachingError(409, "PLAN_ARCHIVED");
   }
+  await ensureExerciseBank();
   const content = buildWorkoutContent(input);
   await db.coachWorkoutPlan.update({
     where: { id: planId },

@@ -856,3 +856,113 @@ model CoachMessage {
   @@unique([conversationId, seq])
   @@index([senderId, createdAt])
 }
+
+// ----------------------------------------
+// کتابخانه عمومی حرکات — مرحله ۱۸
+// ----------------------------------------
+// بانک واحد و مبتنی بر داده برای کل محصول: ۴۸ رکورد ویرایشی پروژه
+// (sourceKey=editorial، همگام‌شده idempotent از فایل‌های TS) + رکوردهای
+// منبع آزاد Free Exercise DB (sourceKey=free-exercise-db — Unlicense).
+//
+// قواعد ثابت:
+//  - «id» شناسه پایدار است و هرگز تغییر نمی‌کند؛ ارتباط برنامه‌ها، جلسات
+//    و مربی سه‌بعدی به همین شناسه است (تغییر نام حرکت رکوردهای قدیمی را
+//    نمی‌شکند). رکوردهای منبع آزاد پیشوند «fbd-» دارند تا با شناسه‌های
+//    ویرایشی برخورد نکنند.
+//  - «مالکیت»، «منبع داده» و «وضعیت انتشار» سه فیلد جدا هستند و هرگز
+//    با هم اشتباه گرفته نمی‌شوند (origin / sourceKey / publishState) —
+//     زیرساخت مراحل ۱۹ و ۲۰؛ در این مرحله همه رکوردها origin=core و
+//    publishState=none هستند و هیچ مسیر نوشتن عمومی‌ای وجود ندارد.
+//  - پوشش سه‌بعدی صادقانه است: animation3dStatus فقط برای ۶ حرکت دارای
+//    انیمیشن واقعی «ready» است؛ بقیه «none» و هیچ‌کدام به‌عنوان حرکت
+//    سه‌بعدی پشتیبانی‌شده معرفی نمی‌شوند. نگاشت هر حرکت مستقل توسعه
+//    می‌یابد (مرحله ۱۹).
+//  - محتوای رکوردهای منبع آزاد به زبان اصلی منبع (en) ذخیره می‌شود و
+//    فیلدهای بدون داده معتبر (تنفس/اشتباهات/ایمنی) خالی می‌مانند —
+//    هیچ مقدار ساختگی‌ای نوشته نمی‌شود.
+//  - import فقط با اسکریپت سمت سرور (scripts/p18-import-exercises.ts)،
+//    idempotent و بر اساس unique(sourceKey, sourceRef) — اجرای دوباره
+//    هرگز رکورد تکراری نمی‌سازد.
+
+model Exercise {
+  id                   String   @id
+  // نام فارسی ویرایشی — null یعنی ترجمه موجود نیست (نمایش به انگلیسی می‌افتد)
+  faName               String?
+  enName               String
+  // نام‌های جایگزین برای جست‌وجو — آرایه JSON رشته
+  altNamesJson         String   @default("[]")
+  // واژگان بانک: دسته ۱۱تایی، عضلات (۱۲ سه‌بعدی + ۳ کتابخانه‌ای)، تجهیزات ۱۴تایی
+  category             String
+  primaryMusclesJson   String   @default("[]")
+  secondaryMusclesJson String   @default("[]")
+  equipmentJson        String   @default("[]")
+  // beginner | intermediate | advanced — در لایه نمایش به واژگان فارسی بانک ترجمه می‌شود
+  difficulty           String
+  // الگوی حرکتی — واژگان بانک (شامل stretch/other افزوده مرحله ۱۸)
+  pattern              String
+  // null یعنی منبع ساختار حرکت (compound/isolation) را مشخص نکرده — بدون حدس
+  compound             Boolean?
+  // نوع تمرین — عیناً از منبع: strength | stretching | plyometrics | powerlifting | olympic_weightlifting | strongman | cardio
+  exerciseType         String   @default("strength")
+  // محتوای آموزشی — به زبان contentLocale؛ فیلد بدون داده معتبر خالی می‌ماند
+  summary              String   @default("")
+  stepsJson            String   @default("[]")
+  breathing            String?
+  mistakesJson         String   @default("[]")
+  safetyJson           String   @default("[]")
+  // ترجمه نمایشی انگلیسی محتوا — فقط برای رکوردهای ویرایشی فارسی
+  enContentJson        String?
+  // fa (ویرایشی) | en (متن منبع) — نمایش با شفافیت کامل بر همین اساس است
+  contentLocale        String   @default("fa")
+  // منبع و مجوز — هر رکورد دقیقاً یک منبع دارد
+  sourceKey            String   @default("editorial") // editorial | free-exercise-db
+  sourceLicense        String   @default("proprietary-original") // proprietary-original | Unlicense
+  // شناسه رکورد در منبع (برای free-exercise-db) / شناسه خود رکورد برای editorial
+  sourceRef            String?
+  datasetVersion       String?
+  // وضعیت — آرشیو فقط با سیاست شفاف؛ حذف رکورد مجاز نیست (شناسه پایدار)
+  status               String   @default("active") // active | archived
+  // پوشش سه‌بعدی — فقط ۶ حرکت فعلی ready دارند؛ بقیه none (مرحله ۱۹ توسعه می‌یابد)
+  coach3dId            String?
+  animation3dStatus    String   @default("none") // ready | needs_mapping | none
+  animation3dProfileId String?
+  // زیرساخت مراحل ۱۹/۲۰ — در این مرحله با مقادیر پیشفرض غیرفعال‌اند و
+  // هیچ مسیر کلاینت‌محوری آن‌ها را تغییر نمی‌دهد
+  videoStatus          String   @default("none") // none | missing | uploaded | processing
+  // منشأ رکورد: core (کتابخانه پایه) | coach (مشارکت مربی — مرحله ۲۰)
+  origin               String   @default("core")
+  // مالک مربی — فقط برای origin=coach (بدون FK در این مرحله؛ سیمانage مالکیت در مرحله ۲۰)
+  ownerUserId          String?
+  // وضعیت انتشار مشارکتی — none | pending_review | published | recalled
+  publishState         String   @default("none")
+  importBatchId        String?
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+  importBatch          ExerciseImportBatch? @relation(fields: [importBatchId], references: [id], onDelete: SetNull)
+
+  @@unique([sourceKey, sourceRef])
+  @@index([status, category])
+  @@index([sourceKey, status])
+  @@index([difficulty])
+  @@index([pattern])
+}
+
+// دسته‌های import — شفافیت کامل عملیات: پذیرفته‌شده، تکراری، ردشده و گزارش
+// کامل خطاها؛ اجرای دوباره import دسته جدید می‌سازد اما رکورد تکراری نمی‌سازد.
+model ExerciseImportBatch {
+  id             String    @id @default(cuid())
+  sourceKey      String
+  datasetVersion String
+  license        String
+  startedAt      DateTime  @default(now())
+  finishedAt     DateTime?
+  accepted       Int       @default(0)
+  duplicates     Int       @default(0)
+  rejected       Int       @default(0)
+  updated        Int       @default(0)
+  // گزارش کامل: رکوردهای ردشده با دلیل، موارد تکراری، پوشش نام فارسی و…
+  reportJson     String    @default("{}")
+  exercises      Exercise[]
+
+  @@index([sourceKey, startedAt])
+}

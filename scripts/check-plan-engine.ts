@@ -133,7 +133,8 @@ check("در برنامه مبتدی حتماً حرکت سه‌بعدی‌دار
 
 console.log("\n── ۱۲. نقشه تجهیزات پروفایل ──");
 check("free_weights → دمبل+هالتر", JSON.stringify(PROFILE_TO_LIBRARY_EQUIPMENT.free_weights) === JSON.stringify(["dumbbell", "barbell"]));
-check("kettlebell → خالی (شفاف، بدون جعل)", Array.isArray(PROFILE_TO_LIBRARY_EQUIPMENT.kettlebell) && PROFILE_TO_LIBRARY_EQUIPMENT.kettlebell.length === 0);
+// مرحله ۱۸: بانک اکنون حرکات کتل‌بل واقعی دارد — نگاشت فعال شد (شفافیت قبلی دیگر لازم نیست)
+check("kettlebell → کتل‌بل بانک (مرحله ۱۸)", JSON.stringify(PROFILE_TO_LIBRARY_EQUIPMENT.kettlebell) === JSON.stringify(["kettlebell"]));
 
 console.log("\n── ۱۳. اعتبارسنجی شِما ──");
 const bad1 = planSettingsSchema.safeParse({ ...base, daysPerWeek: 1 });

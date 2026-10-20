@@ -1,18 +1,23 @@
 "use client";
 
 /**
- * کتابخانه حرکات — بانک ساختاریافته ۴۸ حرکت با جست‌وجوی واقعی فارسی/انگلیسی،
- * فیلترهای ترکیبی (دسته، عضله، تجهیزات، سطح، الگو، سه‌بعدی) و دیالوگ جزئیات
- * کامل. داده‌ها از src/lib/exercises خوانده می‌شوند و هیچ داده نمونه‌ای در
- * این صفحه وجود ندارد.
+ * کتابخانه عمومی حرکات — مرحله ۱۸: بانک دیتابیس ~۹۰۰ حرکتی.
  *
- * همه متن‌های قابل مشاهده از دیکشنری متمرکز src/lib/i18n/sections/library.ts
- * می‌آیند (فارسی عیناً همان متن‌های قبلی) و نام/محتوای آموزشی هر حرکت با
- * exerciseName/exerciseContent به زبان رابط نمایش داده می‌شود؛ داده بانک
- * دست‌نخورده می‌ماند.
+ * معماری نمایش:
+ *  - فهرست/جست‌وجو/فیلتر روی «کارت‌های» کش کلاینت (exercise-library-store)
+ *    که یک‌بار از API بانک کامل بارگذاری می‌شود — بدون هیچ فهرست ثابت
+ *    کامپایل‌شده و با نمایش تدریجی (load-more) برای روان‌بودن موبایل.
+ *  - جزئیات کامل هر حرکت به‌صورت on-demand از /api/exercises/[id] خوانده
+ *    می‌شود (loading/error/retry واقعی) و شامل خط شفاف منبع/مجوز و
+ *    اطلاع‌رسانی صادقانه زبان محتواست.
+ *  - دکمه سه‌بعدی فقط برای حرکاتی نشان داده می‌شود که سرور انیمیشن واقعی
+ *    تأیید کرده است (has3d) — snapshot هرگز مجوز نمایش نیست.
+ *  - متن‌های قابل مشاهده از دیکشنری متمرکز src/lib/i18n/sections/library.ts
+ *    می‌آیند؛ محتوای حرکت با exerciseName/exerciseContent به زبان رابط
+ *    نمایش داده می‌شود.
  */
 
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { motion } from "framer-motion";
 import {
   Box,
@@ -47,28 +52,29 @@ import {
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { useAppStore } from "@/store/app-store";
 import { useCoach3DStore } from "@/store/coach3d-store";
+import {
+  useExerciseLibraryStore,
+  ensureExerciseIndex,
+} from "@/store/exercise-library-store";
 import { cn } from "@/lib/utils";
-import { MUSCLE_GROUPS } from "@/lib/fitness3d/muscles";
 import type { MuscleGroupId } from "@/lib/fitness3d/types";
 import {
   categoryMonogram,
   DIFFICULTY_ORDER,
   EQUIPMENT_TYPES,
-  EXERCISE_COUNT,
   EXERCISE_CATEGORIES,
-  getExerciseById,
-  findSimilarExercises,
-  filterExercises,
-  hasActiveFilters,
-  hasCoach3dAnimation,
+  LIBRARY_MUSCLE_GROUPS,
   MOVEMENT_PATTERNS,
   type Difficulty,
   type EquipmentId,
   type ExerciseCategoryId,
-  type LibraryExercise,
+  type LibraryExerciseCard,
+  type LibraryExerciseDetail,
+  type LibraryMuscleId,
   type MovementPatternId,
-} from "@/lib/exercises";
-import { exerciseName, exerciseContent } from "@/lib/exercises/i18n";
+} from "@/lib/exercises/types";
+import { filterCards, hasActiveCardFilters } from "@/lib/exercises/search";
+import { exerciseName } from "@/lib/exercises/i18n";
 import { useLocale } from "@/lib/i18n/locale";
 import { localeNumber } from "@/lib/i18n/format";
 import { useStrings } from "@/lib/i18n/use-strings";
@@ -80,6 +86,8 @@ import { DifficultyBadge, StageBadge } from "../shared/badges";
 import { getNavItem } from "@/lib/nav";
 
 const PATTERN_OPTIONS: MovementPatternId[] = MOVEMENT_PATTERNS.map((p) => p.id);
+/** تعداد کارت در هر گام نمایش تدریجی */
+const PAGE_STEP = 24;
 
 /* ------------------------------ چیپ فیلتر ------------------------------ */
 
@@ -119,10 +127,10 @@ function toggleInArray<T>(list: T[], value: T): T[] {
 /* --------------------------- پنل فیلترهای تکمیلی --------------------------- */
 
 interface FilterPanelProps {
-  muscles: MuscleGroupId[];
+  muscles: LibraryMuscleId[];
   equipment: EquipmentId[];
   only3d: boolean;
-  onToggleMuscle: (m: MuscleGroupId) => void;
+  onToggleMuscle: (m: LibraryMuscleId) => void;
   onToggleEquipment: (e: EquipmentId) => void;
   onToggleOnly3d: () => void;
 }
@@ -142,12 +150,12 @@ function FilterPanel({
       <div className="flex flex-col gap-1.5">
         <span className="text-[10px] font-bold text-muted-foreground">{t.muscleHeading}</span>
         <div className="flex flex-wrap items-center gap-1.5" role="group" aria-label={t.muscleGroupAria}>
-          {MUSCLE_GROUPS.map((m) => (
+          {LIBRARY_MUSCLE_GROUPS.map((m) => (
             <FilterChip
               key={m.id}
               active={muscles.includes(m.id)}
               onClick={() => onToggleMuscle(m.id)}
-              ariaLabel={t.muscleChipAria(t.muscleLabel(m.id))}
+              ariaLabel={t.muscleChipAria(m.fa)}
             >
               {t.muscleLabel(m.id)}
             </FilterChip>
@@ -194,14 +202,12 @@ function ExerciseCard({
   onDetails,
   onOpen3d,
 }: {
-  exercise: LibraryExercise;
-  onDetails: (ex: LibraryExercise) => void;
-  onOpen3d: (ex: LibraryExercise) => void;
+  exercise: LibraryExerciseCard;
+  onDetails: (ex: LibraryExerciseCard) => void;
+  onOpen3d: (ex: LibraryExerciseCard) => void;
 }) {
   const t = useStrings(libraryStrings);
   const locale = useLocale();
-  const linked = hasCoach3dAnimation(exercise);
-  const content = exerciseContent(exercise, locale);
 
   return (
     <article className="group flex flex-col rounded-2xl border border-border/60 bg-card p-5 transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/30">
@@ -215,7 +221,7 @@ function ExerciseCard({
           {categoryMonogram(exercise.category)}
         </span>
         <div className="flex flex-wrap items-center justify-end gap-1.5">
-          {linked ? (
+          {exercise.has3d ? (
             <span className="inline-flex items-center gap-1 rounded-md border border-primary/30 bg-primary/10 px-2 py-0.5 text-[10px] font-bold text-primary">
               <Box className="size-3" aria-hidden="true" />
               {t.has3dBadge}
@@ -244,12 +250,20 @@ function ExerciseCard({
         <span className="rounded-md border border-border/50 bg-secondary/40 px-2 py-0.5 text-[10px] font-medium text-muted-foreground">
           {t.patternLabel(exercise.pattern)}
         </span>
-        <span className="rounded-md border border-border/50 bg-secondary/40 px-2 py-0.5 text-[10px] font-medium text-muted-foreground">
-          {exercise.compound ? t.compoundLabel : t.isolationLabel}
-        </span>
+        {exercise.compound === null ? (
+          <span className="rounded-md border border-border/50 bg-secondary/40 px-2 py-0.5 text-[10px] font-medium text-muted-foreground">
+            {t.exerciseTypeLabel(exercise.exerciseType)}
+          </span>
+        ) : (
+          <span className="rounded-md border border-border/50 bg-secondary/40 px-2 py-0.5 text-[10px] font-medium text-muted-foreground">
+            {exercise.compound ? t.compoundLabel : t.isolationLabel}
+          </span>
+        )}
       </div>
 
-      <p className="mt-2.5 flex-1 text-xs leading-6 text-muted-foreground">{content.summary}</p>
+      <p className="mt-2.5 flex-1 text-xs leading-6 text-muted-foreground">
+        {locale === "en" && exercise.summaryEn ? exercise.summaryEn : exercise.summary}
+      </p>
 
       <div className="mt-3 flex flex-col gap-1.5 border-t border-border/50 pt-3">
         <div className="flex flex-wrap items-center gap-1.5">
@@ -279,7 +293,7 @@ function ExerciseCard({
           <ListChecks className="size-3.5" aria-hidden="true" />
           {t.detailsButton}
         </Button>
-        {linked && (
+        {exercise.has3d && (
           <Button
             size="sm"
             className="h-8 flex-1 text-xs font-semibold text-primary-foreground"
@@ -296,226 +310,333 @@ function ExerciseCard({
 
 /* ---------------------------- دیالوگ جزئیات ---------------------------- */
 
+type DetailState =
+  | { kind: "idle" }
+  | { kind: "loading" }
+  | { kind: "error" }
+  | { kind: "ready"; detail: LibraryExerciseDetail };
+
+function useExerciseDetail(id: string | null): {
+  state: DetailState;
+  retry: () => void;
+} {
+  const [state, setState] = useState<DetailState>({ kind: "idle" });
+  const [attempt, setAttempt] = useState(0);
+
+  useEffect(() => {
+    if (!id) {
+      setState({ kind: "idle" });
+      return;
+    }
+    let cancelled = false;
+    setState({ kind: "loading" });
+    (async () => {
+      try {
+        const res = await fetch(`/api/exercises/${encodeURIComponent(id)}`, { cache: "no-store" });
+        if (!res.ok) throw new Error(`HTTP_${res.status}`);
+        const data = (await res.json()) as { exercise: LibraryExerciseDetail };
+        if (!cancelled) setState({ kind: "ready", detail: data.exercise });
+      } catch {
+        if (!cancelled) setState({ kind: "error" });
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [id, attempt]);
+
+  const retry = useCallback(() => setAttempt((a) => a + 1), []);
+  return { state, retry };
+}
+
 function ExerciseDetailsDialog({
-  exercise,
+  card,
   open,
   onOpenChange,
   onOpen3d,
   onDetails,
 }: {
-  exercise: LibraryExercise | null;
+  card: LibraryExerciseCard | null;
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onOpen3d: (ex: LibraryExercise) => void;
-  onDetails: (ex: LibraryExercise) => void;
+  onOpen3d: (ex: LibraryExerciseCard) => void;
+  onDetails: (ex: LibraryExerciseCard) => void;
 }) {
   const t = useStrings(libraryStrings);
   const shared = useStrings(sharedStrings);
   const locale = useLocale();
-  const similar = useMemo(
-    () => (exercise ? findSimilarExercises(exercise, 3) : []),
-    [exercise]
-  );
+  const id = card?.id ?? null;
+  const { state, retry } = useExerciseDetail(open ? id : null);
 
-  if (!exercise) return null;
-  const linked = hasCoach3dAnimation(exercise);
-  const content = exerciseContent(exercise, locale);
+  if (!card) return null;
+  const detail = state.kind === "ready" ? state.detail : null;
+  // انتخاب محتوای آموزشی به زبان رابط — انگلیسی فقط با ترجمه واقعی موجود
+  const content = detail
+    ? locale === "en" && detail.enContent
+      ? {
+          summary: detail.enContent.summary,
+          steps: detail.enContent.steps,
+          breathing: detail.enContent.breathing,
+          mistakes: detail.enContent.mistakes,
+          safety: detail.enContent.safety,
+        }
+      : detail
+    : null;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-h-[85vh] max-w-xl overflow-y-auto p-5 sm:p-6">
         <DialogHeader>
           <div className="flex flex-wrap items-center gap-2">
-            <DialogTitle className="text-base">{exerciseName(exercise, locale)}</DialogTitle>
+            <DialogTitle className="text-base">{exerciseName(card, locale)}</DialogTitle>
             <span className="rounded-md border border-border/50 bg-secondary/40 px-2 py-0.5 text-[10px] font-medium text-muted-foreground">
-              {t.categoryLabel(exercise.category)}
+              {t.categoryLabel(card.category)}
             </span>
-            <DifficultyBadge level={exercise.difficulty} />
+            <DifficultyBadge level={card.difficulty} />
           </div>
           <DialogDescription
             dir={locale === "fa" ? "ltr" : "rtl"}
             className="text-start text-[11px]"
           >
-            {exerciseName(exercise, locale === "fa" ? "en" : "fa")}
+            {exerciseName(card, locale === "fa" ? "en" : "fa")}
           </DialogDescription>
         </DialogHeader>
 
-        {/* معرفی */}
-        <div>
-          <h4 className="text-xs font-bold text-foreground">{t.aboutTitle}</h4>
-          <p className="mt-1.5 text-xs leading-6 text-muted-foreground">{content.summary}</p>
-        </div>
-
-        {/* مشخصات فنی */}
-        <div className="grid grid-cols-2 gap-2 text-[11px] sm:grid-cols-4">
-          <div className="rounded-lg border border-border/50 bg-secondary/30 p-2.5">
-            <span className="block text-[10px] font-bold text-muted-foreground">{t.categorySpecLabel}</span>
-            <span className="mt-0.5 block font-semibold text-foreground">{t.categoryLabel(exercise.category)}</span>
-          </div>
-          <div className="rounded-lg border border-border/50 bg-secondary/30 p-2.5">
-            <span className="block text-[10px] font-bold text-muted-foreground">{t.patternSpecLabel}</span>
-            <span className="mt-0.5 block font-semibold text-foreground">{t.patternLabel(exercise.pattern)}</span>
-          </div>
-          <div className="rounded-lg border border-border/50 bg-secondary/30 p-2.5">
-            <span className="block text-[10px] font-bold text-muted-foreground">{t.structureSpecLabel}</span>
-            <span className="mt-0.5 block font-semibold text-foreground">
-              {exercise.compound ? t.compoundLabel : t.isolationLabel}
-            </span>
-          </div>
-          <div className="rounded-lg border border-border/50 bg-secondary/30 p-2.5">
-            <span className="block text-[10px] font-bold text-muted-foreground">{t.levelSpecLabel}</span>
-            <span className="mt-0.5 block font-semibold text-foreground">{shared.difficultyLabel(exercise.difficulty)}</span>
-          </div>
-        </div>
-
-        <div className="flex items-start gap-1.5 rounded-lg border border-border/50 bg-secondary/30 px-2.5 py-2 text-[11px] text-muted-foreground">
-          <Wrench className="mt-0.5 size-3.5 shrink-0" aria-hidden="true" />
-          <span>
-            <span className="font-bold text-foreground">{t.equipmentFieldLabel}</span>{" "}
-            {t.equipmentList(exercise.equipment)}
-          </span>
-        </div>
-
-        {/* عضلات */}
-        <div className="flex flex-col gap-2">
-          <div className="flex flex-wrap items-center gap-1.5">
-            <span className="text-[10px] font-bold text-muted-foreground">{t.primaryMusclesLabel}</span>
-            {exercise.primaryMuscles.map((m) => (
-              <span
-                key={m}
-                className="rounded-md border border-primary/25 bg-primary/10 px-1.5 py-0.5 text-[10px] font-bold text-primary"
-              >
-                {t.muscleLabel(m)}
-              </span>
-            ))}
-          </div>
-          <div className="flex flex-wrap items-center gap-1.5">
-            <span className="text-[10px] font-bold text-muted-foreground">{t.secondaryMusclesLabel}</span>
-            {exercise.secondaryMuscles.length > 0 ? (
-              exercise.secondaryMuscles.map((m) => (
-                <span
-                  key={m}
-                  className="rounded-md border border-border/40 bg-secondary/40 px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground"
-                >
-                  {t.muscleLabel(m)}
-                </span>
-              ))
-            ) : (
-              <span className="text-[10px] text-muted-foreground/70">{t.secondaryEmpty}</span>
-            )}
-          </div>
-        </div>
-
-        {/* مراحل اجرا */}
-        <div>
-          <h4 className="flex items-center gap-1.5 text-xs font-bold text-foreground">
-            <ListChecks className="size-3.5 text-primary" aria-hidden="true" />
-            {t.stepsTitle}
-          </h4>
-          <ol className="mt-2.5 flex flex-col gap-2">
-            {content.steps.map((step, i) => (
-              <li key={i} className="flex items-start gap-2.5 text-xs leading-6 text-muted-foreground">
-                <span className="mt-1 flex size-5 shrink-0 items-center justify-center rounded-full border border-primary/30 bg-primary/10 text-[10px] font-bold text-primary">
-                  {localeNumber(i + 1, locale)}
-                </span>
-                {step}
-              </li>
-            ))}
-          </ol>
-        </div>
-
-        {/* تنفس */}
-        <div className="rounded-xl border border-border/50 bg-secondary/30 p-3">
-          <h4 className="flex items-center gap-1.5 text-xs font-bold text-foreground">
-            <Wind className="size-3.5 text-primary" aria-hidden="true" />
-            {t.breathingTitle}
-          </h4>
-          <p className="mt-1.5 text-xs leading-6 text-muted-foreground">{content.breathing}</p>
-        </div>
-
-        {/* اشتباهات رایج */}
-        <div className="rounded-xl border border-rose-400/20 bg-rose-400/5 p-3">
-          <h4 className="flex items-center gap-1.5 text-xs font-bold text-foreground">
-            <TriangleAlert className="size-3.5 text-rose-300" aria-hidden="true" />
-            {t.mistakesTitle}
-          </h4>
-          <ul className="mt-1.5 flex flex-col gap-1">
-            {content.mistakes.map((mistake, i) => (
-              <li key={i} className="text-xs leading-6 text-muted-foreground">
-                — {mistake}
-              </li>
-            ))}
-          </ul>
-        </div>
-
-        {/* نکات ایمنی */}
-        <div className="rounded-xl border border-amber-400/20 bg-amber-400/5 p-3">
-          <h4 className="flex items-center gap-1.5 text-xs font-bold text-foreground">
-            <ShieldCheck className="size-3.5 text-amber-300" aria-hidden="true" />
-            {t.safetyTitle}
-          </h4>
-          <ul className="mt-1.5 flex flex-col gap-1">
-            {content.safety.map((tip, i) => (
-              <li key={i} className="text-xs leading-6 text-muted-foreground">
-                — {tip}
-              </li>
-            ))}
-          </ul>
-        </div>
-
-        {/* حرکات مشابه */}
-        {similar.length > 0 && (
-          <div>
-            <h4 className="flex items-center gap-1.5 text-xs font-bold text-foreground">
-              <Repeat2 className="size-3.5 text-primary" aria-hidden="true" />
-              {t.similarTitle}
-            </h4>
-            <div className="mt-2 flex flex-wrap items-center gap-2">
-              {similar.map((s) => (
-                <button
-                  key={s.id}
-                  type="button"
-                  onClick={() => onDetails(s)}
-                  className="inline-flex items-center gap-1.5 rounded-lg border border-border/60 bg-secondary/40 px-2.5 py-1.5 text-[11px] font-semibold text-foreground transition-colors hover:border-primary/40 hover:text-primary"
-                >
-                  <Dumbbell className="size-3.5 text-muted-foreground" aria-hidden="true" />
-                  {exerciseName(s, locale)}
-                </button>
-              ))}
-            </div>
-            <p className="mt-1.5 text-[10px] leading-5 text-muted-foreground/70">
-              {t.similarNote}
-            </p>
+        {/* حالت بارگذاری جزئیات */}
+        {state.kind === "loading" && (
+          <div className="flex flex-col gap-3 py-4" aria-busy="true">
+            <div className="h-4 w-2/3 animate-pulse rounded bg-secondary/40" />
+            <div className="h-20 animate-pulse rounded-xl bg-secondary/30" />
+            <div className="h-24 animate-pulse rounded-xl bg-secondary/30" />
+            <span className="sr-only">{t.detailLoadingLabel}</span>
           </div>
         )}
 
-        {/* اکشن‌ها */}
-        <div className="flex flex-col gap-2 border-t border-border/50 pt-4">
-          {linked ? (
-            <Button
-              className="h-9 w-full text-xs font-bold text-primary-foreground"
-              onClick={() => {
-                onOpen3d(exercise);
-                onOpenChange(false);
-              }}
-            >
-              <Box className="size-4" aria-hidden="true" />
-              {t.viewIn3dButton}
-            </Button>
-          ) : (
-            <p className="rounded-lg border border-border/50 bg-secondary/30 px-3 py-2 text-[11px] leading-6 text-muted-foreground">
-              {t.noAnimationNote}
+        {/* حالت خطا با تلاش مجدد واقعی */}
+        {state.kind === "error" && (
+          <div className="flex flex-col items-center gap-3 rounded-xl border border-border/50 p-6">
+            <p className="text-center text-[11px] leading-6 text-muted-foreground">
+              {t.detailLoadError}
             </p>
-          )}
-          <Button
-            variant="outline"
-            className="h-9 w-full border-border/70 text-xs font-semibold hover:border-primary/40 hover:text-primary"
-            onClick={() => onOpenChange(false)}
-          >
-            <RotateCcw className="size-3.5" aria-hidden="true" />
-            {t.backToLibraryButton}
-          </Button>
-        </div>
+            <Button
+              size="sm"
+              variant="outline"
+              className="border-border/70 text-[11px] font-semibold hover:border-primary/40 hover:text-primary"
+              onClick={retry}
+            >
+              <RotateCcw className="size-3.5" aria-hidden="true" />
+              {shared.retryButton}
+            </Button>
+          </div>
+        )}
+
+        {/* محتوای کامل — از پاسخ زنده سرور */}
+        {detail && (
+          <>
+            {/* شفافیت منبع و زبان محتوا */}
+            {detail.contentLocale === "en" && (
+              <p className="rounded-lg border border-amber-400/20 bg-amber-400/5 px-3 py-2 text-[11px] leading-6 text-muted-foreground">
+                {t.contentLanguageNotice}
+              </p>
+            )}
+            {detail.sourceKey !== "editorial" && (
+              <p className="text-[10px] leading-5 text-muted-foreground/70">
+                {t.sourceLine(t.sourceDisplayName, t.sourceLicenseName)}
+              </p>
+            )}
+
+            {/* معرفی */}
+            <div>
+              <h4 className="text-xs font-bold text-foreground">{t.aboutTitle}</h4>
+              <p className="mt-1.5 text-xs leading-6 text-muted-foreground">{content?.summary}</p>
+            </div>
+
+            {/* مشخصات فنی */}
+            <div className="grid grid-cols-2 gap-2 text-[11px] sm:grid-cols-4">
+              <div className="rounded-lg border border-border/50 bg-secondary/30 p-2.5">
+                <span className="block text-[10px] font-bold text-muted-foreground">{t.categorySpecLabel}</span>
+                <span className="mt-0.5 block font-semibold text-foreground">{t.categoryLabel(detail.category)}</span>
+              </div>
+              <div className="rounded-lg border border-border/50 bg-secondary/30 p-2.5">
+                <span className="block text-[10px] font-bold text-muted-foreground">{t.patternSpecLabel}</span>
+                <span className="mt-0.5 block font-semibold text-foreground">{t.patternLabel(detail.pattern)}</span>
+              </div>
+              <div className="rounded-lg border border-border/50 bg-secondary/30 p-2.5">
+                <span className="block text-[10px] font-bold text-muted-foreground">{t.structureSpecLabel}</span>
+                <span className="mt-0.5 block font-semibold text-foreground">
+                  {detail.compound === null
+                    ? t.exerciseTypeLabel(detail.exerciseType)
+                    : detail.compound
+                      ? t.compoundLabel
+                      : t.isolationLabel}
+                </span>
+              </div>
+              <div className="rounded-lg border border-border/50 bg-secondary/30 p-2.5">
+                <span className="block text-[10px] font-bold text-muted-foreground">{t.levelSpecLabel}</span>
+                <span className="mt-0.5 block font-semibold text-foreground">{shared.difficultyLabel(detail.difficulty)}</span>
+              </div>
+            </div>
+
+            <div className="flex items-start gap-1.5 rounded-lg border border-border/50 bg-secondary/30 px-2.5 py-2 text-[11px] text-muted-foreground">
+              <Wrench className="mt-0.5 size-3.5 shrink-0" aria-hidden="true" />
+              <span>
+                <span className="font-bold text-foreground">{t.equipmentFieldLabel}</span>{" "}
+                {t.equipmentList(detail.equipment)}
+              </span>
+            </div>
+
+            {/* عضلات */}
+            <div className="flex flex-col gap-2">
+              <div className="flex flex-wrap items-center gap-1.5">
+                <span className="text-[10px] font-bold text-muted-foreground">{t.primaryMusclesLabel}</span>
+                {detail.primaryMuscles.map((m) => (
+                  <span
+                    key={m}
+                    className="rounded-md border border-primary/25 bg-primary/10 px-1.5 py-0.5 text-[10px] font-bold text-primary"
+                  >
+                    {t.muscleLabel(m)}
+                  </span>
+                ))}
+              </div>
+              <div className="flex flex-wrap items-center gap-1.5">
+                <span className="text-[10px] font-bold text-muted-foreground">{t.secondaryMusclesLabel}</span>
+                {detail.secondaryMuscles.length > 0 ? (
+                  detail.secondaryMuscles.map((m) => (
+                    <span
+                      key={m}
+                      className="rounded-md border border-border/40 bg-secondary/40 px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground"
+                    >
+                      {t.muscleLabel(m)}
+                    </span>
+                  ))
+                ) : (
+                  <span className="text-[10px] text-muted-foreground/70">{t.secondaryEmpty}</span>
+                )}
+              </div>
+            </div>
+
+            {/* مراحل اجرا */}
+            <div>
+              <h4 className="flex items-center gap-1.5 text-xs font-bold text-foreground">
+                <ListChecks className="size-3.5 text-primary" aria-hidden="true" />
+                {t.stepsTitle}
+              </h4>
+              <ol className="mt-2.5 flex flex-col gap-2">
+                {(content?.steps ?? []).map((step, i) => (
+                  <li key={i} className="flex items-start gap-2.5 text-xs leading-6 text-muted-foreground">
+                    <span className="mt-1 flex size-5 shrink-0 items-center justify-center rounded-full border border-primary/30 bg-primary/10 text-[10px] font-bold text-primary">
+                      {localeNumber(i + 1, locale)}
+                    </span>
+                    {step}
+                  </li>
+                ))}
+              </ol>
+            </div>
+
+            {/* تنفس — فقط اگر داده واقعی وجود دارد */}
+            <div className="rounded-xl border border-border/50 bg-secondary/30 p-3">
+              <h4 className="flex items-center gap-1.5 text-xs font-bold text-foreground">
+                <Wind className="size-3.5 text-primary" aria-hidden="true" />
+                {t.breathingTitle}
+              </h4>
+              <p className="mt-1.5 text-xs leading-6 text-muted-foreground">
+                {content?.breathing ?? t.breathingEmpty}
+              </p>
+            </div>
+
+            {/* اشتباهات رایج — فقط اگر داده واقعی وجود دارد */}
+            <div className="rounded-xl border border-rose-400/20 bg-rose-400/5 p-3">
+              <h4 className="flex items-center gap-1.5 text-xs font-bold text-foreground">
+                <TriangleAlert className="size-3.5 text-rose-300" aria-hidden="true" />
+                {t.mistakesTitle}
+              </h4>
+              {(content?.mistakes.length ?? 0) > 0 ? (
+                <ul className="mt-1.5 flex flex-col gap-1">
+                  {(content?.mistakes ?? []).map((mistake, i) => (
+                    <li key={i} className="text-xs leading-6 text-muted-foreground">
+                      — {mistake}
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <p className="mt-1.5 text-xs leading-6 text-muted-foreground">{t.mistakesEmpty}</p>
+              )}
+            </div>
+
+            {/* نکات ایمنی — فقط اگر داده واقعی وجود دارد */}
+            <div className="rounded-xl border border-amber-400/20 bg-amber-400/5 p-3">
+              <h4 className="flex items-center gap-1.5 text-xs font-bold text-foreground">
+                <ShieldCheck className="size-3.5 text-amber-300" aria-hidden="true" />
+                {t.safetyTitle}
+              </h4>
+              {(content?.safety.length ?? 0) > 0 ? (
+                <ul className="mt-1.5 flex flex-col gap-1">
+                  {(content?.safety ?? []).map((tip, i) => (
+                    <li key={i} className="text-xs leading-6 text-muted-foreground">
+                      — {tip}
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <p className="mt-1.5 text-xs leading-6 text-muted-foreground">{t.safetyEmpty}</p>
+              )}
+            </div>
+
+            {/* حرکات مشابه */}
+            {detail.similar.length > 0 && (
+              <div>
+                <h4 className="flex items-center gap-1.5 text-xs font-bold text-foreground">
+                  <Repeat2 className="size-3.5 text-primary" aria-hidden="true" />
+                  {t.similarTitle}
+                </h4>
+                <div className="mt-2 flex flex-wrap items-center gap-2">
+                  {detail.similar.map((s) => (
+                    <button
+                      key={s.id}
+                      type="button"
+                      onClick={() => onDetails(s)}
+                      className="inline-flex items-center gap-1.5 rounded-lg border border-border/60 bg-secondary/40 px-2.5 py-1.5 text-[11px] font-semibold text-foreground transition-colors hover:border-primary/40 hover:text-primary"
+                    >
+                      <Dumbbell className="size-3.5 text-muted-foreground" aria-hidden="true" />
+                      {exerciseName(s, locale)}
+                    </button>
+                  ))}
+                </div>
+                <p className="mt-1.5 text-[10px] leading-5 text-muted-foreground/70">
+                  {t.similarNote}
+                </p>
+              </div>
+            )}
+
+            {/* اکشن‌ها */}
+            <div className="flex flex-col gap-2 border-t border-border/50 pt-4">
+              {card.has3d ? (
+                <Button
+                  className="h-9 w-full text-xs font-bold text-primary-foreground"
+                  onClick={() => {
+                    onOpen3d(card);
+                    onOpenChange(false);
+                  }}
+                >
+                  <Box className="size-4" aria-hidden="true" />
+                  {t.viewIn3dButton}
+                </Button>
+              ) : (
+                <p className="rounded-lg border border-border/50 bg-secondary/30 px-3 py-2 text-[11px] leading-6 text-muted-foreground">
+                  {t.noAnimationNote}
+                </p>
+              )}
+              <Button
+                variant="outline"
+                className="h-9 w-full border-border/70 text-xs font-semibold hover:border-primary/40 hover:text-primary"
+                onClick={() => onOpenChange(false)}
+              >
+                <RotateCcw className="size-3.5" aria-hidden="true" />
+                {t.backToLibraryButton}
+              </Button>
+            </div>
+          </>
+        )}
       </DialogContent>
     </Dialog>
   );
@@ -532,19 +653,35 @@ export function LibraryView() {
   const setExercise = useCoach3DStore((s) => s.setExercise);
   const openLibraryExercise = useAppStore((s) => s.openLibraryExercise);
 
+  const status = useExerciseLibraryStore((s) => s.status);
+  const items = useExerciseLibraryStore((s) => s.items);
+  const total = useExerciseLibraryStore((s) => s.total);
+
   const [query, setQuery] = useState("");
   const [category, setCategory] = useState<ExerciseCategoryId | "all">("all");
-  const [muscles, setMuscles] = useState<MuscleGroupId[]>([]);
+  const [muscles, setMuscles] = useState<LibraryMuscleId[]>([]);
   const [equipment, setEquipment] = useState<EquipmentId[]>([]);
   const [difficulty, setDifficulty] = useState<Difficulty | "all">("all");
   const [pattern, setPattern] = useState<MovementPatternId | "all">("all");
   const [only3d, setOnly3d] = useState(false);
+  const [visibleCount, setVisibleCount] = useState(PAGE_STEP);
+  // بازنشانی نمایش تدریجی با تغییر فیلترها — الگوی رسمی «مشتق در رندر»
+  const [prevFilterKey, setPrevFilterKey] = useState("");
 
-  // انتخاب دیالوگ از store مرکزی است تا از بخش‌های دیگر برنامه هم قابل
-  // باز شدن باشد (deep-link)؛ بستن دیالوگ همان پاک‌کردن store است.
+  // دیالوگ جزئیات — هم از کلیت کارت و هم از deep-link store مرکزی
+  const [selectedCard, setSelectedCard] = useState<LibraryExerciseCard | null>(null);
   const librarySelectedId = useAppStore((s) => s.librarySelectedId);
   const closeLibraryExercise = useAppStore((s) => s.closeLibraryExercise);
-  const selected = librarySelectedId ? getExerciseById(librarySelectedId) ?? null : null;
+  const getBankExercise = useExerciseLibraryStore((s) => s.getById);
+
+  // بارگذاری یک‌باره بانک
+  useEffect(() => {
+    ensureExerciseIndex();
+  }, []);
+
+  // deep-link: شناسه از store مرکزی → یافتن کارت از کش (مشتق خالص)
+  const deepLinkCard = librarySelectedId ? getBankExercise(librarySelectedId) ?? null : null;
+  const selected = selectedCard ?? deepLinkCard;
   const dialogOpen = selected !== null;
 
   const filterState = useMemo(
@@ -552,8 +689,36 @@ export function LibraryView() {
     [query, category, muscles, equipment, difficulty, pattern, only3d]
   );
 
-  const filtered = useMemo(() => filterExercises(filterState), [filterState]);
-  const hasFilters = hasActiveFilters(filterState);
+  const filterKey = JSON.stringify(filterState);
+  if (prevFilterKey !== filterKey) {
+    setPrevFilterKey(filterKey);
+    setVisibleCount(PAGE_STEP);
+  }
+
+  const filtered = useMemo(
+    () => filterCards(items, filterState),
+    [items, filterState]
+  );
+  const hasFilters = hasActiveCardFilters(filterState);
+
+  const sentinelRef = useRef<HTMLDivElement | null>(null);
+  useEffect(() => {
+    const el = sentinelRef.current;
+    if (!el) return;
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries.some((e) => e.isIntersecting)) {
+          setVisibleCount((v) => (v < filtered.length ? v + PAGE_STEP : v));
+        }
+      },
+      { rootMargin: "320px" }
+    );
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [filtered.length]);
+
+  const visibleCards = filtered.slice(0, visibleCount);
+  const hasMore = visibleCount < filtered.length;
 
   const advancedActiveCount =
     (muscles.length > 0 ? 1 : 0) + (equipment.length > 0 ? 1 : 0) + (only3d ? 1 : 0);
@@ -569,16 +734,23 @@ export function LibraryView() {
   }, []);
 
   const openDetails = useCallback(
-    (ex: LibraryExercise) => {
+    (ex: LibraryExerciseCard) => {
+      setSelectedCard(ex);
+      // deep-link store هم همگام می‌ماند تا «جزئیات» از بخش‌های دیگر کار کند
       openLibraryExercise(ex.id);
     },
     [openLibraryExercise]
   );
 
-  /** انتقال واقعی به مربی سه‌بعدی — فقط برای حرکات دارای انیمیشن اختصاصی */
+  const closeDetails = useCallback(() => {
+    setSelectedCard(null);
+    closeLibraryExercise();
+  }, [closeLibraryExercise]);
+
+  /** انتقال واقعی به مربی سه‌بعدی — فقط با تأیید انیمیشن واقعی از بانک */
   const openIn3d = useCallback(
-    (ex: LibraryExercise) => {
-      if (!hasCoach3dAnimation(ex) || !ex.coach3dId) return;
+    (ex: LibraryExerciseCard) => {
+      if (!ex.has3d || !ex.coach3dId) return;
       setExercise(ex.coach3dId);
       setActiveView("coach3d");
     },
@@ -586,7 +758,7 @@ export function LibraryView() {
   );
 
   const onToggleMuscle = useCallback(
-    (m: MuscleGroupId) => setMuscles((prev) => toggleInArray(prev, m)),
+    (m: LibraryMuscleId) => setMuscles((prev) => toggleInArray(prev, m)),
     []
   );
   const onToggleEquipment = useCallback(
@@ -616,7 +788,7 @@ export function LibraryView() {
           <>
             <span className="inline-flex items-center gap-1 rounded-md border border-primary/30 bg-primary/10 px-2 py-0.5 text-[10px] font-bold text-primary">
               <Dumbbell className="size-3" aria-hidden="true" />
-              {t.countBadge(EXERCISE_COUNT)}
+              {t.countBadge(total)}
             </span>
             <StageBadge stage={5} label={t.stageRoadmapLabel} />
           </>
@@ -726,7 +898,7 @@ export function LibraryView() {
           {t.showingPrefix}{" "}
           <span className="font-bold text-foreground">{localeNumber(filtered.length, locale)}</span>{" "}
           {t.showingMid}{" "}
-          <span className="font-bold text-foreground">{localeNumber(EXERCISE_COUNT, locale)}</span>{" "}
+          <span className="font-bold text-foreground">{localeNumber(total, locale)}</span>{" "}
           {t.showingSuffix}
           {hasFilters && <span>{t.filtersActiveNote}</span>}
         </p>
@@ -744,9 +916,34 @@ export function LibraryView() {
       </div>
 
       {/* ----------------------------- نتایج ----------------------------- */}
-      {filtered.length > 0 ? (
+      {status === "loading" ? (
+        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3" aria-busy="true">
+          {Array.from({ length: 6 }).map((_, i) => (
+            <div key={i} className="h-64 animate-pulse rounded-2xl border border-border/40 bg-secondary/20" />
+          ))}
+          <span className="sr-only">{locale === "fa" ? "در حال بارگذاری…" : "Loading…"}</span>
+        </div>
+      ) : status === "error" ? (
+        <div className="rounded-2xl border border-border/60 bg-card">
+          <EmptyState
+            icon={SearchX}
+            title={t.emptyTitle}
+            description={shared.libraryLoadError}
+            action={
+              <Button
+                variant="outline"
+                className="border-border/70 font-semibold hover:border-primary/40 hover:text-primary"
+                onClick={() => void useExerciseLibraryStore.getState().load()}
+              >
+                <RotateCcw className="size-3.5" aria-hidden="true" />
+                {shared.retryButton}
+              </Button>
+            }
+          />
+        </div>
+      ) : visibleCards.length > 0 ? (
         <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-          {filtered.map((ex) => (
+          {visibleCards.map((ex) => (
             <ExerciseCard key={ex.id} exercise={ex} onDetails={openDetails} onOpen3d={openIn3d} />
           ))}
         </div>
@@ -770,11 +967,25 @@ export function LibraryView() {
         </div>
       )}
 
+      {/* sentinel نمایش تدریجی + دکمه دستی (fallback بدون observer) */}
+      {hasMore && (
+        <div ref={sentinelRef} className="flex justify-center py-2">
+          <Button
+            size="sm"
+            variant="outline"
+            className="border-border/70 text-[11px] font-semibold hover:border-primary/40 hover:text-primary"
+            onClick={() => setVisibleCount((v) => v + PAGE_STEP)}
+          >
+            {locale === "fa" ? "نمایش حرکات بیشتر" : "Load more exercises"}
+          </Button>
+        </div>
+      )}
+
       <ExerciseDetailsDialog
-        exercise={selected}
+        card={selected}
         open={dialogOpen}
         onOpenChange={(open) => {
-          if (!open) closeLibraryExercise();
+          if (!open) closeDetails();
         }}
         onOpen3d={openIn3d}
         onDetails={openDetails}

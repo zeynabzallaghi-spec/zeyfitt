@@ -33,7 +33,6 @@ import {
   Plus,
   Trash2,
   RefreshCw,
-  Search,
   ArrowUp,
   ArrowDown,
   CalendarDays,
@@ -46,7 +45,8 @@ import { useLocale } from "@/lib/i18n/locale";
 import { localeDateTimeLabel } from "@/lib/i18n/format";
 import { ViewIntro } from "../../shared/view-intro";
 import { EmptyState } from "../../shared/empty-state";
-import { EXERCISE_LIBRARY, categoryFa } from "@/lib/exercises";
+import { ExercisePicker } from "@/components/fitness/shared/exercise-picker";
+import { useExerciseLibraryStore } from "@/store/exercise-library-store";
 import { CoachWorkoutContentView } from "./plan-content-view";
 import { PlanStatusBadge, PlanCardActions } from "./plans-shared";
 import {
@@ -150,12 +150,6 @@ function ExercisePickerDialog({
   onPick: (ex: { id: string; fa: string; en: string; category: string }) => void;
 }) {
   const t = useStrings(coachPlansStrings);
-  const locale = useLocale();
-  const [query, setQuery] = useState("");
-  const q = query.trim().toLowerCase();
-  const results = q
-    ? EXERCISE_LIBRARY.filter((ex) => ex.fa.includes(q) || ex.en.toLowerCase().includes(q)).slice(0, 30)
-    : EXERCISE_LIBRARY.slice(0, 30);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -163,46 +157,17 @@ function ExercisePickerDialog({
         <DialogHeader>
           <DialogTitle className="text-sm">{t.exercisePickerTitle}</DialogTitle>
         </DialogHeader>
-        <div className="space-y-3">
-          <div className="relative">
-            <Search className="absolute start-2.5 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" aria-hidden="true" />
-            <Input
-              dir={locale === "fa" ? "rtl" : "ltr"}
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              placeholder={t.exerciseSearchPlaceholder}
-              className="ps-8 text-xs"
-            />
-          </div>
-          <div className="max-h-72 space-y-1.5 overflow-y-auto pe-1">
-            {results.length === 0 ? (
-              <p className="py-6 text-center text-xs text-muted-foreground">{t.noExerciseResults}</p>
-            ) : (
-              results.map((ex) => (
-                <button
-                  key={ex.id}
-                  type="button"
-                  className="flex w-full items-center justify-between gap-2 rounded-lg border border-border/50 bg-secondary/20 p-2.5 text-start transition-colors hover:bg-primary/10"
-                  onClick={() => {
-                    onPick({ id: ex.id, fa: ex.fa, en: ex.en, category: ex.category });
-                    onOpenChange(false);
-                    setQuery("");
-                  }}
-                >
-                  <span className="min-w-0">
-                    <span className="block truncate text-xs font-bold text-foreground" dir="auto">
-                      {locale === "fa" ? ex.fa : ex.en}
-                    </span>
-                    <span className="block text-[10px] text-muted-foreground">
-                      {locale === "fa" ? categoryFa(ex.category) : ex.category}
-                    </span>
-                  </span>
-                  <span className="text-[10px] font-bold text-primary">{t.selectExercise}</span>
-                </button>
-              ))
-            )}
-          </div>
-        </div>
+        {/* بانک عمومی کامل مرحله ۱۸ — جست‌وجو دو-زبانه روی داده زنده سرور */}
+        <ExercisePicker
+          onPick={(id) => {
+            const card = useExerciseLibraryStore.getState().getById(id);
+            if (card) {
+              onPick({ id: card.id, fa: card.fa, en: card.en, category: card.category });
+            }
+            onOpenChange(false);
+          }}
+          heightClass="h-72"
+        />
       </DialogContent>
     </Dialog>
   );

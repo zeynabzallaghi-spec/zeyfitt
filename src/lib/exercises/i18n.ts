@@ -7,11 +7,16 @@
  * هر دو نام در src/lib/exercises/index.ts انجام می‌شود).
  */
 
-import type { LibraryExercise } from "./types";
 import type { Locale } from "@/lib/i18n/shared";
 
+/** حداقل شکل موردنیاز برای نمایش نام — کارت/جزئیات/رکورد کامل هر سه هستند */
+export interface ExerciseNameLike {
+  fa: string;
+  en: string;
+}
+
 /** نام حرکت به زبان رابط — فارسی: نام اصلی؛ انگلیسی: نام انگلیسی موجود */
-export function exerciseName(ex: LibraryExercise, locale: Locale): string {
+export function exerciseName(ex: ExerciseNameLike, locale: Locale): string {
   return locale === "fa" ? ex.fa : ex.en || ex.fa;
 }
 
@@ -29,7 +34,20 @@ export interface ExerciseDisplayContent {
  * فارسی اصلی نمایش داده می‌شود (هیچ رشته‌ای ساخته یا تغییر نمی‌کند).
  */
 export function exerciseContent(
-  ex: LibraryExercise,
+  ex: {
+    summary: string;
+    steps: string[];
+    breathing: string;
+    mistakes: string[];
+    safety: string[];
+    enContent?: {
+      summary: string;
+      steps: string[];
+      breathing: string;
+      mistakes: string[];
+      safety: string[];
+    };
+  },
   locale: Locale
 ): ExerciseDisplayContent {
   if (locale === "en" && ex.enContent) return ex.enContent;

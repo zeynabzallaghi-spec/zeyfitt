@@ -19,7 +19,7 @@ import type {
   WorkoutSessionExercise,
   WorkoutSetLog,
 } from "@prisma/client";
-import { getExerciseById } from "@/lib/exercises";
+import { getExerciseCardById, ensureExerciseBank } from "@/lib/exercises/bank";
 import type { MuscleGroupId } from "@/lib/fitness3d/types";
 import {
   computeSessionSummary,
@@ -240,6 +240,8 @@ export async function startSession(
   userId: string,
   input: StartSessionInput
 ): Promise<{ session: WorkoutSessionClient; existing: boolean }> {
+  // بانک کامل (ویرایشی + منبع آزاد) برای اعتبارسنجی حرکات — مرحله ۱۸
+  await ensureExerciseBank();
   // ۱) جلوگیری از جلسه فعال تکراری — پیش از هر ساختنی
   const active = await db.workoutSession.findFirst({
     where: { userId, status: "in_progress" },
@@ -347,7 +349,7 @@ export async function startSession(
   const freeExercises = input.exercises ?? [];
   const missing: string[] = [];
   const resolved = freeExercises.map(({ exerciseId }) => {
-    const bank = getExerciseById(exerciseId);
+    const bank = getExerciseCardById(exerciseId);
     if (!bank) missing.push(exerciseId);
     return { exerciseId, bank };
   });
@@ -403,7 +405,7 @@ export async function startSession(
 
 /** snapshot عضلات اصلی از بانک زنده — در نبود حرکت، خالی (شفاف) */
 function primaryMusclesSnapshot(exerciseId: string): string {
-  const bank = getExerciseById(exerciseId);
+  const bank = getExerciseCardById(exerciseId);
   return JSON.stringify(bank?.primaryMuscles ?? []);
 }
 
@@ -434,6 +436,7 @@ export async function upsertSet(
   userId: string,
   payload: SetLogInput
 ): Promise<WorkoutSessionClient> {
+  await ensureExerciseBank();
   await requireOwnedOpenSession(sessionId, userId);
 
   const exRow = await db.workoutSessionExercise.findFirst({
@@ -445,7 +448,7 @@ export async function upsertSet(
   }
 
   // قاعده وزن بدن: اگر حرکت در بانک فقط وزن بدن است، هیچ بار خارجی‌ای ثبت نمی‌شود
-  const bank = getExerciseById(exRow.exerciseId);
+  const bank = getExerciseCardById(exRow.exerciseId);
   const bodyweightOnly =
     bank !== undefined &&
     bank.equipment.length > 0 &&
@@ -551,9 +554,10 @@ export async function addSessionExercise(
   userId: string,
   exerciseId: string
 ): Promise<WorkoutSessionClient> {
+  await ensureExerciseBank();
   await requireOwnedOpenSession(sessionId, userId);
 
-  const bank = getExerciseById(exerciseId);
+  const bank = getExerciseCardById(exerciseId);
   if (!bank) {
     throw new SessionError("EXERCISE_NOT_IN_BANK", "این حرکت در بانک حرکات یافت نشد");
   }

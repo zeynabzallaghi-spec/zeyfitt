@@ -5,7 +5,7 @@
  */
 
 import { EXERCISES as COACH3D_EXERCISES } from "../src/lib/fitness3d/exercises";
-import { MUSCLE_GROUPS } from "../src/lib/fitness3d/muscles";
+import { LIBRARY_MUSCLE_GROUPS } from "../src/lib/exercises/types";
 import {
   EXERCISE_LIBRARY,
   EXERCISE_COUNT,
@@ -51,7 +51,7 @@ check("نام‌های انگلیسی متمایز هستند", new Set(enNames)
 /* ---------------- ۲) کامل بودن فیلدهای الزامی ---------------- */
 console.log("\n۲) کامل بودن فیلدهای الزامی هر رکورد");
 const requiredCategories = EXERCISE_CATEGORIES.map((c) => c.id);
-const validMuscles = new Set(MUSCLE_GROUPS.map((m) => m.id));
+const validMuscles = new Set(LIBRARY_MUSCLE_GROUPS.map((m) => m.id));
 const validEquipment = new Set(EQUIPMENT_TYPES.map((e) => e.id));
 const validPatterns = new Set(MOVEMENT_PATTERNS.map((p) => p.id));
 
@@ -94,7 +94,12 @@ const equipSpread = EQUIPMENT_TYPES.map((e) => {
   return `${e.fa}: ${n}`;
 }).join(" ، ");
 console.log(`  ℹ️  توزیع تجهیزات — ${equipSpread}`);
-check("هر ۸ نوع تجهیزات استفاده شده", EQUIPMENT_TYPES.every((e) => EXERCISE_LIBRARY.some((x) => x.equipment.includes(e.id))));
+// مرحله ۱۸: واژگان تجهیزات به ۱۴ نوع گسترش یافت (منبع آزاد)؛ رکوردهای ویرایشی
+// فقط زیرمجموعه معتبر را استفاده می‌کنند و همه نوع‌ها در بانک کامل دیتابیس پوشش دارند.
+check(
+  "تجهیزات رکوردهای ویرایشی همگی در واژگان معتبرند",
+  EXERCISE_LIBRARY.every((x) => x.equipment.every((e) => validEquipment.has(e)))
+);
 
 /* ---------------- ۳) اتصال صحیح به مربی سه‌بعدی ---------------- */
 console.log("\n۳) اتصال به مربی سه‌بعدی");

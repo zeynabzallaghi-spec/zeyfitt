@@ -10,7 +10,7 @@
  * نمایش داده می‌شود و وضعیت شفاف اعلام می‌گردد.
  */
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import {
   Box,
@@ -40,9 +40,9 @@ import { workoutStrings } from "@/lib/i18n/sections/workout";
 import { localeNumber } from "@/lib/i18n/format";
 import { cn } from "@/lib/utils";
 import {
-  getExerciseById,
-  hasCoach3dAnimation,
-} from "@/lib/exercises";
+  useExerciseLibraryStore,
+  ensureExerciseIndex,
+} from "@/store/exercise-library-store";
 import type { PlannedDayClient, WorkoutPlanClient } from "@/lib/plan-storage";
 import type { PlannedExercise } from "@/lib/plan-engine/types";
 import {
@@ -50,7 +50,6 @@ import {
   dayFocusLabel,
   planNoteLabel,
 } from "@/lib/i18n/engine-content";
-import { exerciseContent } from "@/lib/exercises/i18n";
 
 /* ------------------------------ ردیف حرکت ------------------------------ */
 
@@ -61,9 +60,19 @@ function ExerciseRow({ ex }: { ex: PlannedExercise & { id?: string } }) {
   const setCoachExercise = useCoach3DStore((s) => s.setExercise);
   const setActiveView = useAppStore((s) => s.setActiveView);
 
-  // جزئیات کامل از بانک زنده؛ snapshot فقط هنگام حذف حرکت از بانک آینده
-  const live = getExerciseById(ex.exerciseId);
-  const has3d = live ? hasCoach3dAnimation(live) : Boolean(ex.coach3dId);
+  // جزئیات کامل از بانک زنده سرور (مرحله ۱۸)؛ snapshot فقط هنگام حذف
+  // حرکت از بانک آینده — و فقط پس از بارگذاری موفق بانک
+  useEffect(() => {
+    ensureExerciseIndex();
+  }, []);
+  const getBankExercise = useExerciseLibraryStore((s) => s.getById);
+  const bankStatus = useExerciseLibraryStore((s) => s.status);
+  const live = getBankExercise(ex.exerciseId);
+  const has3d = live
+    ? live.has3d
+    : bankStatus !== "ready"
+      ? Boolean(ex.coach3dId)
+      : false;
 
   const openIn3d = () => {
     const id = live?.coach3dId ?? ex.coach3dId;
@@ -102,18 +111,19 @@ function ExerciseRow({ ex }: { ex: PlannedExercise & { id?: string } }) {
           {ex.note && (
             <p className="mt-2 border-t border-border/40 pt-2 text-[10px] leading-5 text-muted-foreground/80">
               {(() => {
-                const bank = getExerciseById(ex.exerciseId);
-                return bank ? exerciseContent(bank, locale).summary : ex.note;
+                const card = getBankExercise(ex.exerciseId);
+                if (!card) return ex.note;
+                return locale === "en" && card.summaryEn ? card.summaryEn : card.summary;
               })()}
             </p>
           )}
-          {live && live.mistakes.length > 0 && (
+          {live?.mistakesPreview && (
             <p className="mt-1.5 flex items-start gap-1 text-[10px] leading-5 text-rose-300/90">
               <CircleAlert className="mt-0.5 size-3 shrink-0" aria-hidden="true" />
-              {t.commonMistake(live.mistakes[0])}
+              {t.commonMistake(live.mistakesPreview)}
             </p>
           )}
-          {!live && (
+          {bankStatus === "ready" && !live && (
             <p className="mt-1.5 text-[10px] leading-5 text-amber-300/90">
               {t.snapshotWarning}
             </p>

@@ -1,13 +1,13 @@
 "use client";
 
 /**
- * شروع تمرین آزاد — انتخاب حداقل یک حرکت واقعی از بانک مرحله ۵ و ارسال
- * صریح «شروع تمرین» به سرور. تمرین آزاد تجویز برنامه ندارد و UI هیچ مقدار
- * هدفی برای آن جعل نمی‌کند؛ ست‌ها همان‌طور که واقعاً انجام شد ثبت می‌شوند.
+ * شروع تمرین آزاد — انتخاب حداقل یک حرکت واقعی از بانک عمومی کامل (مرحله ۱۸)
+ * و ارسال صریح «شروع تمرین» به سرور. تمرین آزاد تجویز برنامه ندارد و UI هیچ
+ * مقدار هدفی برای آن جعل نمی‌کند؛ ست‌ها همان‌طور که واقعاً انجام شد ثبت می‌شوند.
  */
 
-import { useMemo, useState } from "react";
-import { Play, Search, X } from "lucide-react";
+import { useState } from "react";
+import { Play } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -15,19 +15,12 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import { cn } from "@/lib/utils";
-import { useLocale, useDir } from "@/lib/i18n/locale";
+import { useDir } from "@/lib/i18n/locale";
 import { useStrings } from "@/lib/i18n/use-strings";
 import { workoutStrings } from "@/lib/i18n/sections/workout";
-import {
-  filterExercises,
-  EMPTY_FILTER,
-  EXERCISE_COUNT,
-  hasCoach3dAnimation,
-} from "@/lib/exercises";
+import { ExercisePicker } from "@/components/fitness/shared/exercise-picker";
+import { useExerciseLibraryStore } from "@/store/exercise-library-store";
 import { SESSION_EXERCISES_MAX } from "@/lib/workout-session/types";
 
 export function StartFreeWorkoutDialog({
@@ -43,16 +36,10 @@ export function StartFreeWorkoutDialog({
   onStart: (exerciseIds: string[]) => Promise<boolean>;
 }) {
   const t = useStrings(workoutStrings);
-  const locale = useLocale();
   const dir = useDir();
-  const [query, setQuery] = useState("");
+  const total = useExerciseLibraryStore((s) => s.total);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [localError, setLocalError] = useState<string | null>(null);
-
-  const results = useMemo(
-    () => filterExercises({ ...EMPTY_FILTER, query }).slice(0, 60),
-    [query]
-  );
 
   const toggle = (id: string) => {
     setLocalError(null);
@@ -75,7 +62,6 @@ export function StartFreeWorkoutDialog({
     const ok = await onStart(Array.from(selected));
     if (ok) {
       setSelected(new Set());
-      setQuery("");
       setLocalError(null);
       onOpenChange(false);
     }
@@ -87,78 +73,11 @@ export function StartFreeWorkoutDialog({
         <DialogHeader>
           <DialogTitle className="text-start">{t.startFreeTitle}</DialogTitle>
           <DialogDescription className="text-start leading-6">
-            {t.startFreeDescription(EXERCISE_COUNT, SESSION_EXERCISES_MAX)}
+            {t.startFreeDescription(total, SESSION_EXERCISES_MAX)}
           </DialogDescription>
         </DialogHeader>
 
-        <div className="relative">
-          <Search
-            className="pointer-events-none absolute end-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground/50"
-            aria-hidden="true"
-          />
-          <Input
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            placeholder={t.freeSearchPlaceholder}
-            className="pe-9 text-xs"
-            aria-label={t.freeSearchAria}
-          />
-        </div>
-
-        <ScrollArea className="h-64 rounded-xl border border-border/50">
-          {results.length === 0 ? (
-            <p className="p-6 text-center text-[11px] leading-6 text-muted-foreground">
-              {t.noResults}
-            </p>
-          ) : (
-            <ul className="divide-y divide-border/40">
-              {results.map((ex) => {
-                const isPicked = selected.has(ex.id);
-                return (
-                  <li key={ex.id} className="flex items-center gap-2 p-2.5">
-                    <div className="min-w-0 flex-1">
-                      <p className="truncate text-[11px] font-bold text-foreground">
-                        {locale === "fa" ? ex.fa : ex.en}
-                      </p>
-                      <p className="mt-0.5 flex flex-wrap items-center gap-x-2 text-[9px] text-muted-foreground">
-                        <span dir="ltr">{ex.en}</span>
-                        <span>{t.categoryName(ex.category)}</span>
-                        <span>{t.difficultyName(ex.difficulty)}</span>
-                        {hasCoach3dAnimation(ex) && (
-                          <span className="font-bold text-primary">{t.has3d}</span>
-                        )}
-                      </p>
-                    </div>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => toggle(ex.id)}
-                      className={cn(
-                        "h-7 shrink-0 px-2.5 text-[10px] font-bold",
-                        isPicked
-                          ? "border-primary/40 bg-primary/10 text-primary"
-                          : "border-border/70 hover:border-primary/40 hover:text-primary"
-                      )}
-                      aria-label={t.pickAria(isPicked ? t.unpickAction : t.pickAction, locale === "fa" ? ex.fa : ex.en)}
-                    >
-                      {isPicked ? (
-                        <>
-                          <X className="size-3" aria-hidden="true" />
-                          {t.unpickAction}
-                        </>
-                      ) : (
-                        <>
-                          <Play className="size-3" aria-hidden="true" />
-                          {t.pickAction}
-                        </>
-                      )}
-                    </Button>
-                  </li>
-                );
-              })}
-            </ul>
-          )}
-        </ScrollArea>
+        <ExercisePicker selectedIds={selected} onToggle={toggle} heightClass="h-64" />
 
         {localError && (
           <p className="rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2 text-[10px] font-bold text-rose-300">

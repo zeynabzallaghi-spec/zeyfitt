@@ -37,6 +37,13 @@ export interface SharedStrings {
   cooperationTypeHint: (value: string) => string;
   /** برچسب تخصص مربی — کد پایدار */
   specializationLabel: (value: string) => string;
+  // —— مرحله ۱۸: بانک عمومی حرکات و انتخابگر مشترک ——
+  libraryLoadError: string;
+  retryButton: string;
+  loadingLabel: string;
+  categoryGroupAria: string;
+  pickerShowing: (visible: number, total: number) => string;
+  loadMoreButton: string;
 }
 
 const FA: SharedStrings = {
@@ -119,6 +126,14 @@ const FA: SharedStrings = {
         functional: "تمرین کارکردی",
       } as Record<string, string>
     )[value] ?? value,
+  // مرحله ۱۸ — بانک عمومی حرکات
+  libraryLoadError: "بارگذاری بانک حرکات ناموفق بود؛ اتصال خود را بررسی کنید.",
+  retryButton: "تلاش مجدد",
+  loadingLabel: "در حال بارگذاری…",
+  categoryGroupAria: "فیلتر دسته حرکات",
+  pickerShowing: (visible, total) =>
+    `نمایش ${localeNumber(visible, "fa")} از ${localeNumber(total, "fa")} حرکت`,
+  loadMoreButton: "نمایش بیشتر",
 };
 
 const EN: SharedStrings = {
@@ -201,6 +216,14 @@ const EN: SharedStrings = {
         functional: "Functional training",
       } as Record<string, string>
     )[value] ?? value,
+  // Phase 18 — public exercise library
+  libraryLoadError: "Loading the exercise library failed; check your connection.",
+  retryButton: "Retry",
+  loadingLabel: "Loading…",
+  categoryGroupAria: "Filter exercises by category",
+  pickerShowing: (visible, total) =>
+    `Showing ${localeNumber(visible, "en")} of ${localeNumber(total, "en")} exercises`,
+  loadMoreButton: "Load more",
 };
 
 const STRINGS: Record<Locale, SharedStrings> = { fa: FA, en: EN };
