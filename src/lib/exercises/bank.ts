@@ -32,6 +32,7 @@ import {
   type MovementPatternId,
 } from "./types";
 import { findSimilarOver } from "./search";
+import { maybeSelfHealExerciseBank } from "./self-heal";
 
 /* ------------------------------ نگاشت واژگان ------------------------------ */
 
@@ -185,7 +186,15 @@ function defaultSort(a: LibraryExerciseCard, b: LibraryExerciseCard): number {
 }
 
 async function loadIntoState(): Promise<void> {
-  const rows = await db.exercise.findMany({ where: { status: "active" } });
+  let rows = await db.exercise.findMany({ where: { status: "active" } });
+  // ترمیم خودکار (مرحله ۱۹.۵) — بانک خالی یعنی وضعیت خراب واقعی (مثلاً
+  // ریست سندباکس)؛ import رسمی idempotent یک‌بار اجرا و دوباره خوانده می‌شود.
+  if (rows.length === 0) {
+    const healed = await maybeSelfHealExerciseBank();
+    if (healed) {
+      rows = await db.exercise.findMany({ where: { status: "active" } });
+    }
+  }
   const cards: LibraryExerciseCard[] = [];
   const byId = new Map<string, LibraryExerciseCard>();
   const rowsById = new Map<string, Exercise>();

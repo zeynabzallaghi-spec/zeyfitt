@@ -22,6 +22,7 @@ import { AssistantView } from "./views/assistant-view";
 import { CoachesView } from "./views/coaches-view";
 import { CoachPlansView } from "./views/coach-deliveries-view";
 import { CoachPanelView } from "./views/coach-panel-view";
+import { AdminView } from "./views/admin/admin-view";
 import { ProfileView } from "./views/profile-view";
 
 /** محتوای کامل نوار کناری — در دسکتاپ و منوی موبایل مشترک است */
@@ -81,6 +82,8 @@ function ActiveView() {
       return <CoachPlansView />;
     case "coachPanel":
       return <CoachPanelView />;
+    case "admin":
+      return <AdminView />;
     case "profile":
       return <ProfileView />;
     default:

@@ -62,6 +62,10 @@ model user {
   studentConversations        CoachConversation[]      @relation("ConversationStudent")
   coachConversations          CoachConversation[]      @relation("ConversationCoach")
   coachMessages               CoachMessage[]           @relation("CoachMessageSender")
+  // مرحله ۱۹.۵ — درخواست ارتقا، تیکت‌های پشتیبانی و اقدامات ادمین
+  premiumUpgradeRequest       PremiumUpgradeRequest?
+  supportTickets              SupportTicket[]
+  adminActionLogs             AdminActionLog[]
 }
 
 model account {
@@ -969,4 +973,79 @@ model ExerciseImportBatch {
   exercises      Exercise[]
 
   @@index([sourceKey, startedAt])
+}
+
+// ----------------------------------------
+// مرحله ۱۹.۵ — درخواست ارتقای اشتراک FREE → PREMIUM
+// ----------------------------------------
+// هر کاربر حداکثر یک رکورد باز (pending) دارد؛ ردشده قابل ارسال مجدد است.
+// تصمیم فقط سمت سرور با نقش ADMIN از دیتابیس گرفته می‌شود — هیچ مسیر
+// کلاینتی tier را تغییر نمی‌دهد. اعطای نهایی PREMIUM همان منطق اشتراک
+// (source="manual" + یادداشت شفاف) را استفاده می‌کند.
+model PremiumUpgradeRequest {
+  id          String    @id @default(cuid())
+  userId      String    @unique
+  // pending | approved | rejected
+  status      String    @default("pending")
+  // انگیزه درخواست کاربر — اختیاری، سقف طول در اعتبارسنجی
+  message     String?
+  decidedAt   DateTime?
+  decidedBy   String? // شناسه ادمین — فقط ردیابی داخلی
+  decidedNote String? // پاسخ شفاف ادمین به کاربر
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  user        user      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([status, createdAt])
+}
+
+// ----------------------------------------
+// مرحله ۱۹.۵ — مرکز پشتیبانی — تیکت مشکلات کاربران
+// ----------------------------------------
+// چرخه وضعیت (فقط سمت سرور):
+//   open -> answered     (پاسخ ادمین)
+//   answered -> resolved (بستن توسط ادمین یا خود کاربر)
+//   open/answered -> closed (بستن توسط خود کاربر؛ پایان مسیر)
+//   answered -> open     (بازگشایی توسط خود کاربر — یک‌بار مجاز)
+// تاریخچه هرگز حذف نمیشود؛ پاسخ ادمین متن ساده است (بدون HTML).
+model SupportTicket {
+  id        String    @id @default(cuid())
+  userId    String
+  // bug | account | subscription | coach | other
+  category  String    @default("other")
+  // خلاصه کوتاه — سقف طول در اعتبارسنجی
+  subject   String
+  // شرح کامل مشکل — سقف طول در اعتبارسنجی
+  body      String
+  // open | answered | resolved | closed
+  status    String    @default("open")
+  // پاسخ ادمین — متن ساده
+  reply     String?
+  repliedAt DateTime?
+  repliedBy String?
+  closedAt  DateTime?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  user      user      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([status, createdAt])
+  @@index([userId, createdAt])
+}
+
+// ----------------------------------------
+// مرحله ۱۹.۵ — گزارش اقدامات ادمین — فقط ردیابی، هرگز از کلاینت نمیآید
+// ----------------------------------------
+model AdminActionLog {
+  id        String   @id @default(cuid())
+  adminId   String
+  // action | targetType free-form پایدار برای گزارش‌گیری
+  action    String
+  targetType String
+  targetId  String
+  metaJson  String   @default("{}")
+  createdAt DateTime @default(now())
+  admin     user     @relation(fields: [adminId], references: [id], onDelete: Cascade)
+
+  @@index([adminId, createdAt])
+  @@index([targetType, targetId])
 }

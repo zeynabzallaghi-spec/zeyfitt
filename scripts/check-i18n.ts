@@ -47,6 +47,8 @@ import { coachPanelStrings } from "../src/lib/i18n/sections/coach-panel";
 import { coachPlansStrings } from "../src/lib/i18n/sections/coach-plans";
 import { coachDeliveriesStrings } from "../src/lib/i18n/sections/coach-deliveries";
 import { coachChatStrings } from "../src/lib/i18n/sections/coach-chat";
+import { adminStrings } from "../src/lib/i18n/sections/admin";
+import { supportStrings } from "../src/lib/i18n/sections/support";
 import {
   apiErrorLabel,
   engineErrorLabel,
@@ -140,6 +142,8 @@ const DICTIONARIES: [string, (locale: "fa" | "en") => Dict][] = [
   ["coach-plans", (l) => coachPlansStrings(l) as unknown as Dict],
   ["coach-deliveries", (l) => coachDeliveriesStrings(l) as unknown as Dict],
   ["coach-chat", (l) => coachChatStrings(l) as unknown as Dict],
+  ["admin", (l) => adminStrings(l) as unknown as Dict],
+  ["support", (l) => supportStrings(l) as unknown as Dict],
 ];
 
 let totalLeaves = 0;

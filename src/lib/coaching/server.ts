@@ -45,6 +45,15 @@ export async function requireCoach(): Promise<AuthenticatedUser> {
   return user;
 }
 
+/** فقط نقش ADMIN؛ بقیه → 403 (نقش از دیتابیس، هر بار تازه — مرحله ۱۹.۵) */
+export async function requireAdmin(): Promise<AuthenticatedUser> {
+  const user = await requireUser();
+  if (user.role !== "ADMIN") {
+    throw new CoachingError(403, "ROLE_NOT_ALLOWED");
+  }
+  return user;
+}
+
 /** پاسخ استاندارد خطای دامنه */
 export function coachingErrorResponse(error: unknown): NextResponse {
   if (error instanceof CoachingError) {

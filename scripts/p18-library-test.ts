@@ -221,9 +221,9 @@ async function testDataQuality() {
   const report = lastBatch ? (JSON.parse(lastBatch.reportJson) as { rejected?: unknown[] }) : null;
   ok("رکوردهای ردشده با دلیل در گزارش‌اند", Array.isArray(report?.rejected) && (report?.rejected?.length ?? 0) > 0);
 
-  // has3d صادقانه — دقیقاً ۶ حرکت
+  // has3d صادقانه — قرارداد مرحله ۱۹: همه ۹۰۵ حرکت فعال نگاشت معتبر دارند
   const ready3d = await db.exercise.count({ where: { status: "active", animation3dStatus: "ready" } });
-  ok("فقط ۶ حرکت وضعیت سه‌بعدی ready دارند", ready3d === 6, `ready: ${ready3d}`);
+  ok("همه ۹۰۵ حرکت فعال وضعیت سه‌بعدی ready دارند (مرحله ۱۹)", ready3d === 905, `ready: ${ready3d}`);
 
   // یکتایی (sourceKey, sourceRef)
   const dupSourceRefs = await db.$queryRaw<{ c: bigint }[]>`SELECT COUNT(*) as c FROM (SELECT sourceKey, sourceRef FROM Exercise GROUP BY sourceKey, sourceRef HAVING COUNT(*) > 1)`;

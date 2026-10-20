@@ -190,6 +190,61 @@ export const API_ERROR_LABELS: Record<string, Bi> = {
     fa: "این ارتباط فعال نیست؛ ارسال پیام جدید ممکن نیست و گفت‌وگو فقط‌خواندنی است.",
     en: "This connection is not active; new messages are blocked and the conversation is read-only.",
   },
+
+  /* --------------- مرحله ۱۹.۵ — درخواست‌ها، پشتیبانی و پنل ادمین --------------- */
+
+  REQUEST_ALREADY_OPEN: {
+    fa: "درخواست شما قبلاً ثبت شده و در انتظار بررسی است؛ منتظر پاسخ مدیریت بمانید.",
+    en: "Your request is already submitted and awaiting review; please wait for the admin's response.",
+  },
+  REQUEST_NOT_FOUND: {
+    fa: "این درخواست یافت نشد یا به شما تعلق ندارد.",
+    en: "This request was not found, or does not belong to you.",
+  },
+  REQUEST_ALREADY_DECIDED: {
+    fa: "روی این درخواست قبلاً تصمیم گرفته شده است.",
+    en: "A decision has already been made on this request.",
+  },
+  APPLICATION_NOT_FOUND: {
+    fa: "این درخواست مربی‌گری یافت نشد.",
+    en: "This coach application was not found.",
+  },
+  APPLICATION_ALREADY_DECIDED: {
+    fa: "روی این درخواست مربی‌گری قبلاً تصمیم گرفته شده است.",
+    en: "A decision has already been made on this coach application.",
+  },
+  SUBSCRIPTION_STUDENT_ONLY: {
+    fa: "اشتراک فقط برای حساب دانشجو معنا دارد؛ این حساب واجد شرایط نیست.",
+    en: "Subscriptions apply to student accounts only; this account is not eligible.",
+  },
+  USER_NOT_FOUND: {
+    fa: "کاربر مورد نظر یافت نشد.",
+    en: "The target user was not found.",
+  },
+  ADMIN_SELF_ROLE_FORBIDDEN: {
+    fa: "تغییر نقش حساب خودتان مجاز نیست.",
+    en: "Changing your own account role is not allowed.",
+  },
+  LAST_ADMIN_FORBIDDEN: {
+    fa: "آخرین ادمین سامانه قابل تنزل نیست؛ ابتدا یک ادمین دیگر تعریف کنید.",
+    en: "The last remaining admin cannot be demoted; create another admin first.",
+  },
+  TICKET_OPEN_LIMIT: {
+    fa: "حداکثر ۵ تیکت باز هم‌زمان مجاز است؛ برای ثبت تیکت جدید یکی از تیکت‌های باز را ببندید.",
+    en: "At most 5 open tickets are allowed at once; close one of your open tickets before submitting a new one.",
+  },
+  TICKET_NOT_FOUND: {
+    fa: "این تیکت یافت نشد یا به شما تعلق ندارد.",
+    en: "This ticket was not found, or does not belong to you.",
+  },
+  TICKET_INVALID_TRANSITION: {
+    fa: "این تغییر وضعیت برای تیکت در حالت فعلی مجاز نیست؛ صفحه را به‌روز کنید.",
+    en: "This status change is not allowed for the ticket's current state; please refresh.",
+  },
+  TICKET_RESOLVE_NEEDS_REPLY: {
+    fa: "حل‌شدن تیکت بدون ارسال پاسخ برای کاربر ممکن نیست.",
+    en: "A ticket cannot be resolved without sending the user a reply.",
+  },
 };
 
 /* --------------------------- کدهای خطای موتورها --------------------------- */

@@ -573,7 +573,7 @@ async function main() {
     const msgLeft = await db.coachMessage.count();
     ok("هیچ مکالمه/پیام آزمایشی باقی نماند", convLeft === 0 && msgLeft === 0);
     const realUsers = await db.user.count({ where: { email: { not: { contains: "p17test" } } } });
-    ok("کاربران واقعی دست‌نخورده (۴ کاربر پایه)", realUsers === 4, `count=${realUsers}`);
+    ok("کاربران واقعی دست‌نخورده (۵ کاربر پایه — شامل حساب واقعی مالک)", realUsers === 5, `count=${realUsers}`);
 
     const ic2 = await db.$queryRawUnsafe<{ integrity_check: string }[]>("PRAGMA integrity_check");
     const fk2 = await db.$queryRawUnsafe<Record<string, unknown>[]>("PRAGMA foreign_key_check");

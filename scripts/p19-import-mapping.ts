@@ -34,10 +34,22 @@ async function main() {
   // بود پاک می‌شود تا هیچ‌گاه به‌عنوان الگوی پارامتری تفسیر نشود.
   for (const row of rows) {
     if (!row.coach3dId) continue;
-    if (row.animation3dProfileId !== null || row.animation3dParamsJson !== null) {
+    // مرحله ۱۹.۵ — legacy همیشه «ready» است: سه‌بعدی آن از بانک استاتیک
+    // سرو می‌شود، پس import مجدد مرحله ۱۸ (که رکورد را با پیشفرض none
+    // می‌سازد) نباید آن را از دست‌رس خارج کند. profileId/params همیشه
+    // پاک می‌ماند تا هیچ‌گاه به‌عنوان الگوی پارامتری تفسیر نشود.
+    if (
+      row.animation3dProfileId !== null ||
+      row.animation3dParamsJson !== null ||
+      row.animation3dStatus !== "ready"
+    ) {
       await db.exercise.update({
         where: { id: row.id },
-        data: { animation3dProfileId: null, animation3dParamsJson: null },
+        data: {
+          animation3dProfileId: null,
+          animation3dParamsJson: null,
+          animation3dStatus: "ready",
+        },
       });
       legacyNormalized++;
     }

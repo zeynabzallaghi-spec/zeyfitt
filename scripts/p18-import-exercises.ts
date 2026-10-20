@@ -443,16 +443,26 @@ async function main() {
       sourceRef: rec.id,
       datasetVersion,
       status: "active",
-      coach3dId: null,
-      animation3dStatus: "none",
-      animation3dProfileId: null,
+      // مرحله ۱۹.۵: ستون‌های سه‌بعدی فقط برای رکورد تازه مقدار پیشفرض
+      // امن می‌گیرند؛ در update هرگز نوشته نمیشوند — مالک این ستون‌ها
+      // import نگاشت مرحله ۱۹ است تا اجرای مجدد این اسکریپت، نگاشت‌های
+      // پارامتری (۸۵۷ رکورد fbd) را پاک نکند (همان باگ مرحله ۱۹ که
+      // ناقص رفع شده بود).
     };
 
     if (existing) {
       await db.exercise.update({ where: { id: existing.id }, data: row });
       report.source.updated += 1;
     } else {
-      await db.exercise.create({ data: { ...row, importBatchId: batch.id } });
+      await db.exercise.create({
+        data: {
+          ...row,
+          coach3dId: null,
+          animation3dStatus: "none",
+          animation3dProfileId: null,
+          importBatchId: batch.id,
+        },
+      });
       report.source.accepted += 1;
     }
   }

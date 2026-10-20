@@ -25,6 +25,7 @@ export type ViewId =
   | "coaches"
   | "coachPlans"
   | "coachPanel"
+  | "admin"
   | "profile";
 
 export interface NavItem {
@@ -199,6 +200,23 @@ export const NAV_ITEMS: NavItem[] = [
       "بررسی و پاسخ به درخواست‌های ارتباط دریافتی",
       "فهرست دانشجویان فعال و وضعیت هر ارتباط",
       "ساخت و ارسال برنامه‌های تمرینی و غذایی اختصاصی",
+    ],
+  },
+  {
+    id: "admin",
+    fa: "پنل مدیریت",
+    en: "Admin Panel",
+    description: "مدیریت کاربران، اشتراک‌ها، درخواست مربی‌گری، درخواست ارتقا و مرکز پشتیبانی",
+    descriptionEn:
+      "Manage users, subscriptions, coach applications, upgrade requests, and the support center",
+    icon: Users,
+    stage: 19,
+    roles: ["ADMIN"],
+    features: [
+      "نمای کلی با شمارش زنده کاربران، اشتراک‌ها و تیکت‌های باز",
+      "جست‌وجوی کاربران، تغییر نقش و اعطای اشتراک با انقضا و یادداشت",
+      "بررسی درخواست‌های مربی‌گری و درخواست‌های ارتقای Premium",
+      "پاسخ و پیگیری تیکت‌های مرکز پشتیبانی",
     ],
   },
   {

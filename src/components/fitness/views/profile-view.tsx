@@ -64,6 +64,7 @@ import { StageBadge } from "../shared/badges";
 import { Field, ChipToggle, ProfileSection } from "../shared/profile-fields";
 import { PlanTierBadge } from "../shared/badges";
 import { useSubscription } from "@/hooks/use-coaching";
+import { PremiumRequestSection, CoachApplicationSection, SupportCenterSection } from "./profile-requests";
 import { useLocale, useDir } from "@/lib/i18n/locale";
 import { useStrings } from "@/lib/i18n/use-strings";
 import { profileStrings } from "@/lib/i18n/sections/profile";
@@ -389,8 +390,13 @@ export function ProfileView() {
         </div>
       </div>
 
-      {/* اشتراک دانشجو — مقدار فقط از سرور؛ بدون هرگونه دکمه تغییر سطح */}
+      {/* اشتراک دانشجو — مقدار فقط از سرور؛ مرحله ۱۹.۵: درخواست ارتقا همین‌جا */}
       <SubscriptionSection />
+
+      {/* مرحله ۱۹.۵ — درخواست ارتقای Premium، درخواست مربی‌گری و مرکز پشتیبانی */}
+      <PremiumRequestSection />
+      <CoachApplicationSection />
+      <SupportCenterSection />
 
       {formError && (
         <div
