@@ -907,3 +907,31 @@ Stage Summary:
 - همه کنترل‌های قبلی حفظ شدند (پخش/توقف/ادامه/بازنشانی/سرعت/دوربین/عضلات) و کتابخانه، برنامه‌ساز، جلسات، ثبت ست‌ها و تحلیل پیشرفت بدون رگرسیون سالم ماندند
 - وضعیت: مرحله ۱۹ کامل شد — گزارش ارائه و منتظر تأیید مرحله بعد
 
+---
+Task ID: 28
+Agent: Super Z (main agent)
+Task: مرحله ۱۹.۵ — اصلاح کتابخانه، مدیریت Premium، درخواست مربی‌گری، پنل ادمین و مرکز پشتیبانی
+
+Work Log:
+- بررسی پیش از تغییر: schema (۳۰ جدول)، نقش‌ها، CoachApplication/StudentSubscription موجود، manage-coaching CLI، بانک حرکات — کشف ریشه باگ «کتابخانه خالی»: recycle سندباکس db/custom.db را از بکاپ قدیمی (بدون رکورد Exercise) بازمی‌گرداند؛ ۵ کاربر واقعی سالم، جدول Exercise صفر رکورد
+- بازسازی بانک: import idempotent مرحله ۱۸ (۴۸ ویرایشی + ۸۵۷ fbd = ۹۰۵) + import نگاشت مرحله ۱۹ → ۹۰۵/۹۰۵ ready؛ ادعای قدیمی تست p18 (۶ ready) و p17 (۴ کاربر) به قرارداد مرحله ۱۹ به‌روزرسانی شد
+- رفع ریشه‌ای باگ تکرارشونده: بخش ۲ import مرحله ۱۸ هنوز در update ستون‌های سه‌بعدی را با «none» بازنویسی می‌کرد (رفع ناقص مرحله ۱۹) → update دیگر هرگز ستون‌های coach3dId/animation3dStatus/animation3dProfileId را نمی‌نویسد؛ فقط create تازه پیشفرض امن می‌گیرد + نرمال‌سازی legacy در p19 import حالا status=ready هم تضمین می‌کند
+- self-heal سرور (src/lib/exercises/self-heal.ts): اگر بانک خالی باشد import رسمی idempotent یک‌بار در طول عمر فرایند خودکار اجرا و دوباره خوانده می‌شود؛ با EXERCISE_BANK_SELF_HEAL=0 غیرفعال؛ تست ایزوله p195-self-heal-test.ts = ۸/۸ سبز (روی کپی دیتابیس، دیتابیس واقعی دست‌نخورده)
+- Migration افزایشی غیرمخرب (prisma db push بدون accept-data-loss): PremiumUpgradeRequest (userId unique، pending/approved/rejected، decidedNote) + SupportTicket (category/subject/body، ماشین وضعیت open→answered→resolved/closed + بازگشایی، reply/repliedBy) + AdminActionLog (adminId/action/targetType/targetId/metaJson) → ۳۳ جدول؛ integrity ok + FK=0
+- بوت‌استرپ امن ادمین: scripts/p195-admin-bootstrap.ts --email --confirm (تنها ارتقای حساب واقعیِ ثبت‌نام‌شده از مسیر عادی؛ بدون رمز پیش‌فرض یا حساب عمومی؛ ثبت در AdminActionLog؛ --revoke با محافظت آخرین ادمین) — مسیرهای خطای بدون confirm/ایمیل ناموجود تست شد
+- لایه سرور ادمین: requireAdmin (نقش تازه از دیتابیس) در coaching/server.ts + src/lib/admin/service.ts — نمای کلی شمارش زنده، فهرست کاربران با جست‌وجو/فیلتر/صفحه‌بندی، تغییر نقش با محافظت خود-ادمین و آخرین-ادمین، اعطا/لغو دستی اشتراک (همان معناشناسی manage-coaching: source=manual)، تصمیم درخواست مربی‌گری (تأیید → role=COACH + پروفایل verified؛ انتشار خودکار فقط با پروفایل کامل)، تصمیم درخواست Premium (تأیید → اعطای اشتراک با days/null)، پاسخ تیکت (پاسخ در حالت open → answered) و انتقال وضعیت با ماشین وضعیت سمت سرور (حل‌کردن بدون پاسخ ممنوع) — همه تغییرات در AdminActionLog
+- ۱۳ Route Handler جدید: /api/subscription/request (GET/POST)، /api/support/tickets (GET/POST)، /api/support/tickets/[id]/action (close/reopen مالک)، /api/admin/{overview,users,users/[id]/role,users/[id]/subscription,coach-applications,coach-applications/[id]/decide,premium-requests,premium-requests/[id]/decide,tickets,tickets/[id]} — همه requireUser/requireAdmin + Zod → 400/401/403/404/409/429 معنادار
+- کلاینت: src/hooks/use-admin.ts (پارامتر خالی ارسال نمی‌شود) + نمای پنل ادمین (۵ تب: نمای کلی/کاربران/درخواست مربی‌گری/درخواست ارتقا/تیکت پشتیبانی) در views/admin/ + بخش‌های پروفایل (درخواست ارتقا، درخواست مربی‌گری، مرکز پشتیبانی با دیالوگ تیکت جدید) در views/profile-requests.tsx + nav.ts «پنل مدیریت» فقط roles:[ADMIN]
+- i18n: بخش‌های جدید admin.ts + support.ts (FA/EN متقارن) + ۱۵ کد خطای جدید server-messages → check-i18n ۵۶/۵۶
+- رفع باگ‌های کشف‌شده در مرورگر: پارامتر خالی role= رد اعتبارسنجی می‌شد (هوک + route اصلاح)؛ پاسخ ادمین وضعیت answered نمی‌گرفت (ماشین وضعیت اصلاح)؛ تاریخ‌های ادمین/پشتیبانی fa هاردکد بودند (locale زنده)
+- تست p195-test.ts = ۷۷/۷۷ سبز: مهمان 401 (۱۰ مسیر)، درخواست Premium (ثبت/تکرار 409/۵۰۰ کاراکتر/نقش 403/mass-assignment بی‌اثر)، تصمیم ادمین (تأیید با days=30 → اشتراک PREMIUM source=manual + انقضا، رد + ارسال مجدد، تصمیم دوباره 409)، تیکت (اعتبارسنجی، IDOR، بستن توسط غیرمالک 404، XSS عین متن، پاسخ→answered، بازگشایی، حل‌کردن بدون پاسخ 409، سقف ۵ باز → 429)، پنل ادمین (403 غیرادمین، شمارش‌ها، جست‌وجو، خود-ادمین 409، ارتقا/تنزل نقش، اعطا/لغو اشتراک، اشتراک فقط دانشجو)، درخواست مربی‌گری (ثبت → تأیید → COACH + verified، انتشار خودکار بدون پروفایل کامل اعمال نشد)، گزارش اقدام (۶ نوع log)؛ پاک‌سازی کامل fixture → ۵ کاربر واقعی + integrity/fk
+- رگرسیون کامل: i18n ۵۶ + library ۴۲ + plan ۳۴ + nutrition ۷۹ + session ۴۰ + foodlog ۵۰ + assistant ۳۸ + p15 ۶۲ + p16 ۷۹ + p17 ۱۱۳ + p18 ۶۸ + p19 ۲۹ + p195 ۷۷ + self-heal ۸ = **۷۷۵ سبز**
+- tsc صفر خطا در src؛ ESLint پاک؛ build تولیدی موفق (۲۲ صفحه + ۱۳ مسیر API جدید)
+- مرورگر واقعی (390×844، FA/RTL و EN/LTR): ثبت‌نام + onboarding دو نقش → «پنل مدیریت» فقط برای ADMIN در منو → نمای کلی با شمارش زنده (۹۰۵ حرکت) → درخواست ارتقا تأیید با ۳۰ روز → کاربر Premium با انقضا در تب کاربران → پاسخ تیکت ادمین → دانشجو «تأییدشده» و پاسخ پشتیبانی را می‌بیند → ثبت تیکت جدید از دیالوگ UI → scrollWidth=۳۹۰ در هر دو زبان → کنسول فقط خطای hydration شناخته‌شده dev-only → ۸ اسکرین‌شات download/p195-*.png
+- تصفیه حساب: کاربران p195ui و همه fixtureهای API حذف شدند → ۵ کاربر واقعی دست‌نخورده؛ بکاپ پس از پایان: backups/p195-post-phase195-20261020-145610.db (integrity ok، FK=0، ۹۰۵ حرکت)
+- طبق بخش ۰.۴ مشخصات این مرحله (اولین بار که کاربر صراحتاً مجاز کرد): بازبینی git status، فقط تغییرات امن کد commit شد (بدون .env/دیتابیس/بکاپ/اسکرین‌شات) و push عادی به main انجام شد — بدون force و بدون تغییر تاریخچه
+
+Stage Summary:
+- هر ۶ مشکل مشخصات رفع شد: ①کتابخانه خالی — بازسازی + self-heal خودکار + رفع باگ ریشه‌ای بازنویسی import؛ ②مسیر درخواست Premium از پروفایل با تصمیم ادمین؛ ③UI درخواست مربی‌گری به API موجود وصل شد (تأیید → COACH + پروفایل verified)؛ ④پنل ادمین کامل با گزارش اقدام؛ ⑤مرکز پشتیبانی با تیکت/پاسخ/ماشین وضعیت؛ ⑥بوت‌استرپ امن ادمین با مسیر ورود واقعی (ورود عادی → منوی پنل مدیریت)
+- همه مجوزها سمت سرور با نقش تازه دیتابیس؛ هیچ داده ساختگی؛ تاریخچه‌ها حذف نمی‌شوند؛ ۵ کاربر واقعی و snapshot‌های برنامه‌ها دست‌نخورده
+- وضعیت: مرحله ۱۹.۵ کامل شد — گزارش ارائه و منتظر تأیید مرحله ۲۰
