@@ -24,7 +24,7 @@ import { coach3DStrings } from "@/lib/i18n/sections/coach3d";
 import { ViewIntro } from "../shared/view-intro";
 import { StageBadge } from "../shared/badges";
 import { PlaybackBar } from "../coach3d/ui/PlaybackBar";
-import { ExerciseList } from "../coach3d/ui/ExerciseList";
+import { BankExerciseList } from "../coach3d/ui/BankExerciseList";
 import { MusclePanel } from "../coach3d/ui/MusclePanel";
 import { SceneHud } from "../coach3d/ui/SceneHud";
 import { ExerciseDetails } from "../coach3d/ui/ExerciseDetails";
@@ -192,7 +192,7 @@ export function Coach3DView() {
         {/* ----------------------- ستون کناری ----------------------- */}
         {/* دسکتاپ — همیشه باز */}
         <div className="hidden min-w-0 flex-col gap-4 lg:flex">
-          <ExerciseList />
+          <BankExerciseList />
           <MusclePanel />
         </div>
 
@@ -213,7 +213,7 @@ export function Coach3DView() {
               </Button>
             </CollapsibleTrigger>
             <CollapsibleContent className="mt-3 flex flex-col gap-4 overflow-hidden data-[state=closed]:animate-accordion-up data-[state=open]:animate-accordion-down">
-              <ExerciseList />
+              <BankExerciseList />
               <MusclePanel />
             </CollapsibleContent>
           </Collapsible>

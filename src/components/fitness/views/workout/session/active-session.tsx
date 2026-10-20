@@ -49,7 +49,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { toast } from "sonner";
 import { useAppStore } from "@/store/app-store";
-import { useCoach3DStore } from "@/store/coach3d-store";
+import { openBankExerciseIn3d, useCoach3DStore } from "@/store/coach3d-store";
 import { useLocale, useDir } from "@/lib/i18n/locale";
 import { useStrings } from "@/lib/i18n/use-strings";
 import { workoutStrings } from "@/lib/i18n/sections/workout";
@@ -313,7 +313,7 @@ function SessionExerciseCard({
   const [draftWeight, setDraftWeight] = useState("");
 
   const openLibraryExercise = useAppStore((s) => s.openLibraryExercise);
-  const setCoachExercise = useCoach3DStore((s) => s.setExercise);
+  const setScene = useCoach3DStore((s) => s.setScene);
   const setActiveView = useAppStore((s) => s.setActiveView);
 
   // بانک زنده سرور (مرحله ۱۸) — ۳بعدی فقط با تأیید has3d بانک؛ snapshot
@@ -324,7 +324,7 @@ function SessionExerciseCard({
   const getBankExercise = useExerciseLibraryStore((s) => s.getById);
   const bankStatus = useExerciseLibraryStore((s) => s.status);
   const live = getBankExercise(ex.exerciseId);
-  const has3d = bankStatus === "ready" && Boolean(live?.has3d && live.coach3dId);
+  const has3d = bankStatus === "ready" && Boolean(live?.has3d);
   // حرکاتی که بانک آن‌ها فقط وزن بدن است — ورودی وزنه ندارند (قاعده وزن بدن)
   const bodyweightOnly = Boolean(
     live && live.equipment.length > 0 && live.equipment.every((e) => e === "bodyweight")
@@ -442,8 +442,11 @@ function SessionExerciseCard({
               size="sm"
               variant="outline"
               onClick={() => {
-                // داده جلسه در سرور ماندگار است؛ بازگشت از مربی، جلسه را دوباره می‌خواند
-                setCoachExercise(live!.coach3dId!);
+                // داده جلسه در سرور ماندگار است؛ بازگشت از مربی، جلسه را دوباره می‌خواند.
+                // صحنه از نگاشت زنده بانک حل می‌شود (نگاشت پارامتری یا legacy ۶ حرکته)
+                if (!live) return;
+                const ok = openBankExerciseIn3d(live, { setScene });
+                if (!ok) return;
                 setActiveView("coach3d");
               }}
               className="h-7 border-primary/40 bg-primary/10 px-2.5 text-[10px] font-bold text-primary hover:bg-primary/20"

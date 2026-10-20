@@ -922,10 +922,14 @@ model Exercise {
   datasetVersion       String?
   // وضعیت — آرشیو فقط با سیاست شفاف؛ حذف رکورد مجاز نیست (شناسه پایدار)
   status               String   @default("active") // active | archived
-  // پوشش سه‌بعدی — فقط ۶ حرکت فعلی ready دارند؛ بقیه none (مرحله ۱۹ توسعه می‌یابد)
+  // پوشش سه‌بعدی — مرحله ۱۹: همه حرکات فعال ready دارند؛ ۶ حرکت ویرایشی
+  // قدیمی با coach3dId به بانک استاتیک وصل می‌مانند (رفتار قبلی حفظ می‌شود)
+  // و بقیه با animation3dProfileId به الگوی حرکتی پارامتری متصل می‌شوند
   coach3dId            String?
   animation3dStatus    String   @default("none") // ready | needs_mapping | none
   animation3dProfileId String?
+  // پارامترهای الگوی حرکتی (مرحله ۱۹) — JSON رشته؛ null برای ۶ حرکت legacy
+  animation3dParamsJson String?
   // زیرساخت مراحل ۱۹/۲۰ — در این مرحله با مقادیر پیشفرض غیرفعال‌اند و
   // هیچ مسیر کلاینت‌محوری آن‌ها را تغییر نمی‌دهد
   videoStatus          String   @default("none") // none | missing | uploaded | processing

@@ -77,6 +77,30 @@ function toCard(ex: Exercise): LibraryExerciseCard | null {
   const secondaryMuscles = sanitizeMuscles(parseJsonArray(ex.secondaryMusclesJson));
   const mistakes = parseJsonArray(ex.mistakesJson);
   const coach3dId = ex.coach3dId ?? undefined;
+  // نگاشت پارامتری (مرحله ۱۹) — فقط شناسه الگو + پارامترهای مجاز به کلاینت می‌رود
+  let animation3d: LibraryExerciseCard["animation3d"];
+  if (ex.animation3dStatus === "ready" && ex.animation3dProfileId) {
+    let params: Record<string, string | number | boolean> | null = null;
+    if (ex.animation3dParamsJson) {
+      try {
+        const parsed: unknown = JSON.parse(ex.animation3dParamsJson);
+        if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
+          const out: Record<string, string | number | boolean> = {};
+          for (const [k, v] of Object.entries(parsed as Record<string, unknown>)) {
+            if (typeof v === "string" || typeof v === "number" || typeof v === "boolean") out[k] = v;
+          }
+          params = out;
+        }
+      } catch {
+        // داده خراب — نگاشت سالم پارامتری داده نمی‌شود؛ coach3dId legacy معتبر می‌ماند
+        params = null;
+      }
+    }
+    animation3d = { profileId: ex.animation3dProfileId, params };
+  }
+  const has3d =
+    ex.animation3dStatus === "ready" &&
+    Boolean(coach3dId || (animation3d && animation3d.profileId.length > 0));
   let summaryEn: string | null = null;
   if (ex.enContentJson) {
     try {
@@ -100,8 +124,9 @@ function toCard(ex: Exercise): LibraryExerciseCard | null {
     pattern: ex.pattern as MovementPatternId,
     compound: ex.compound,
     exerciseType,
-    has3d: ex.animation3dStatus === "ready" && Boolean(coach3dId),
+    has3d,
     coach3dId,
+    animation3d,
     contentLocale: ex.contentLocale === "fa" ? "fa" : "en",
     summary: ex.summary ?? "",
     summaryEn,

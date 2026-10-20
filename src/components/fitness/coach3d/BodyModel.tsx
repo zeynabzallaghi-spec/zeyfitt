@@ -20,9 +20,9 @@ import { RoundedBox } from "@react-three/drei";
 import { useFrame } from "@react-three/fiber";
 import type { MuscleGroupId } from "@/lib/fitness3d/types";
 import { PELVIS_Y, blendKeyframes, cycleDuration, locateInCycle, startPose } from "@/lib/fitness3d/animation";
-import { getExercise } from "@/lib/fitness3d/exercises";
 import { coachRuntime } from "@/lib/fitness3d/runtime";
 import { useCoach3DStore } from "@/store/coach3d-store";
+import type { HandPropKind, ImplementKind, ScenePropKind } from "@/lib/fitness3d/profiles/core";
 
 /* ------------------------------- rig و مفاصل ------------------------------- */
 
@@ -120,6 +120,14 @@ export function applyPose(rig: BodyRig, pose: FullPoseLike) {
   set("kneeR", pose.joints.kneeR);
   set("ankleL", pose.joints.ankleL);
   set("ankleR", pose.joints.ankleR);
+
+  // پیاده‌سازی متحرک (تجهیز مرکزی) — مرحله ۱۹
+  const impl = rig.joints.get("implement");
+  if (impl) {
+    impl.position.set(pose.impl.x, pose.impl.y, pose.impl.z);
+    impl.rotation.set(pose.impl.rx * DEG, 0, pose.impl.rz * DEG);
+    impl.visible = !pose.impl.hidden;
+  }
 }
 
 type FullPoseLike = ReturnType<typeof blendKeyframes>;
@@ -128,7 +136,8 @@ type FullPoseLike = ReturnType<typeof blendKeyframes>;
 
 /**
  * پیش‌بردن زمان چرخه حرکت، محاسبه وضعیت مفاصل و اعمال آن روی مدل.
- * شمارنده تکرار فقط با تکمیل یک چرخه کامل افزایش می‌یابد.
+ * شمارنده تکرار فقط با تکمیل یک چرخه کامل افزایش می‌یابد (فقط حالت reps)؛
+ * در حالت hold (ایزومتریک/کشش ثابت) زمان نگه‌داشتن در coachRuntime جمع می‌شود.
  */
 export function ExerciseAnimator({ rig }: { rig: React.RefObject<BodyRig> }) {
   const localTime = useRef(0);
@@ -137,14 +146,15 @@ export function ExerciseAnimator({ rig }: { rig: React.RefObject<BodyRig> }) {
   useFrame((_, delta) => {
     const r = rig.current;
     if (!r || !r.joints.get("root")) return;
-    const { exerciseId, playing, speed, runtimeToken } = useCoach3DStore.getState();
-    const ex = getExercise(exerciseId);
+    const { scene, playing, speed, runtimeToken } = useCoach3DStore.getState();
+    const ex = scene.def;
 
-    // همگام‌سازی با تغییر حرکت یا بازنشانی
+    // همگام‌سازی با تغییر صحنه یا بازنشانی
     if (localToken.current !== runtimeToken) {
       localToken.current = runtimeToken;
       localTime.current = 0;
       coachRuntime.cycleT = 0;
+      coachRuntime.holdSeconds = 0;
       applyPose(r, startPose(ex.cycle));
       return;
     }
@@ -155,11 +165,16 @@ export function ExerciseAnimator({ rig }: { rig: React.RefObject<BodyRig> }) {
     // محدودکردن گام زمانی: توقف طولانی مرورگر (مثل سوئیچ تب) نباید باعث
     // پرش وضعیت مفاصل یا شمارش نادرست تکرار شود
     const step = Math.min(delta, 0.05) * speed;
+    if (scene.counterMode === "hold") {
+      coachRuntime.holdSeconds += step;
+    }
     localTime.current += step;
     if (localTime.current >= total) {
       localTime.current -= total;
-      // هر چرخه کامل = تعداد تکرار تعریف‌شده حرکت (لانج چپ + راست = ۲)
-      useCoach3DStore.getState().bumpReps(ex.repsPerCycle ?? 1);
+      // هر چرخه کامل = تعداد تکرار تعریف‌شده — فقط در حالت reps
+      if (scene.counterMode === "reps") {
+        useCoach3DStore.getState().bumpReps(ex.repsPerCycle ?? 1);
+      }
     }
 
     const loc = locateInCycle(ex.cycle, localTime.current);
@@ -173,10 +188,168 @@ export function ExerciseAnimator({ rig }: { rig: React.RefObject<BodyRig> }) {
 
 /* --------------------------------- مدل بدن --------------------------------- */
 
+/* -------------------------------- تجهیزات دست -------------------------------- */
+
+/** تجهیزات در هر دست — نمایش ساده و صادقانه بر اساس صحنه فعلی */
+function HandPropMesh({ kind }: { kind: HandPropKind }) {
+  switch (kind) {
+    case "dumbbells":
+      return (
+        <group position={[0, -0.062, 0]}>
+          <mesh rotation={[0, 0, Math.PI / 2]} material={mats.metal}>
+            <cylinderGeometry args={[0.011, 0.011, 0.15, 12]} />
+          </mesh>
+          <mesh position={[0.062, 0, 0]} rotation={[0, 0, Math.PI / 2]} material={mats.plate}>
+            <cylinderGeometry args={[0.05, 0.05, 0.032, 20]} />
+          </mesh>
+          <mesh position={[-0.062, 0, 0]} rotation={[0, 0, Math.PI / 2]} material={mats.plate}>
+            <cylinderGeometry args={[0.05, 0.05, 0.032, 20]} />
+          </mesh>
+          <mesh position={[0.083, 0, 0]} rotation={[0, 0, Math.PI / 2]} material={mats.accent}>
+            <cylinderGeometry args={[0.016, 0.016, 0.008, 14]} />
+          </mesh>
+          <mesh position={[-0.083, 0, 0]} rotation={[0, 0, Math.PI / 2]} material={mats.accent}>
+            <cylinderGeometry args={[0.016, 0.016, 0.008, 14]} />
+          </mesh>
+        </group>
+      );
+    case "kettlebell-one":
+      return (
+        <group position={[0, -0.075, 0]}>
+          <mesh material={mats.metal}>
+            <torusGeometry args={[0.028, 0.009, 10, 20, Math.PI]} />
+          </mesh>
+          <mesh position={[0, -0.055, 0]} material={mats.plate}>
+            <sphereGeometry args={[0.052, 20, 14]} />
+          </mesh>
+        </group>
+      );
+    case "dumbbell-one":
+      return (
+        <group position={[0, -0.062, 0]}>
+          <mesh rotation={[0, 0, Math.PI / 2]} material={mats.metal}>
+            <cylinderGeometry args={[0.011, 0.011, 0.14, 12]} />
+          </mesh>
+          <mesh position={[0.058, 0, 0]} rotation={[0, 0, Math.PI / 2]} material={mats.plate}>
+            <cylinderGeometry args={[0.046, 0.046, 0.03, 18]} />
+          </mesh>
+          <mesh position={[-0.058, 0, 0]} rotation={[0, 0, Math.PI / 2]} material={mats.plate}>
+            <cylinderGeometry args={[0.046, 0.046, 0.03, 18]} />
+          </mesh>
+        </group>
+      );
+    case "handle-cable":
+      return (
+        <group position={[0, -0.05, 0]}>
+          <mesh rotation={[0, 0, Math.PI / 2]} material={mats.metal}>
+            <cylinderGeometry args={[0.013, 0.013, 0.11, 12]} />
+          </mesh>
+          <mesh position={[0, 0.035, 0]} material={mats.accent}>
+            <cylinderGeometry args={[0.006, 0.006, 0.05, 8]} />
+          </mesh>
+        </group>
+      );
+    case "ab-wheel":
+      return (
+        <group position={[0, -0.04, 0]} rotation={[0, 0, Math.PI / 2]}>
+          <mesh material={mats.plate}>
+            <cylinderGeometry args={[0.055, 0.055, 0.03, 22]} />
+          </mesh>
+          <mesh material={mats.accent}>
+            <cylinderGeometry args={[0.02, 0.02, 0.036, 14]} />
+          </mesh>
+        </group>
+      );
+    case "wrist-bar":
+      return (
+        <group position={[0, -0.045, 0]} rotation={[0, 0, Math.PI / 2]}>
+          <mesh material={mats.metal}>
+            <cylinderGeometry args={[0.009, 0.009, 0.2, 10]} />
+          </mesh>
+        </group>
+      );
+    default:
+      return null;
+  }
+}
+
+/**
+ * پیاده‌سازی مرکزی متحرک — برای حرکات متقارن دودستی روی صفحه میانی بدن.
+ * موقعیت هر کلیدفریم از داده keyframe.impl می‌آید (applyPose اعمال می‌کند).
+ */
+export function MovingImplement({ kind }: { kind: ImplementKind }) {
+  if (kind === "none") return null;
+  switch (kind) {
+    case "barbell":
+      return (
+        <group rotation={[0, 0, Math.PI / 2]}>
+          <mesh material={mats.metal}>
+            <cylinderGeometry args={[0.013, 0.013, 1.5, 12]} />
+          </mesh>
+          <mesh position={[0.55, 0, 0]} material={mats.plate}>
+            <cylinderGeometry args={[0.16, 0.16, 0.045, 26]} />
+          </mesh>
+          <mesh position={[-0.55, 0, 0]} material={mats.plate}>
+            <cylinderGeometry args={[0.16, 0.16, 0.045, 26]} />
+          </mesh>
+        </group>
+      );
+    case "ez-bar":
+      return (
+        <group rotation={[0, 0, Math.PI / 2]}>
+          <mesh material={mats.metal}>
+            <cylinderGeometry args={[0.012, 0.012, 0.9, 12]} />
+          </mesh>
+          <mesh position={[0.34, 0, 0]} material={mats.plate}>
+            <cylinderGeometry args={[0.11, 0.11, 0.04, 22]} />
+          </mesh>
+          <mesh position={[-0.34, 0, 0]} material={mats.plate}>
+            <cylinderGeometry args={[0.11, 0.11, 0.04, 22]} />
+          </mesh>
+        </group>
+      );
+    case "kettlebell-hands":
+      return (
+        <group>
+          <mesh position={[0, 0.05, 0]} material={mats.metal}>
+            <torusGeometry args={[0.035, 0.011, 10, 22, Math.PI]} />
+          </mesh>
+          <mesh position={[0, -0.03, 0]} material={mats.plate}>
+            <sphereGeometry args={[0.078, 22, 16]} />
+          </mesh>
+        </group>
+      );
+    case "medball-hands":
+      return (
+        <mesh material={mats.plate}>
+          <sphereGeometry args={[0.11, 22, 16]} />
+        </mesh>
+      );
+    case "band-loop":
+      return (
+        <mesh rotation={[0, 0, Math.PI / 2]} material={mats.accent}>
+          <cylinderGeometry args={[0.007, 0.007, 1.0, 10]} />
+        </mesh>
+      );
+    case "pull-handle":
+      return (
+        <group rotation={[0, 0, Math.PI / 2]}>
+          <mesh material={mats.metal}>
+            <cylinderGeometry args={[0.012, 0.012, 0.8, 12]} />
+          </mesh>
+        </group>
+      );
+    default:
+      return null;
+  }
+}
+
 export function BodyModel({ rig }: { rig: React.RefObject<BodyRig> }) {
-  const exerciseId = useCoach3DStore((s) => s.exerciseId);
+  const scene = useCoach3DStore((s) => s.scene);
+  const exerciseId = scene.exerciseId;
   const showMuscles = useCoach3DStore((s) => s.showMuscles);
   const focusedMuscle = useCoach3DStore((s) => s.focusedMuscle);
+  const def = scene.def;
 
   /* ثبت مش‌های عضلانی و گروه‌های مفصلی در rig — فقط با متدهای Map */
   const regJoint = (key: string) => (g: THREE.Group | null) => {
@@ -192,9 +365,8 @@ export function BodyModel({ rig }: { rig: React.RefObject<BodyRig> }) {
 
   /* به‌روزرسانی حالت هایلایت عضلات با تغییر حرکت یا تنظیمات کاربر */
   useEffect(() => {
-    const ex = getExercise(exerciseId);
-    const primary = new Set(ex.primaryMuscles);
-    const secondary = new Set(ex.secondaryMuscles);
+    const primary = new Set(def.primaryMuscles);
+    const secondary = new Set(def.secondaryMuscles);
     rig.current?.muscles.forEach((mesh) => {
       const group = mesh.userData.muscle as MuscleGroupId;
       if (focusedMuscle && group === focusedMuscle) {
@@ -210,16 +382,20 @@ export function BodyModel({ rig }: { rig: React.RefObject<BodyRig> }) {
         mesh.visible = false;
       }
     });
-  }, [exerciseId, showMuscles, focusedMuscle, mats, rig]);
+  }, [exerciseId, showMuscles, focusedMuscle, mats, rig, def]);
 
-  /* نمایش یا مخفی‌کردن دمبل‌ها — واکنشی و بر اساس تجهیزات حرکت */
-  const showDumbbells = getExercise(exerciseId).props3d === "dumbbells";
+  /* تجهیزات دست — واکنشی بر اساس صحنه فعلی */
+  const handProp = scene.handProp;
+  const showDumbbells = handProp === "dumbbells";
+  const showKettlebellOne = handProp === "kettlebell-one" || handProp === "dumbbell-one";
+  const showHandles = handProp === "handle-cable";
+  const showWheel = handProp === "ab-wheel";
+  const showWristBar = handProp === "wrist-bar";
 
-  /* اعمال وضعیت شروع حرکت پس از تغییر (برای همگام‌سازی سریع اولیه) */
+  /* اعمال وضعیت شروع صحنه پس از تغییر (برای همگام‌سازی سریع اولیه) */
   useEffect(() => {
-    const ex = getExercise(exerciseId);
-    if (rig.current?.joints.get("root")) applyPose(rig.current, startPose(ex.cycle));
-  }, [exerciseId, rig]);
+    if (rig.current?.joints.get("root")) applyPose(rig.current, startPose(def.cycle));
+  }, [exerciseId, rig, def]);
 
   /* نبض ملایم نور عضلات فعال — صحنه را زنده نگه می‌دارد */
   useFrame(({ clock }) => {
@@ -233,6 +409,10 @@ export function BodyModel({ rig }: { rig: React.RefObject<BodyRig> }) {
 
   return (
     <group ref={regJoint("root")} position={[0, PELVIS_Y, 0]}>
+      {/* پیاده‌سازی متحرک — فرزند ریشه؛ موقعیت از کلیدفریم‌ها */}
+      <group ref={regJoint("implement")} visible={scene.implement !== "none"}>
+        <MovingImplement kind={scene.implement} />
+      </group>
       {/* ------------------------------- لگن و سرینی ------------------------------ */}
       <RoundedBox args={[0.3, 0.18, 0.2]} radius={0.06} smoothness={4} position={[0, 0.01, 0]} material={mats.body} />
       <mesh ref={regMuscle("glutes-L")} userData={{ muscle: "glutes" }} visible={false} position={[0.082, -0.03, -0.08]} scale={[0.088, 0.085, 0.075]} material={mats.secondary}>
@@ -319,23 +499,9 @@ export function BodyModel({ rig }: { rig: React.RefObject<BodyRig> }) {
               <mesh position={[0, -0.06, 0]} material={mats.body}>
                 <capsuleGeometry args={[0.03, 0.05, 6, 12]} />
               </mesh>
-              {/* دمبل — فقط برای حرکات با تجهیزات قابل مشاهده */}
-              <group position={[0, -0.062, 0]} visible={showDumbbells}>
-                <mesh rotation={[0, 0, Math.PI / 2]} material={mats.metal}>
-                  <cylinderGeometry args={[0.011, 0.011, 0.15, 12]} />
-                </mesh>
-                <mesh position={[0.062, 0, 0]} rotation={[0, 0, Math.PI / 2]} material={mats.plate}>
-                  <cylinderGeometry args={[0.05, 0.05, 0.032, 20]} />
-                </mesh>
-                <mesh position={[-0.062, 0, 0]} rotation={[0, 0, Math.PI / 2]} material={mats.plate}>
-                  <cylinderGeometry args={[0.05, 0.05, 0.032, 20]} />
-                </mesh>
-                <mesh position={[0.083, 0, 0]} rotation={[0, 0, Math.PI / 2]} material={mats.accent}>
-                  <cylinderGeometry args={[0.016, 0.016, 0.008, 14]} />
-                </mesh>
-                <mesh position={[-0.083, 0, 0]} rotation={[0, 0, Math.PI / 2]} material={mats.accent}>
-                  <cylinderGeometry args={[0.016, 0.016, 0.008, 14]} />
-                </mesh>
+              {/* تجهیز دست — بر اساس صحنه فعلی */}
+              <group visible={showDumbbells || showHandles || showWheel || showWristBar || showKettlebellOne}>
+                <HandPropMesh kind={handProp} />
               </group>
             </group>
           </group>
@@ -367,22 +533,9 @@ export function BodyModel({ rig }: { rig: React.RefObject<BodyRig> }) {
               <mesh position={[0, -0.06, 0]} material={mats.body}>
                 <capsuleGeometry args={[0.03, 0.05, 6, 12]} />
               </mesh>
-              <group position={[0, -0.062, 0]} visible={showDumbbells}>
-                <mesh rotation={[0, 0, Math.PI / 2]} material={mats.metal}>
-                  <cylinderGeometry args={[0.011, 0.011, 0.15, 12]} />
-                </mesh>
-                <mesh position={[0.062, 0, 0]} rotation={[0, 0, Math.PI / 2]} material={mats.plate}>
-                  <cylinderGeometry args={[0.05, 0.05, 0.032, 20]} />
-                </mesh>
-                <mesh position={[-0.062, 0, 0]} rotation={[0, 0, Math.PI / 2]} material={mats.plate}>
-                  <cylinderGeometry args={[0.05, 0.05, 0.032, 20]} />
-                </mesh>
-                <mesh position={[0.083, 0, 0]} rotation={[0, 0, Math.PI / 2]} material={mats.accent}>
-                  <cylinderGeometry args={[0.016, 0.016, 0.008, 14]} />
-                </mesh>
-                <mesh position={[-0.083, 0, 0]} rotation={[0, 0, Math.PI / 2]} material={mats.accent}>
-                  <cylinderGeometry args={[0.016, 0.016, 0.008, 14]} />
-                </mesh>
+              {/* تجهیز دست — بر اساس صحنه فعلی */}
+              <group visible={showDumbbells || showHandles || showWheel || showWristBar}>
+                <HandPropMesh kind={handProp} />
               </group>
             </group>
           </group>

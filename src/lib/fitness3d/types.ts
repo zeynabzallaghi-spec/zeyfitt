@@ -44,8 +44,10 @@ export type JointName =
  * مقدار زاویه مفصل بر حسب درجه.
  * عدد تنها = چرخش حول محور X (مفاصل لولایی: آرنج، زانو، مچ پا و مچ دست)
  * آرایه سه‌تایی = اویلر XYZ کامل (مفاصل گویا: شانه، لگن، ستون فقرات و گردن)
+ * number[] = آرایه محاسبه‌شده الگوها — موتور انیمیشن نرمال‌سازی می‌کند
+ * (طول کامل سه‌تایی الزامی است؛ زوایای الگوها همیشه سه جزء دارند)
  */
-export type JointValue = number | [number, number, number];
+export type JointValue = number | number[];
 
 /** وضعیت مفاصل در یک کلیدفریم — مفاصل ذکرنشده روی وضعیت پایه می‌مانند */
 export type JointPose = Partial<Record<JointName, JointValue>>;
@@ -60,14 +62,33 @@ export interface RootPose {
   rx?: number;
 }
 
+/**
+ * وضعیت پیاده‌سازی (تجهیز متحرک) در فضای ریشه بدن — مرحله ۱۹.
+ * مختصات نسبت به لگن: y بالا/پایین، z جلو/عقب. rx/rz چرخش ظاهری.
+ * برای حرکات دو‌دستی متقارن، پیاده‌سازی روی صفحه میانی بدن می‌ماند.
+ */
+export interface ImplementPose {
+  x?: number;
+  y?: number;
+  z?: number;
+  rx?: number;
+  rz?: number;
+  /** مخفی‌کردن پیاده‌سازی در این مرحله (مثلاً پرتاب که از دست خارج می‌شود) */
+  hidden?: boolean;
+}
+
 /** یک کلیدفریم از چرخه حرکت */
 export interface Keyframe {
   /** نام مرحله برای نمایش در رابط کاربری (فارسی) */
   name: string;
+  /** نام نمایشی انگلیسی مرحله — پروفایل‌های مرحله ۱۹ (برای دوزبانگی) */
+  nameEn?: string;
   /** مدت این مرحله بر حسب ثانیه در سرعت ۱× */
   duration: number;
   root?: RootPose;
   pose?: JointPose;
+  /** وضعیت پیاده‌سازی متحرک — ذکرنشده یعنی همان وضعیت مرحله قبل/پایه */
+  impl?: ImplementPose;
 }
 
 /** تعریف کامل یک حرکت — قابل توسعه برای ۴۰+ حرکت آینده */
@@ -103,6 +124,8 @@ export interface ExerciseDef {
 export interface FullPose {
   root: Required<RootPose>;
   joints: Record<JointName, [number, number, number]>;
+  /** وضعیت پیاده‌سازی متحرک — مرحله ۱۹ */
+  impl: Required<Omit<ImplementPose, "hidden">> & { hidden: boolean };
 }
 
 /** نماهای از پیش تعریف‌شده دوربین + حالت آزاد پس از چرخش دستی */

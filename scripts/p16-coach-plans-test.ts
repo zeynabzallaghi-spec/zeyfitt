@@ -50,7 +50,7 @@ async function createUser(name: string, attempt = 0): Promise<User> {
   const email = `p16test-${name}-${stamp}@test.invalid`.toLowerCase();
   const res = await fetch(`${BASE}/api/auth/sign-up/email`, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: { "Content-Type": "application/json", Origin: BASE },
     body: JSON.stringify({ email, password: PASSWORD, name: `P16 ${name}` }),
   });
   if (res.status === 429 && attempt < 3) {

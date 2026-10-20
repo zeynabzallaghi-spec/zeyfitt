@@ -1,0 +1,100 @@
+{
+  "phase": 19,
+  "generatedAt": "2026-10-20T12:02:35.400Z",
+  "allPass": true,
+  "totalActive": 905,
+  "unmapped": 0,
+  "badProfile": 0,
+  "buildFailures": 0,
+  "counterModes": {
+    "hold": 93,
+    "reps": 806
+  },
+  "legacy": {
+    "count": 6,
+    "ids": [
+      "biceps-curl-dumbbell",
+      "pushup",
+      "squat-bodyweight",
+      "lunge",
+      "shoulder-press-dumbbell",
+      "lateral-raise"
+    ]
+  },
+  "uniqueProfilesUsed": 41,
+  "profileUsage": {
+    "static-stretch": 81,
+    "curl": 57,
+    "plyo": 55,
+    "olympic": 55,
+    "crunch": 51,
+    "triceps": 47,
+    "overhead-press": 45,
+    "row": 43,
+    "hinge": 42,
+    "bench-press": 36,
+    "squat": 36,
+    "fly": 30,
+    "mobility": 29,
+    "raise": 28,
+    "cardio": 24,
+    "push-up": 23,
+    "strongman": 22,
+    "pull-up": 17,
+    "wrist": 17,
+    "calf-raise": 15,
+    "plank": 13,
+    "leg-curl": 11,
+    "pulldown": 10,
+    "shrug": 10,
+    "hip-thrust": 10,
+    "leg-press": 10,
+    "lunge": 9,
+    "floor-press": 9,
+    "leg-raise": 9,
+    "shoulder-rotation": 9,
+    "core-misc": 6,
+    "split-squat": 6,
+    "dip": 5,
+    "rollout": 5,
+    "hip-adduction": 5,
+    "pullover": 4,
+    "side-bend": 4,
+    "glute-kickback": 4,
+    "step-up": 3,
+    "leg-extension": 3,
+    "dead-bug": 1
+  },
+  "checks": [
+    {
+      "criterion": "۱۰۰٪ حرکات فعال دارای نگاشت معتبر",
+      "pass": true,
+      "detail": "unmapped=0 از 905"
+    },
+    {
+      "criterion": "هیچ نگاشتی به الگوی ناموجود اشاره نمی‌کند",
+      "pass": true,
+      "detail": "unknown-profile=0"
+    },
+    {
+      "criterion": "همه پروفایل‌ها build موفق دارند (چرخه قابل پخش)",
+      "pass": true,
+      "detail": "build-failures=0"
+    },
+    {
+      "criterion": "حرکات ایزومتریک/کششی counterMode=hold دارند",
+      "pass": true,
+      "detail": "hold=93 (مثال: Chair Lower Back Stretch, Child's Pose, Dancer's Stretch, Dynamic Back Stretch) | reps=806"
+    },
+    {
+      "criterion": "۶ حرکت legacy حفظ شده‌اند (coach3dId + بانک استاتیک)",
+      "pass": true,
+      "detail": "legacy-rows=6 expected=6"
+    },
+    {
+      "criterion": "شناسه‌های پایدار دست‌نخورده‌اند",
+      "pass": true,
+      "detail": "active=905 (۹۰۵ = ۴۸ ویرایشی + ۸۵۷ منبع آزاد)"
+    }
+  ]
+}

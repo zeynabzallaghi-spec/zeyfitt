@@ -16,7 +16,6 @@
 
 import { Info } from "lucide-react";
 import { MUSCLE_GROUPS } from "@/lib/fitness3d/muscles";
-import { getExercise } from "@/lib/fitness3d/exercises";
 import { useCoach3DStore } from "@/store/coach3d-store";
 import type { MuscleGroupId } from "@/lib/fitness3d/types";
 import { useStrings } from "@/lib/i18n/use-strings";
@@ -24,10 +23,10 @@ import { coach3DStrings } from "@/lib/i18n/sections/coach3d";
 import { cn } from "@/lib/utils";
 
 export function MusclePanel() {
-  const exerciseId = useCoach3DStore((s) => s.exerciseId);
+  const scene = useCoach3DStore((s) => s.scene);
   const focusedMuscle = useCoach3DStore((s) => s.focusedMuscle);
   const toggleFocus = useCoach3DStore((s) => s.toggleFocus);
-  const exercise = getExercise(exerciseId);
+  const exercise = scene.def;
   const t = useStrings(coach3DStrings);
 
   return (

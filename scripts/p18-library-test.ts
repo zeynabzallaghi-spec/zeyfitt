@@ -50,7 +50,7 @@ async function createUser(name: string, attempt = 0): Promise<User> {
   const email = `p18test-${name}-${stamp}@test.invalid`.toLowerCase();
   const res = await fetch(`${BASE}/api/auth/sign-up/email`, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: { "Content-Type": "application/json", Origin: BASE },
     body: JSON.stringify({ email, password: PASSWORD, name: `P18 ${name}` }),
   });
   if (res.status === 429 && attempt < 3) {
@@ -264,7 +264,8 @@ async function testApi(user: User) {
   // only3d صادقانه در API
   const only3d = await api(user, "GET", "/api/exercises?scope=search&only3d=1&pageSize=60");
   const items3d = (only3d.json.items as Record<string, unknown>[]) ?? [];
-  ok("فیلتر only3d دقیقاً ۶ حرکت می‌دهد", only3d.json.total === 6 && items3d.length === 6, `total=${only3d.json.total}`);
+  // مرحله ۱۹: همه حرکات فعال نگاشت سه‌بعدی معتبر دارند — فیلتر only3d اکنون ۹۰۵ می‌دهد
+  ok("فیلتر only3d همه حرکات فعال را می‌دهد (مرحله ۱۹)", only3d.json.total === 905 && items3d.length === 60, `total=${only3d.json.total} page=${items3d.length}`);
 
   // جست‌وجوی فارسی/انگلیسی روی مجموعه بزرگ
   const faSearch = await api(user, "GET", `/api/exercises?scope=search&q=${encodeURIComponent("پرس سینه")}&pageSize=60`);

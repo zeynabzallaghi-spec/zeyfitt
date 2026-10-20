@@ -33,7 +33,7 @@ import {
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
 import { useAppStore } from "@/store/app-store";
-import { useCoach3DStore } from "@/store/coach3d-store";
+import { openBankExerciseIn3d, useCoach3DStore } from "@/store/coach3d-store";
 import { useLocale } from "@/lib/i18n/locale";
 import { useStrings } from "@/lib/i18n/use-strings";
 import { workoutStrings } from "@/lib/i18n/sections/workout";
@@ -57,7 +57,9 @@ function ExerciseRow({ ex }: { ex: PlannedExercise & { id?: string } }) {
   const t = useStrings(workoutStrings);
   const locale = useLocale();
   const openLibraryExercise = useAppStore((s) => s.openLibraryExercise);
-  const setCoachExercise = useCoach3DStore((s) => s.setExercise);
+  const setScene = useCoach3DStore((s) => s.setScene);
+  /** فقط برای snapshot های قدیمی حرکات legacy — بانک استاتیک ۶ حرکته */
+  const setSceneFromLegacy = useCoach3DStore((s) => s.setExercise);
   const setActiveView = useAppStore((s) => s.setActiveView);
 
   // جزئیات کامل از بانک زنده سرور (مرحله ۱۸)؛ snapshot فقط هنگام حذف
@@ -75,9 +77,16 @@ function ExerciseRow({ ex }: { ex: PlannedExercise & { id?: string } }) {
       : false;
 
   const openIn3d = () => {
-    const id = live?.coach3dId ?? ex.coach3dId;
-    if (!id) return;
-    setCoachExercise(id);
+    // صحنه از نگاشت زنده بانک حل می‌شود؛ fallback فقط برای snapshot قدیمی
+    // حرکات legacy (۶ حرکت) — هیچ نگاشت ساختگی‌ای ساخته نمی‌شود
+    if (live) {
+      const ok = openBankExerciseIn3d(live, { setScene });
+      if (!ok) return;
+      setActiveView("coach3d");
+      return;
+    }
+    if (!ex.coach3dId) return;
+    setSceneFromLegacy(ex.coach3dId);
     setActiveView("coach3d");
   };
 

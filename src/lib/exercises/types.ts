@@ -292,6 +292,16 @@ export interface LibraryExercise {
  * `compound` برای رکوردهایی که منبع ساختار حرکت را مشخص نکرده null است
  * (به‌جای حدس) — نمایشگر باید در این حالت «نوع تمرین» را نشان دهد.
  */
+/**
+ * نگاشت انیمیشن سه‌بعدی پارامتری (مرحله ۱۹) — شناسه الگوی حرکتی +
+ * پارامترهای مجاز. این نگاشت از داده سرور می‌آید و کلاینت فقط از همین
+ * مسیر صحنه می‌سازد؛ هیچ حدس سمت کلاینت مجاز نیست.
+ */
+export interface Animation3dMapping {
+  profileId: string;
+  params: Record<string, string | number | boolean> | null;
+}
+
 export interface LibraryExerciseCard {
   id: string;
   fa: string;
@@ -306,8 +316,10 @@ export interface LibraryExerciseCard {
   exerciseType: ExerciseTypeId;
   /** انیمیشن سه‌بعدی واقعاً موجود است (مبنای مجاز نمایش دکمه ۳بعدی) */
   has3d: boolean;
-  /** فقط برای has3d — شناسه بانک مربی سه‌بعدی */
+  /** فقط برای has3d legacy (۶ حرکت ویرایشی) — شناسه بانک استاتیک مربی سه‌بعدی */
   coach3dId?: string;
+  /** فقط برای has3d پارامتری — نگاشت به الگوی حرکتی (مرحله ۱۹) */
+  animation3d?: Animation3dMapping;
   /** زبان محتوای آموزشی رکورد (fa = ویرایشی، en = متن منبع) */
   contentLocale: "fa" | "en";
   summary: string;

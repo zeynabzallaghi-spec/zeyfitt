@@ -75,6 +75,27 @@ export interface Coach3DStrings {
   exerciseListAria: string;
   exerciseListTitle: string;
   exerciseCountBadge: (count: number) => string;
+  /** جست‌وجوی بانک کامل (مرحله ۱۹) */
+  searchPlaceholder: string;
+  listLoading: string;
+  listError: string;
+  listRetry: string;
+  searchEmpty: string;
+  loadMore: (remaining: string) => string;
+  /** واحد زمان نگه‌داشتن برای حرکات ایزومتریک/کششی */
+  holdUnit: string;
+  // پیش‌نمایش سه‌بعدی در انتخابگر (مرحله ۱۹)
+  previewAction: string;
+  previewAria: (name: string) => string;
+  previewTitle: (name: string) => string;
+  previewUnavailable: string;
+  previewNoteFa: string;
+  previewNoteEn: string;
+  // کارت اطلاعات الگو برای حرکات پارامتری
+  patternInfoTitle: string;
+  counterModeLabel: (hold: boolean) => string;
+  contentRefTitle: string;
+  contentRefBody: string;
   // جزئیات حرکت
   detailsAria: (name: string) => string;
   guideTitle: (name: string) => string;
@@ -329,7 +350,7 @@ const FA: Coach3DStrings = {
     post: " افزایش می‌یابد (نه با فریم یا کلیک)؛ در لانج هر چرخه شامل دو لانج چپ و راست است. زوایای اجرای شنا و لانج تقریبی و برای آموزش الگوی حرکت است.",
   },
   transparencyMuscleHighlight:
-    "هایلایت عضلات نمایش گرافیکی «عضلات هدف» است و ادعای شبیه‌سازی علمی یا اندازه‌گیری EMG ندارد. بانک کامل ۴۰+ حرکت در مرحله کتابخانه حرکات به همین ساختار اضافه خواهد شد.",
+    "هایلایت عضلات نمایش گرافیکی «عضلات هدف» است و ادعای شبیه‌سازی علمی یا اندازه‌گیری EMG ندارد. انیمیشن همه حرکات بانک با الگوهای حرکتی پارامتری از داده واقعی هر حرکت (نام، تجهیزات، عضلات، نوع تمرین) ساخته می‌شود و زوایا تقریبی‌اند.",
   // نام حرکات — داده دوزبانه است؛ فارسی نام اصلی را نشان می‌دهد
   exerciseName: (fa) => fa,
   exerciseAltName: (_fa, en) => en,
@@ -337,7 +358,33 @@ const FA: Coach3DStrings = {
   exerciseListAria: "انتخاب حرکت",
   exerciseListTitle: "انتخاب حرکت",
   exerciseCountBadge: (count) => `${localeNumber(count, "fa")} حرکت قابل اجرا`,
+  searchPlaceholder: "جست‌وجوی حرکت (فارسی یا انگلیسی)…",
+  listLoading: "در حال بارگذاری بانک حرکات…",
+  listError: "بارگذاری بانک حرکات ناموفق بود.",
+  listRetry: "تلاش مجدد",
+  searchEmpty: "حرکتی با این عبارت پیدا نشد.",
+  loadMore: (remaining) => `نمایش بیشتر (${remaining} حرکت دیگر)`,
+  holdUnit: "زمان نگه‌داشتن",
+  // پیش‌نمایش سه‌بعدی در انتخابگر
+  previewAction: "نمایش ۳بعدی",
+  previewAria: (name) => `مشاهده ${name} در مربی سه‌بعدی`,
+  previewTitle: (name) => `پیش‌نمایش سه‌بعدی — ${name}`,
+  previewUnavailable:
+    "برای این حرکت انیمیشن سه‌بعدی معتبری در دسترس نیست.",
+  previewNoteFa:
+    "انیمیشن از الگوی حرکتی پارامتری همان حرکت ساخته می‌شود؛ زوایا تقریبی و برای آموزش الگوی کلی است. کنترل کامل پخش در نمای مربی سه‌بعدی در دسترس است.",
+  previewNoteEn:
+    "The animation is generated from the exercise's parametric movement profile; angles are approximate and meant to teach the overall pattern. Full playback controls are available in the 3D coach view.",
   // جزئیات حرکت
+  // کارت اطلاعات الگو
+  patternInfoTitle: "الگوی حرکتی سه‌بعدی",
+  counterModeLabel: (hold) =>
+    hold
+      ? "این حرکت ایزومتریک/کششی است؛ به‌جای شمارنده تکرار، زمان نگه‌داشتن نمایش داده می‌شود."
+      : "شمارنده تکرار با تکمیل چرخه واقعی حرکت افزایش می‌یابد.",
+  contentRefTitle: "راهنمای اجرا",
+  contentRefBody:
+    "شرح کامل اجرا، تنفس و اشتباهات رایج این حرکت در جزئیات کتابخانه حرکات (دکمه راهنما) نمایش داده می‌شود.",
   detailsAria: (name) => `جزئیات حرکت ${name}`,
   guideTitle: (name) => `راهنمای اجرای ${name}`,
   startPositionTitle: "وضعیت شروع",
@@ -415,7 +462,7 @@ const EN: Coach3DStrings = {
     post: " (not per frame or click); in the lunge, each cycle includes one left and one right lunge. Push-up and lunge joint angles are approximate and meant to teach the movement pattern.",
   },
   transparencyMuscleHighlight:
-    "The muscle highlight is a graphic representation of the \"target muscles\" and makes no claim of scientific simulation or EMG measurement. The full 40+ exercise bank will be added to this structure in the library stage.",
+    "The muscle highlight is a graphic representation of the \"target muscles\" and makes no claim of scientific simulation or EMG measurement. Every exercise in the bank is animated through parametric movement profiles derived from its real data (name, equipment, muscles, exercise type); joint angles are approximate.",
   // Exercise names — data is bilingual; English shows the English name
   exerciseName: (_fa, en) => en || _fa,
   exerciseAltName: (fa) => fa,
@@ -423,7 +470,33 @@ const EN: Coach3DStrings = {
   exerciseListAria: "Choose exercise",
   exerciseListTitle: "Choose exercise",
   exerciseCountBadge: (count) => `${count} playable exercises`,
+  searchPlaceholder: "Search exercises (English or Persian)…",
+  listLoading: "Loading the exercise bank…",
+  listError: "Failed to load the exercise bank.",
+  listRetry: "Try again",
+  searchEmpty: "No exercises match this query.",
+  loadMore: (remaining) => `Load more (${remaining} remaining)`,
+  holdUnit: "hold time",
+  // 3D preview in picker
+  previewAction: "3D preview",
+  previewAria: (name) => `View ${name} in the 3D coach`,
+  previewTitle: (name) => `3D preview — ${name}`,
+  previewUnavailable:
+    "No valid 3D animation is available for this exercise.",
+  previewNoteFa:
+    "انیمیشن از الگوی حرکتی پارامتری همان حرکت ساخته می‌شود؛ زوایا تقریبی و برای آموزش الگوی کلی است. کنترل کامل پخش در نمای مربی سه‌بعدی در دسترس است.",
+  previewNoteEn:
+    "The animation is generated from the exercise's parametric movement profile; angles are approximate and meant to teach the overall pattern. Full playback controls are available in the 3D coach view.",
   // Exercise details
+  // Profile info card
+  patternInfoTitle: "3D movement profile",
+  counterModeLabel: (hold) =>
+    hold
+      ? "This is an isometric/stretch pattern; hold time is displayed instead of a rep counter."
+      : "The rep counter increments with each completed exercise cycle.",
+  contentRefTitle: "Execution guide",
+  contentRefBody:
+    "Full execution steps, breathing and common mistakes are shown in the exercise library details (guide button).",
   detailsAria: (name) => `Exercise details: ${name}`,
   guideTitle: (name) => `How to perform ${name}`,
   startPositionTitle: "Starting position",

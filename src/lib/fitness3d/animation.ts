@@ -9,6 +9,7 @@
 
 import type {
   FullPose,
+  ImplementPose,
   JointName,
   JointPose,
   JointValue,
@@ -58,10 +59,10 @@ export const REST_POSE: Record<JointName, JointValue> = {
 /** ارتفاع ریشه (مرکز لگن) در حالت ایستاده بر حسب متر */
 export const PELVIS_Y = 1.0;
 
-/** نرمال‌سازی مقدار مفصل به آرایه سه‌تایی */
+/** نرمال‌سازی مقدار مفصل به آرایه سه‌تایی — آرایه‌های کوتاه با صفر کامل می‌شوند */
 function asTriple(v: JointValue | undefined, fallback: JointValue): [number, number, number] {
   const src = v ?? fallback;
-  if (Array.isArray(src)) return [src[0], src[1], src[2]];
+  if (Array.isArray(src)) return [src[0] ?? 0, src[1] ?? 0, src[2] ?? 0];
   return [src, 0, 0];
 }
 
@@ -82,6 +83,19 @@ export function cycleDuration(cycle: Keyframe[]): number {
 }
 
 const ZERO_ROOT = { y: 0, z: 0, rx: 0 } as const;
+const ZERO_IMPL = { x: 0, y: 0, z: 0, rx: 0, rz: 0, hidden: false } as const;
+
+function implOf(kf: Keyframe | undefined): Required<Omit<ImplementPose, "hidden">> & { hidden: boolean } {
+  const i = kf?.impl;
+  return {
+    x: i?.x ?? ZERO_IMPL.x,
+    y: i?.y ?? ZERO_IMPL.y,
+    z: i?.z ?? ZERO_IMPL.z,
+    rx: i?.rx ?? ZERO_IMPL.rx,
+    rz: i?.rz ?? ZERO_IMPL.rz,
+    hidden: i?.hidden ?? false,
+  };
+}
 
 function rootOf(kf: Keyframe | undefined): Required<NonNullable<Keyframe["root"]>> {
   return {
@@ -113,6 +127,14 @@ export function blendKeyframes(a: Keyframe, b: Keyframe, t: number): FullPose {
   }
   const ra = rootOf(a);
   const rb = rootOf(b);
+  // پیاده‌سازی متحرک (تجهیز) — بین دو کلیدفریم با همان میان‌یابی نرم؛
+  // در مرز مخفی‌شدن، انتقال ناگهانی قابل قبول است (پرتاب/رهاکردن)
+  const ia = implOf(a);
+  const ib = implOf(b);
+  const hidden = ia.hidden && ib.hidden;
+  const sImpl = hidden ? 0 : s;
+  const from = ia.hidden ? ib : ia;
+  const to = ib.hidden ? ia : ib;
   return {
     root: {
       y: lerp(ra.y, rb.y, s),
@@ -120,6 +142,14 @@ export function blendKeyframes(a: Keyframe, b: Keyframe, t: number): FullPose {
       rx: lerp(ra.rx, rb.rx, s),
     },
     joints,
+    impl: {
+      x: lerp(from.x, to.x, sImpl),
+      y: lerp(from.y, to.y, sImpl),
+      z: lerp(from.z, to.z, sImpl),
+      rx: lerp(from.rx, to.rx, sImpl),
+      rz: lerp(from.rz, to.rz, sImpl),
+      hidden,
+    },
   };
 }
 

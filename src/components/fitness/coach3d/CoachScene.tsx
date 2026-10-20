@@ -16,9 +16,12 @@ import { Canvas } from "@react-three/fiber";
 import { ContactShadows, Grid, Sparkles } from "@react-three/drei";
 import { BodyModel, ExerciseAnimator, createRig } from "./BodyModel";
 import { CameraRig } from "./CameraRig";
+import { StaticSceneProps } from "./StaticSceneProps";
+import { useCoach3DStore } from "@/store/coach3d-store";
 
 export default function CoachScene() {
   const rig = useRef(createRig());
+  const sceneProps = useCoach3DStore((s) => s.scene.sceneProps);
   const dpr: [number, number] =
     typeof window !== "undefined" && window.innerWidth < 768 ? [1, 1.5] : [1, 2];
 
@@ -40,6 +43,7 @@ export default function CoachScene() {
       <BodyModel rig={rig} />
       <ExerciseAnimator rig={rig} />
       <CameraRig />
+      <StaticSceneProps kinds={sceneProps} />
 
       {/* سایه تماسی زیر مدل برای اتصال به کف */}
       <ContactShadows

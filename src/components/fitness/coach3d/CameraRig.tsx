@@ -11,7 +11,6 @@ import * as THREE from "three";
 import { useFrame, useThree } from "@react-three/fiber";
 import { OrbitControls } from "@react-three/drei";
 import { useCoach3DStore } from "@/store/coach3d-store";
-import { getExercise } from "@/lib/fitness3d/exercises";
 import { smoothstep } from "@/lib/fitness3d/animation";
 import type { CameraView } from "@/lib/fitness3d/types";
 
@@ -35,13 +34,13 @@ interface Transition {
 
 export function CameraRig() {
   const view = useCoach3DStore((s) => s.view);
-  const exerciseId = useCoach3DStore((s) => s.exerciseId);
+  const scene = useCoach3DStore((s) => s.scene);
   const setView = useCoach3DStore((s) => s.setView);
   const controlsRef = useRef<OrbitControlsRef | null>(null);
   const camera = useThree((s) => s.camera);
   const transition = useRef<Transition | null>(null);
 
-  const targetY = getExercise(exerciseId).cameraTargetY ?? 0.95;
+  const targetY = scene.def.cameraTargetY ?? 0.95;
 
   /* شروع انتقال نرم با تغییر نما یا ارتفاع هدف حرکت */
   useEffect(() => {

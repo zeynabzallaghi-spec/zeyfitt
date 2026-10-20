@@ -51,7 +51,7 @@ import {
 } from "@/components/ui/select";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { useAppStore } from "@/store/app-store";
-import { useCoach3DStore } from "@/store/coach3d-store";
+import { openBankExerciseIn3d, useCoach3DStore } from "@/store/coach3d-store";
 import {
   useExerciseLibraryStore,
   ensureExerciseIndex,
@@ -650,7 +650,7 @@ export function LibraryView() {
   const locale = useLocale();
   const item = getNavItem("library");
   const setActiveView = useAppStore((s) => s.setActiveView);
-  const setExercise = useCoach3DStore((s) => s.setExercise);
+  const setScene = useCoach3DStore((s) => s.setScene);
   const openLibraryExercise = useAppStore((s) => s.openLibraryExercise);
 
   const status = useExerciseLibraryStore((s) => s.status);
@@ -747,14 +747,15 @@ export function LibraryView() {
     closeLibraryExercise();
   }, [closeLibraryExercise]);
 
-  /** انتقال واقعی به مربی سه‌بعدی — فقط با تأیید انیمیشن واقعی از بانک */
+  /** انتقال واقعی به مربی سه‌بعدی — فقط با تأیید انیمیشن واقعی از بانک (نگاشت پارامتری یا legacy) */
   const openIn3d = useCallback(
     (ex: LibraryExerciseCard) => {
-      if (!ex.has3d || !ex.coach3dId) return;
-      setExercise(ex.coach3dId);
+      if (!ex.has3d) return;
+      const ok = openBankExerciseIn3d(ex, { setScene });
+      if (!ok) return;
       setActiveView("coach3d");
     },
-    [setExercise, setActiveView]
+    [setScene, setActiveView]
   );
 
   const onToggleMuscle = useCallback(

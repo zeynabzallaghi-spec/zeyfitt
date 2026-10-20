@@ -11,20 +11,31 @@
  */
 
 import { useEffect, useMemo, useState } from "react";
-import { Check, Play, Plus, RotateCcw, Search, SearchX, X } from "lucide-react";
+import { Box, Check, Play, Plus, RotateCcw, Search, SearchX, X } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
 import { useLocale, useDir } from "@/lib/i18n/locale";
 import { useStrings } from "@/lib/i18n/use-strings";
 import { workoutStrings } from "@/lib/i18n/sections/workout";
+import { coach3DStrings } from "@/lib/i18n/sections/coach3d";
 import { sharedStrings } from "@/lib/i18n/sections/shared";
 import {
   useExerciseLibraryStore,
   ensureExerciseIndex,
 } from "@/store/exercise-library-store";
+import { useCoach3DStore } from "@/store/coach3d-store";
+import { resolveScene } from "@/lib/fitness3d/resolve";
+import type { MuscleGroupId } from "@/lib/fitness3d/types";
 import { filterCards } from "@/lib/exercises/search";
 import { EXERCISE_CATEGORIES, type ExerciseCategoryId } from "@/lib/exercises/types";
+import { MiniCoachScene } from "@/components/fitness/coach3d/MiniCoachScene";
 
 const PAGE_SIZE = 30;
 
@@ -54,8 +65,13 @@ export function ExercisePicker({
 }) {
   const t = useStrings(workoutStrings);
   const shared = useStrings(sharedStrings);
+  const t3d = useStrings(coach3DStrings);
   const locale = useLocale();
   const dir = useDir();
+  const setScene = useCoach3DStore((s) => s.setScene);
+  const togglePlay = useCoach3DStore((s) => s.togglePlay);
+  const [previewId, setPreviewId] = useState<string | null>(null);
+  const previewCard = previewId ? useExerciseLibraryStore.getState().getById(previewId) : null;
 
   const status = useExerciseLibraryStore((s) => s.status);
   const items = useExerciseLibraryStore((s) => s.items);
@@ -191,6 +207,18 @@ export function ExercisePicker({
                     {ex.has3d && <span className="font-bold text-primary">{t.has3d}</span>}
                   </p>
                 </div>
+                {ex.has3d && (
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    onClick={() => setPreviewId(ex.id)}
+                    className="h-7 shrink-0 px-2 text-[10px] font-bold text-primary hover:bg-primary/10"
+                    aria-label={t3d.previewAria(locale === "fa" ? ex.fa : ex.en)}
+                  >
+                    <Box className="size-3.5" aria-hidden="true" />
+                    {t3d.previewAction}
+                  </Button>
+                )}
                 {showAddButton && (onPick || onToggle) && (
                   <Button
                     size="sm"
@@ -260,6 +288,99 @@ export function ExercisePicker({
           )}
         </div>
       )}
+
+      {/* دیالوگ پیش‌نمایش سه‌بعدی — صحنه از نگاشت بانک حل می‌شود */}
+      <Dialog
+        open={previewId !== null}
+        onOpenChange={(open) => {
+          if (!open) {
+            setPreviewId(null);
+          }
+        }}
+      >
+        <DialogContent className="max-w-md" dir={dir}>
+          <DialogHeader>
+            <DialogTitle className="text-sm">
+              {previewCard ? t3d.previewTitle(locale === "fa" ? previewCard.fa : previewCard.en) : ""}
+            </DialogTitle>
+          </DialogHeader>
+          {previewCard && (
+            <PreviewBody
+              card={previewCard}
+              locale={locale}
+              onPlay={() => {
+                // صحنه در PreviewBody روی store اعمال شده؛ اینجا فقط پخش
+                togglePlay();
+              }}
+            />
+          )}
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
+}
+
+/**
+ * بدنه پیش‌نمایش — بارگذاری صحنه روی تغییر حرکت با setter مستقیم
+ * (بدون state مشتق) و پاک‌سازی خودکار R3F هنگام بستن دیالوگ.
+ */
+function PreviewBody({
+  card,
+  locale,
+  onPlay,
+}: {
+  card: NonNullable<ReturnType<ReturnType<typeof useExerciseLibraryStore.getState>["getById"]>>;
+  locale: string;
+  onPlay: () => void;
+}) {
+  const setScene = useCoach3DStore((s) => s.setScene);
+  const t3d = useStrings(coach3DStrings);
+  // حل صحنه تابع خالص است — در رندر مشتق می‌شود (الگوی رسمی پروژه)؛
+  // فقط اعمال آن روی store سراسری در effect انجام می‌شود
+  const scene = useMemo(() => {
+    try {
+      return resolveScene({
+        id: card.id,
+        fa: card.fa,
+        en: card.en,
+        difficulty: card.difficulty,
+        primaryMuscles: card.primaryMuscles as MuscleGroupId[],
+        secondaryMuscles: card.secondaryMuscles as MuscleGroupId[],
+        coach3dId: card.coach3dId,
+        animation3d: card.animation3d ?? null,
+      });
+    } catch {
+      return null;
+    }
+  }, [card]);
+
+  useEffect(() => {
+    if (scene) setScene(scene);
+  }, [scene, setScene]);
+
+  if (!scene) {
+    return (
+      <p className="rounded-xl border border-border/50 bg-secondary/30 p-4 text-center text-[11px] leading-6 text-muted-foreground">
+        {t3d.previewUnavailable}
+      </p>
+    );
+  }
+  return (
+    <div className="flex flex-col gap-3">
+      <div className="relative h-72 overflow-hidden rounded-xl border border-border/50 bg-aura-lime">
+        <MiniCoachScene />
+      </div>
+      <Button
+        size="sm"
+        className="h-8 w-full text-xs font-bold"
+        onClick={onPlay}
+      >
+        <Play className="size-3.5" aria-hidden="true" />
+        {t3d.playLabel}
+      </Button>
+      <p className="text-[10px] leading-5 text-muted-foreground">
+        {locale === "fa" ? t3d.previewNoteFa : t3d.previewNoteEn}
+      </p>
     </div>
   );
 }

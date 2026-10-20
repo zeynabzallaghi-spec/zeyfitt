@@ -315,8 +315,10 @@ async function main() {
       datasetVersion: null,
       status: "active",
       coach3dId: ex.coach3dId ?? null,
-      animation3dStatus: ex.coach3dId ? "ready" : "none",
-      animation3dProfileId: ex.coach3dId ?? null,
+      // مرحله ۱۹: وضعیت و نگاشت سه‌بعدی دیگر توسط import کتابخانه بازنویسی
+      // نمی‌شود — مالک این ستون‌ها import نگاشت مرحله ۱۹ است تا اجرای مجدد
+      // این اسکریپت، نگاشت‌های پارامتری را پاک نکند (۶ حرکت legacy با
+      // coach3dId حل می‌شوند و profileId آن‌ها باید null بماند).
     };
 
     const existing = await db.exercise.findUnique({ where: { id: ex.id } });

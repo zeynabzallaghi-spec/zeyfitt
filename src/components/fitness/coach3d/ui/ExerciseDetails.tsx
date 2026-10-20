@@ -10,7 +10,7 @@
  */
 
 import { AlertTriangle, CheckCircle2, Lightbulb, ListChecks, Wrench, XCircle } from "lucide-react";
-import { getExercise } from "@/lib/fitness3d/exercises";
+
 import { useCoach3DStore } from "@/store/coach3d-store";
 import { useLocale } from "@/lib/i18n/locale";
 import { localeNumber } from "@/lib/i18n/format";
@@ -18,12 +18,16 @@ import { useStrings } from "@/lib/i18n/use-strings";
 import { coach3DStrings } from "@/lib/i18n/sections/coach3d";
 
 export function ExerciseDetails() {
-  const exerciseId = useCoach3DStore((s) => s.exerciseId);
-  const exercise = getExercise(exerciseId);
+  const scene = useCoach3DStore((s) => s.scene);
+  const exercise = scene.def;
   const t = useStrings(coach3DStrings);
   const locale = useLocale();
   const content = t.exerciseContent(exercise.id);
   const name = t.exerciseName(exercise.fa, exercise.en);
+  // حرکات پارامتری (۹۰۵) محتوای آموزشی استاتیک ندارند — به‌جای بخش‌های
+  // خالی، کارت اطلاعات الگو + راهنمای ارجاع به کتابخانه نمایش داده می‌شود
+  const hasStaticContent =
+    content.startPosition.length > 0 || content.steps.length > 0 || content.mistakes.length > 0;
 
   return (
     <section aria-label={t.detailsAria(name)} className="rounded-2xl border border-border/60 bg-card p-5 md:p-6">
@@ -42,6 +46,31 @@ export function ExerciseDetails() {
         </div>
       </div>
 
+      {!hasStaticContent && (
+        <div className="mt-4 grid gap-3 text-xs leading-6 text-muted-foreground md:grid-cols-2">
+          <div className="rounded-xl border border-border/50 bg-secondary/30 p-3">
+            <p className="font-bold text-foreground/85">{t.patternInfoTitle}</p>
+            <p className="mt-1.5">
+              {t.counterModeLabel(scene.counterMode === "hold")}
+            </p>
+            <p className="mt-1 font-mono text-[10px] text-muted-foreground/70" dir="ltr">
+              {scene.profileId ? `profile: ${scene.profileId}` : "legacy animation"}
+            </p>
+          </div>
+          <div className="rounded-xl border border-border/50 bg-secondary/30 p-3">
+            <p className="font-bold text-foreground/85">{t.contentRefTitle}</p>
+            <p className="mt-1.5">{t.contentRefBody}</p>
+            {(scene.honestyNote || scene.honestyNoteEn) && (
+              <p className="mt-2 flex items-start gap-1.5 rounded-lg border border-amber-400/25 bg-amber-400/5 p-2 text-[10px] leading-5 text-amber-200/80">
+                <CheckCircle2 className="mt-0.5 size-3.5 shrink-0 text-amber-400" aria-hidden="true" />
+                {locale === "fa" ? scene.honestyNote : scene.honestyNoteEn ?? scene.honestyNote}
+              </p>
+            )}
+          </div>
+        </div>
+      )}
+
+      {hasStaticContent && (
       <div className="mt-4 grid gap-5 lg:grid-cols-3">
         {/* وضعیت شروع + مفاصل */}
         <div className="flex flex-col gap-4">
@@ -112,6 +141,7 @@ export function ExerciseDetails() {
           )}
         </div>
       </div>
+      )}
     </section>
   );
 }
