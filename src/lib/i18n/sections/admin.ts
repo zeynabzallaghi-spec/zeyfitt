@@ -87,6 +87,9 @@ export interface AdminStrings {
   noMessage: string;
   certificationsLabel: string;
   noCertifications: string;
+  applicationAttachmentsLabel: string;
+  attachmentViewAction: string;
+  attachmentNoAttachments: string;
   approveAction: string;
   rejectAction: string;
   publishCheckbox: string;
@@ -210,6 +213,9 @@ const ADMIN_STRINGS: Record<Locale, AdminStrings> = {
     messageLabel: "متن معرفی",
     noMessage: "متقاضی متنی ننوشته است.",
     certificationsLabel: "مدارک اعلامی",
+    applicationAttachmentsLabel: "اسناد پیوستی متقاضی",
+    attachmentViewAction: "مشاهده سند",
+    attachmentNoAttachments: "سندی پیوست نشده است",
     noCertifications: "مدارکی ثبت نشده است.",
     approveAction: "تأیید",
     rejectAction: "رد",
@@ -329,6 +335,9 @@ const ADMIN_STRINGS: Record<Locale, AdminStrings> = {
     messageLabel: "Intro message",
     noMessage: "The applicant did not write a message.",
     certificationsLabel: "Declared certifications",
+    applicationAttachmentsLabel: "Attached documents",
+    attachmentViewAction: "View document",
+    attachmentNoAttachments: "No documents attached",
     noCertifications: "No certifications submitted.",
     approveAction: "Approve",
     rejectAction: "Reject",

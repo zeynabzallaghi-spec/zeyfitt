@@ -24,17 +24,27 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
-import { Crown, ClipboardList, LifeBuoy, Plus, RefreshCw } from "lucide-react";
+import {
+  Crown,
+  ClipboardList,
+  LifeBuoy,
+  Plus,
+  RefreshCw,
+  FileText,
+  Paperclip,
+  Trash2,
+} from "lucide-react";
 import { useStrings } from "@/lib/i18n/use-strings";
 import { supportStrings } from "@/lib/i18n/sections/support";
 import { useLocale } from "@/lib/i18n/locale";
-import { localeDateTimeLabel } from "@/lib/i18n/format";
+import { localeDateTimeLabel, localeNumber } from "@/lib/i18n/format";
 import { ProfileSection } from "../shared/profile-fields";
 import { EmptyState } from "../shared/empty-state";
 import {
   usePremiumRequest,
   useSupportTickets,
   useCoachApplication,
+  type ApplicationAttachmentClient,
 } from "@/hooks/use-admin";
 
 type SupportT = ReturnType<typeof supportStrings>;
@@ -159,14 +169,142 @@ export function PremiumRequestSection() {
 
 /* ---------------------- درخواست مربی‌گری ---------------------- */
 
+const ATTACH_ACCEPT = "image/jpeg,image/png,image/webp,application/pdf";
+const ATTACH_MAX = 5;
+
+function formatBytes(n: number, locale: "fa" | "en"): string {
+  if (n >= 1024 * 1024) {
+    return `${localeNumber(Math.round((n / (1024 * 1024)) * 10) / 10, locale)} MB`;
+  }
+  if (n >= 1024) return `${localeNumber(Math.round(n / 1024), locale)} KB`;
+  return `${localeNumber(n, locale)} B`;
+}
+
+/** ردیف نمایشی یک سند پیوستی — لینک مشاهده همان مسیر API مالکیت‌محور است */
+function AttachmentRow({
+  att,
+  locale,
+  viewLabel,
+  removeLabel,
+  onRemove,
+  removing,
+}: {
+  att: ApplicationAttachmentClient;
+  locale: "fa" | "en";
+  viewLabel: string;
+  removeLabel: string;
+  onRemove?: (id: string) => void;
+  removing?: boolean;
+}) {
+  return (
+    <div className="flex flex-wrap items-center gap-1.5 rounded-lg border border-border/50 bg-background/40 px-2.5 py-1.5">
+      <FileText className="size-3.5 shrink-0 text-muted-foreground" aria-hidden="true" />
+      <p className="min-w-0 flex-1 truncate text-[11px] font-bold">{att.title}</p>
+      <span dir="ltr" className="truncate text-[10px] text-muted-foreground">
+        {att.fileName} · {formatBytes(att.sizeBytes, locale)}
+      </span>
+      <a
+        href={`/api/coach/apply/attachments/${encodeURIComponent(att.id)}`}
+        target="_blank"
+        rel="noreferrer"
+        className="shrink-0 text-[10px] font-bold text-primary underline-offset-2 hover:underline"
+      >
+        {viewLabel}
+      </a>
+      {onRemove && (
+        <Button
+          variant="ghost"
+          size="icon"
+          aria-label={removeLabel}
+          disabled={removing}
+          onClick={() => onRemove(att.id)}
+          className="size-7 shrink-0 text-muted-foreground hover:text-rose-300"
+        >
+          <Trash2 className="size-3.5" aria-hidden="true" />
+        </Button>
+      )}
+    </div>
+  );
+}
+
+/** افزودن سند به فهرست موقت/زنده — عنوان + فایل + دکمه افزودن */
+function AttachmentComposer({
+  t,
+  onAdd,
+  disabled,
+}: {
+  t: SupportT;
+  onAdd: (input: { title: string; file: File }) => void;
+  disabled?: boolean;
+}) {
+  const [title, setTitle] = useState("");
+  const [file, setFile] = useState<File | null>(null);
+
+  return (
+    <div className="flex flex-col gap-1.5 rounded-lg border border-border/50 bg-secondary/20 p-2.5">
+      <Label htmlFor="coach-apply-att-title" className="text-[11px] font-bold">
+        {t.attachmentTitleLabel}
+      </Label>
+      <Input
+        id="coach-apply-att-title"
+        value={title}
+        onChange={(e) => setTitle(e.target.value)}
+        placeholder={t.attachmentTitlePlaceholder}
+        maxLength={80}
+        className="h-9 text-xs"
+      />
+      <Label htmlFor="coach-apply-att-file" className="text-[11px] font-bold">
+        {t.attachmentChooseFile}
+      </Label>
+      <Input
+        id="coach-apply-att-file"
+        type="file"
+        accept={ATTACH_ACCEPT}
+        onChange={(e) => setFile(e.target.files?.[0] ?? null)}
+        className="h-9 text-xs file:me-2 file:h-7 file:rounded-md file:border-0 file:bg-secondary file:px-2 file:text-[10px] file:font-bold"
+      />
+      <Button
+        variant="outline"
+        size="sm"
+        className="w-fit font-bold"
+        disabled={disabled || title.trim().length === 0 || !file}
+        onClick={() => {
+          if (!file) return;
+          onAdd({ title: title.trim(), file });
+          setTitle("");
+          setFile(null);
+        }}
+      >
+        <Paperclip className="size-3.5" aria-hidden="true" />
+        {t.attachmentAddAction}
+      </Button>
+    </div>
+  );
+}
+
 export function CoachApplicationSection() {
   const t = useStrings(supportStrings);
-  const { application, role, loading, error, busy, submit, refresh } = useCoachApplication(true);
+  const locale = useLocale();
+  const {
+    application,
+    role,
+    loading,
+    error,
+    busy,
+    submit,
+    uploadAttachment,
+    deleteAttachment,
+    refresh,
+  } = useCoachApplication(true);
   const { toast } = useToast();
   const [open, setOpen] = useState(false);
+  // attachmentsOnly: درخواست در جریان است — فقط افزودن/حذف سند (بدون فرم)
+  const [attachmentsOnly, setAttachmentsOnly] = useState(false);
   const [message, setMessage] = useState("");
   const [years, setYears] = useState("");
   const [certs, setCerts] = useState("");
+  // اسناد انتخاب‌شده که هنوز ارسال نشده‌اند — پس از ثبت فرم بارگذاری میشوند
+  const [staging, setStaging] = useState<{ title: string; file: File }[]>([]);
 
   if (role === "COACH" || role === "ADMIN") {
     return (
@@ -175,6 +313,10 @@ export function CoachApplicationSection() {
       </ProfileSection>
     );
   }
+
+  const serverAttachments = application?.attachments ?? [];
+  const canEdit = !application || application.status === "rejected";
+  const canAttach = !application || application.status === "pending" || application.status === "rejected";
 
   async function doSubmit() {
     const certificationList = certs
@@ -185,19 +327,58 @@ export function CoachApplicationSection() {
     const parsedYears = years.trim() === "" ? null : Number.parseInt(years, 10);
     const result = await submit({
       message: message.trim() ? message.trim() : undefined,
-      experienceYears: parsedYears != null && Number.isInteger(parsedYears) && parsedYears >= 0 ? parsedYears : undefined,
+      experienceYears:
+        parsedYears != null && Number.isInteger(parsedYears) && parsedYears >= 0
+          ? parsedYears
+          : undefined,
       certifications: certificationList.length > 0 ? certificationList : undefined,
     });
-    if (result.ok) {
-      toast({ description: t.supportThanks });
-      setOpen(false);
-      void refresh();
-    } else {
+    if (!result.ok) {
       toast({ description: result.message, variant: "destructive" });
+      return;
+    }
+    // فرم ثبت شد — حالا اسناد منتخب را دونه‌دونه بارگذاری میکنیم
+    const queue = [...staging];
+    setStaging([]);
+    for (const item of queue) {
+      const up = await uploadAttachment(item);
+      if (!up.ok) {
+        // شکست بارگذاری — بقیه در فهرست میماند تا کاربر دوباره تلاش کند
+        setStaging(queue.slice(queue.indexOf(item)));
+        toast({ description: up.message, variant: "destructive" });
+        void refresh();
+        return;
+      }
+    }
+    toast({ description: staging.length > 0 ? t.attachmentAddedNote : t.supportThanks });
+    setOpen(false);
+    void refresh();
+  }
+
+  async function doUploadLive(input: { title: string; file: File }) {
+    const up = await uploadAttachment(input);
+    if (up.ok) {
+      toast({ description: t.attachmentAddedNote });
+    } else {
+      toast({ description: up.message, variant: "destructive" });
     }
   }
 
-  const canEdit = !application || application.status === "rejected";
+  async function doRemove(id: string) {
+    const del = await deleteAttachment(id);
+    if (!del.ok) {
+      toast({ description: del.message, variant: "destructive" });
+    }
+  }
+
+  function openDialog(onlyAttachments: boolean) {
+    setAttachmentsOnly(onlyAttachments);
+    setMessage("");
+    setYears("");
+    setCerts("");
+    setStaging([]);
+    setOpen(true);
+  }
 
   return (
     <ProfileSection icon={ClipboardList} title={t.coachApplySectionTitle}>
@@ -220,17 +401,56 @@ export function CoachApplicationSection() {
               </p>
             </div>
           )}
+
+          {/* فهرست اسناد پیوستی فعلی — نمایش برای همه وضعیت‌ها */}
+          {canAttach && (
+            <div className="flex flex-col gap-1.5">
+              <div className="flex flex-wrap items-center gap-2">
+                <p className="min-w-0 flex-1 text-[10px] font-bold text-muted-foreground">
+                  {t.coachApplyAttachmentsLabel} · {t.attachmentCount(serverAttachments.length)}
+                </p>
+                {application?.status === "pending" && serverAttachments.length < ATTACH_MAX && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="h-7 text-[10px] font-bold"
+                    disabled={busy}
+                    onClick={() => openDialog(true)}
+                  >
+                    <Paperclip className="size-3" aria-hidden="true" />
+                    {t.attachmentPendingAddAction}
+                  </Button>
+                )}
+              </div>
+              {serverAttachments.length === 0 ? (
+                <p className="text-[10px] leading-5 text-muted-foreground/70">{t.attachmentEmptyNote}</p>
+              ) : (
+                serverAttachments.map((att) => (
+                  <AttachmentRow
+                    key={att.id}
+                    att={att}
+                    locale={locale}
+                    viewLabel={t.attachmentViewAction}
+                    removeLabel={t.attachmentRemoveAction}
+                    onRemove={
+                      application && application.status !== "approved"
+                        ? (id) => void doRemove(id)
+                        : undefined
+                    }
+                    removing={busy}
+                  />
+                ))
+              )}
+              <p className="text-[10px] leading-5 text-muted-foreground/70">{t.coachApplyAttachmentHint}</p>
+            </div>
+          )}
+
           {canEdit && (
             <Button
               variant="outline"
               className="w-fit font-bold"
               disabled={busy}
-              onClick={() => {
-                setMessage("");
-                setYears("");
-                setCerts("");
-                setOpen(true);
-              }}
+              onClick={() => openDialog(false)}
             >
               <ClipboardList className="size-4" aria-hidden="true" />
               {application ? t.coachApplyEditAction : t.coachApplyAction}
@@ -245,51 +465,121 @@ export function CoachApplicationSection() {
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent className="max-w-sm">
           <DialogHeader>
-            <DialogTitle className="text-sm">{t.coachApplyAction}</DialogTitle>
-            <DialogDescription className="text-[11px] leading-6">{t.coachApplyIntro}</DialogDescription>
+            <DialogTitle className="text-sm">
+              {attachmentsOnly ? t.attachmentPendingAddAction : t.coachApplyAction}
+            </DialogTitle>
+            <DialogDescription className="text-[11px] leading-6">
+              {attachmentsOnly ? t.coachApplyAttachmentHint : t.coachApplyIntro}
+            </DialogDescription>
           </DialogHeader>
-          <div className="flex flex-col gap-3">
-            <div className="flex flex-col gap-1.5">
-              <Label htmlFor="coach-apply-message" className="text-[11px] font-bold">{t.coachApplyMessageLabel}</Label>
-              <Textarea
-                id="coach-apply-message"
-                value={message}
-                onChange={(e) => setMessage(e.target.value)}
-                placeholder={t.coachApplyMessagePlaceholder}
-                rows={3}
-                maxLength={1000}
-                className="text-xs"
-              />
+
+          {attachmentsOnly ? (
+            <div className="flex flex-col gap-3">
+              {serverAttachments.length < ATTACH_MAX ? (
+                <AttachmentComposer t={t} onAdd={(input) => void doUploadLive(input)} disabled={busy} />
+              ) : (
+                <p className="text-[10px] leading-5 text-amber-300">{t.attachmentCount(serverAttachments.length)}</p>
+              )}
+              {serverAttachments.map((att) => (
+                <AttachmentRow
+                  key={att.id}
+                  att={att}
+                  locale={locale}
+                  viewLabel={t.attachmentViewAction}
+                  removeLabel={t.attachmentRemoveAction}
+                  onRemove={(id) => void doRemove(id)}
+                  removing={busy}
+                />
+              ))}
+              <div className="flex justify-end">
+                <Button variant="ghost" size="sm" onClick={() => setOpen(false)}>{t.cancel}</Button>
+              </div>
             </div>
-            <div className="flex flex-col gap-1.5">
-              <Label htmlFor="coach-apply-years" className="text-[11px] font-bold">{t.coachApplyExperienceLabel}</Label>
-              <Input
-                id="coach-apply-years"
-                value={years}
-                onChange={(e) => setYears(e.target.value.replace(/[^0-9]/g, ""))}
-                placeholder={t.coachApplyExperiencePlaceholder}
-                inputMode="numeric"
-                dir="ltr"
-                className="h-9 text-xs"
-              />
+          ) : (
+            <div className="flex flex-col gap-3">
+              <div className="flex flex-col gap-1.5">
+                <Label htmlFor="coach-apply-message" className="text-[11px] font-bold">{t.coachApplyMessageLabel}</Label>
+                <Textarea
+                  id="coach-apply-message"
+                  value={message}
+                  onChange={(e) => setMessage(e.target.value)}
+                  placeholder={t.coachApplyMessagePlaceholder}
+                  rows={3}
+                  maxLength={1000}
+                  className="text-xs"
+                />
+              </div>
+              <div className="flex flex-col gap-1.5">
+                <Label htmlFor="coach-apply-years" className="text-[11px] font-bold">{t.coachApplyExperienceLabel}</Label>
+                <Input
+                  id="coach-apply-years"
+                  value={years}
+                  onChange={(e) => setYears(e.target.value.replace(/[^0-9]/g, ""))}
+                  placeholder={t.coachApplyExperiencePlaceholder}
+                  inputMode="numeric"
+                  dir="ltr"
+                  className="h-9 text-xs"
+                />
+              </div>
+              <div className="flex flex-col gap-1.5">
+                <Label htmlFor="coach-apply-certs" className="text-[11px] font-bold">{t.coachApplyCertificationsLabel}</Label>
+                <Textarea
+                  id="coach-apply-certs"
+                  value={certs}
+                  onChange={(e) => setCerts(e.target.value)}
+                  placeholder={t.coachApplyCertificationsPlaceholder}
+                  rows={3}
+                  className="text-xs"
+                />
+                <p className="text-[10px] leading-5 text-muted-foreground/70">{t.coachApplyCertificationsHint}</p>
+              </div>
+
+              {/* اسناد منتخب — ابتدا همراه فرم ثبت میشوند، سپس بارگذاری */}
+              {serverAttachments.length + staging.length < ATTACH_MAX && (
+                <AttachmentComposer
+                  t={t}
+                  onAdd={(input) => setStaging((prev) => [...prev, input])}
+                />
+              )}
+              {staging.length > 0 && (
+                <div className="flex flex-col gap-1.5">
+                  <p className="text-[10px] font-bold text-muted-foreground">
+                    {t.coachApplyAttachmentsLabel} · {t.attachmentCount(staging.length)}
+                  </p>
+                  {staging.map((item, i) => (
+                    <div key={`${item.file.name}-${i}`} className="flex flex-wrap items-center gap-1.5 rounded-lg border border-border/50 bg-background/40 px-2.5 py-1.5">
+                      <FileText className="size-3.5 shrink-0 text-muted-foreground" aria-hidden="true" />
+                      <p className="min-w-0 flex-1 truncate text-[11px] font-bold">{item.title}</p>
+                      <span dir="ltr" className="truncate text-[10px] text-muted-foreground">
+                        {item.file.name} · {formatBytes(item.file.size, locale)}
+                      </span>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        aria-label={t.attachmentRemoveAction}
+                        onClick={() => setStaging((prev) => prev.filter((_, j) => j !== i))}
+                        className="size-7 shrink-0 text-muted-foreground hover:text-rose-300"
+                      >
+                        <Trash2 className="size-3.5" aria-hidden="true" />
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              )}
+              {serverAttachments.length > 0 && (
+                <p className="text-[10px] leading-5 text-muted-foreground/70">
+                  {t.attachmentCount(serverAttachments.length)} — {t.coachApplyAttachmentsLabel}
+                </p>
+              )}
             </div>
-            <div className="flex flex-col gap-1.5">
-              <Label htmlFor="coach-apply-certs" className="text-[11px] font-bold">{t.coachApplyCertificationsLabel}</Label>
-              <Textarea
-                id="coach-apply-certs"
-                value={certs}
-                onChange={(e) => setCerts(e.target.value)}
-                placeholder={t.coachApplyCertificationsPlaceholder}
-                rows={3}
-                className="text-xs"
-              />
-              <p className="text-[10px] leading-5 text-muted-foreground/70">{t.coachApplyCertificationsHint}</p>
+          )}
+
+          {!attachmentsOnly && (
+            <div className="flex justify-end gap-2">
+              <Button variant="ghost" size="sm" onClick={() => setOpen(false)}>{t.cancel}</Button>
+              <Button size="sm" disabled={busy} onClick={() => void doSubmit()}>{t.coachApplySubmit}</Button>
             </div>
-          </div>
-          <div className="flex justify-end gap-2">
-            <Button variant="ghost" size="sm" onClick={() => setOpen(false)}>{t.cancel}</Button>
-            <Button size="sm" disabled={busy} onClick={() => void doSubmit()}>{t.coachApplySubmit}</Button>
-          </div>
+          )}
         </DialogContent>
       </Dialog>
     </ProfileSection>

@@ -935,3 +935,30 @@ Stage Summary:
 - هر ۶ مشکل مشخصات رفع شد: ①کتابخانه خالی — بازسازی + self-heal خودکار + رفع باگ ریشه‌ای بازنویسی import؛ ②مسیر درخواست Premium از پروفایل با تصمیم ادمین؛ ③UI درخواست مربی‌گری به API موجود وصل شد (تأیید → COACH + پروفایل verified)؛ ④پنل ادمین کامل با گزارش اقدام؛ ⑤مرکز پشتیبانی با تیکت/پاسخ/ماشین وضعیت؛ ⑥بوت‌استرپ امن ادمین با مسیر ورود واقعی (ورود عادی → منوی پنل مدیریت)
 - همه مجوزها سمت سرور با نقش تازه دیتابیس؛ هیچ داده ساختگی؛ تاریخچه‌ها حذف نمی‌شوند؛ ۵ کاربر واقعی و snapshot‌های برنامه‌ها دست‌نخورده
 - وضعیت: مرحله ۱۹.۵ کامل شد — گزارش ارائه و منتظر تأیید مرحله ۲۰
+
+---
+Task ID: 29
+Agent: Super Z (main agent)
+Task: مرحله ۱۹.۵ب — ارتقای ادمین (mahziar.parvizi@gmail.com) + پیوست سند با عنوان در درخواست مربی‌گری
+
+Work Log:
+- بکاپ پیش از تغییر scripts/p195b-db-backup.py → backups/p195b-pre-phase195b-20261020-151954.db (integrity ok، FK=0، ۵ کاربر، ۹۰۵ حرکت)
+- ارتقای نقش کاربر واقعی mahziar.parvizi@gmail.com از STUDENT به ADMIN با اسکریپت امن p195-admin-bootstrap.ts (--confirm) + ثبت bootstrap-admin در AdminActionLog؛ بدون رمز پیش‌فرض یا حساب عمومی
+- Migration افزایشی غیرمخرب (prisma db push بدون accept-data-loss): مدل CoachApplicationAttachment (applicationId با Cascade، title، fileName نمایشی، mimeType، sizeBytes، storagePath نسبی، ایندکس applicationId+createdAt) → ۳۴ جدول؛ ۵ کاربر و ۹۰۵ حرکت سالم
+- لایه ذخیره‌سازی امن (src/lib/coaching/attachments.ts): فایل خارج از public در data/uploads/coach-applications/<applicationId>/<random> — نام دیسک هرگز از ورودی کاربر (ضد path traversal)؛ sniffing امضای بایت‌ها (JPEG/PNG/WebP/PDF) با تطبیق اجباری نوع اعلامی + whitelist سخت‌گیرانه (ATTACHMENT_LIMITS: ۵ سند، ۵MB، عنوان ۸۰ کاراکتر)؛ خواندن/حذف با تأیید مجدد مسیر داخل ریشه (دفاع عمقی)
+- ۲ Route Handler جدید: POST /api/coach/apply/attachments (multipart؛ فقط STUDENT؛ درخواست pending/rejected لازم؛ سقف تعداد/حجم/نوع سمت سرور؛ metadata امن بدون افشای مسیر) + GET|DELETE /api/coach/apply/attachments/[id] (دریافت: مالک یا ادمین، 404 یکسان برای غیرمالک/ناموجود — ضد IDOR، Content-Disposition امن، no-store، nosniff؛ حذف: مالک فقط در حالت قابل ویرایش، ادمین هر زمان با AdminActionLog delete-coach-application-attachment)
+- GET /api/coach/apply و adminCoachApplications اکنون پیوست‌ها را برمی‌گردانند (فقط metadata؛ storagePath هرگز به کلاینت نمی‌رود)
+- کلاینت: use-admin.ts (uploadAttachment با FormData واقعی + deleteAttachment) + بازطراحی CoachApplicationSection (dialog دو حالته: فرم+اسناد منتخب staging که پس از ثبت فرم بارگذاری میشوند / فقط اسناد برای درخواست pending؛ فهرست اسناد با عنوان+نام+حجم محلی‌شده+مشاهده+حذف؛ حذف پس از تأیید قفل) + پنل ادمین: بلوک «اسناد پیوستی متقاضی» با لینک مشاهده در تب درخواست مربی‌گری
+- i18n: ۱۳ کلید جدید support.ts + ۳ کلید admin.ts + ۸ کد خطای server-messages (NO_APPLICATION/ATTACHMENT_LIMIT/FILE_TYPE_NOT_ALLOWED/FILE_TOO_LARGE/...) همه FA/EN متقارن → check-i18n ۵۶/۵۶
+- تست p195b-test.ts = ۵۶/۵۶ سبز: مهمان 401 (۳ مسیر)، بدون درخواست 404، نقش غیردانشجو 403، metadata درست + بدون افشای مسیر، دریافت مالک/ادمین بایت‌به‌بایت (sha256)، IDOR 404 یکسان، عنوان خالی/بلند 400، متن به‌جای PNG 400، text/plain 400، نوع غیرمجاز 400، ۵MB+1 → 413، PDF سالم 201، حذف مالک pending → حذف فایل دیسک، سقف ۵ → 409، فهرست ادمین با ۵ سند بدون مسیر، رد→بارگذاری مجدد→ارسال دوباره با حفظ اسناد، تأیید→قفل (403 نقش مربی)، حذف ادمین پس از تأیید + لاگ + پاک‌سازی دیسک؛ پاک‌سازی کامل fixtureها (کاربر+فایل)
+- رگرسیون کامل: i18n ۵۶ + library ۴۲ + plan ۳۴ + nutrition ۷۹ + session ۴۰ + foodlog ۵۰ + assistant ۳۸ + p15 ۶۲ + p16 ۷۹ + p17 ۱۱۳ + p18 ۶۸ + p19 ۲۹ + p195 ۷۷ + self-heal ۸ + p195b ۵۶ = **۸۳۱ سبز**
+- tsc صفر خطا در src؛ ESLint پاک؛ build تولیدی موفق (۲۹ صفحه)
+- مرورگر واقعی (390×844): ثبت‌نام دانشجوی تست → onboarding → پروفایل → دیالوگ درخواست مربی‌گری با بخش «اسناد پیوستی» → انتخاب فایل PNG + عنوان فارسی → ردیف سند منتخب («اسناد پیوستی · ۱ سند پیوست شده») → ارسال → درخواست pending با سند + لینک مشاهده → «افزودن سند به درخواست» در حالت pending → سند دوم بارگذاری زنده → مشاهده سند در تب جدید واقعاً رندر شد (تصویر ۴۸×۶۴ از مسیر API احراز هویت‌شده) → EN/LTR (dir=ltr، Attachments/View document، scrollWidth≤390) → ورود ادمین fixture → «پنل مدیریت» فقط در منوی ادمین → تب درخواست مربی‌گری: متقاضی + هر دو سند با عنوان/نام/حجم + مشاهده سند به‌عنوان ادمین رندر شد → کنسول فقط HMR/Fast Refresh (بدون خطا) → ۵ اسکرین‌شات download/p195b-*.png
+- تصفیه حساب: کاربران p195bui- و p195buiadmin- حذف شدند + پوشه فایل‌های دیسک آن‌ها پاک → ۵ کاربر واقعی (۱ ADMIN = mahziar + ۴ STUDENT)، data/uploads خالی؛ بکاپ پس از پایان: backups/p195b-post-phase195b-20261020-160014.db (integrity ok، FK=0، ۹۰۵ حرکت)
+- طبق بخش ۰.۴: فقط تغییرات امن کد commit شد (بدون .env/دیتابیس/بکاپ/آپلود کاربر/اسکرین‌شات — data/uploads/ به .gitignore اضافه شد) و push عادی به main
+
+Stage Summary:
+- mahziar.parvizi@gmail.com اکنون ADMIN است — پس از ورود معمولی، «پنل مدیریت» در منوی همین حساب ظاهر میشود (مقادیر مجوز سمت سرور همیشه از دیتابیس تازه می‌خواند)
+- درخواست مربی‌گری اکنون از پیوست سند با عنوان پشتیبانی میکند: متقاضی تا ۵ سند (JPEG/PNG/WebP/PDF، هرکدام ≤۵MB) با عنوان دلخواه بارگذاری میکند؛ اسناد در فهرست ادمین با عنوان/نام/حجم نمایش داده میشوند و ادمین هر سند را میبیند و در صورت لزوم همان مسیر تأیید/رد قبلی را با دیدن مدارک انجام میدهد؛ پس از تأیید مدارک برای تاریخچه قفل میشوند (مالک حذف نمیکند؛ ادمین با گزارش اقدام میتواند حذف کند)
+- امنیت: مالکیت‌محوری سمت سرور (مالک یا ادمین)، 404 یکسان ضد IDOR، whitelist نوع + بررسی امضای بایت‌ها، سقف حجم/تعداد، نام دیسک تصادفی غیرکاربر، مسیرها همیشه داخل ریشه، بدون افشای storagePath
+- وضعیت: مرحله ۱۹.۵ب کامل شد — آماده مرحله ۲۰

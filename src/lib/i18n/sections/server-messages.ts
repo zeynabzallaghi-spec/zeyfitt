@@ -137,6 +137,41 @@ export const API_ERROR_LABELS: Record<string, Bi> = {
     en: "You already have a coach application in progress.",
   },
 
+  /* ---------------- مرحله ۱۹.۵ب — پیوست درخواست مربی‌گری ---------------- */
+
+  NO_APPLICATION: {
+    fa: "ابتدا فرم درخواست مربی‌گری را ثبت کنید؛ سپس می‌توانید سند پیوست کنید.",
+    en: "Submit the coach application form first; then you can attach documents.",
+  },
+  APPLICATION_NOT_EDITABLE: {
+    fa: "این درخواست دیگر قابل تغییر نیست و مدارک آن قفل شده است.",
+    en: "This application can no longer be changed; its documents are locked.",
+  },
+  ATTACHMENT_LIMIT: {
+    fa: "سقف پیوست‌ها پر است؛ حداکثر ۵ سند به ازای هر درخواست مجاز است.",
+    en: "Attachment limit reached; up to 5 documents per application.",
+  },
+  FILE_TYPE_NOT_ALLOWED: {
+    fa: "نوع فایل مجاز نیست؛ فقط JPEG، PNG، WebP یا PDF قابل بارگذاری است.",
+    en: "File type not allowed; only JPEG, PNG, WebP, or PDF can be uploaded.",
+  },
+  FILE_TOO_LARGE: {
+    fa: "حجم فایل بیش از حد مجاز است؛ حداکثر ۵ مگابایت.",
+    en: "The file is too large; the maximum is 5 MB.",
+  },
+  FILE_REQUIRED: {
+    fa: "فایلی انتخاب نشده است؛ یک فایل معتبر انتخاب کنید.",
+    en: "No file selected; please choose a valid file.",
+  },
+  ATTACHMENT_TITLE_INVALID: {
+    fa: "عنوان سند را وارد کنید (حداکثر ۸۰ کاراکتر).",
+    en: "Enter a document title (max 80 characters).",
+  },
+  ATTACHMENT_NOT_FOUND: {
+    fa: "این سند یافت نشد یا به شما تعلق ندارد.",
+    en: "This document was not found, or does not belong to you.",
+  },
+
   /* ------------------ مرحله ۱۶ — برنامه‌های اختصاصی مربی ------------------ */
 
   COACH_NOT_VERIFIED: {

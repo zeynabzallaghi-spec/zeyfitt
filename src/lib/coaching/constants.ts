@@ -87,6 +87,35 @@ export const APPLICATION_LIMITS = {
   CERTIFICATION_ITEM_MAX: 120,
 } as const;
 
+/* ---------- مرحله ۱۹.۵ب — پیوست درخواست مربی‌گری (سند با عنوان) ---------- */
+
+export const ATTACHMENT_LIMITS = {
+  /** حداکثر تعداد پیوست به ازای هر درخواست مربی‌گری */
+  MAX_PER_APPLICATION: 5,
+  /** حداکثر اندازه هر فایل به بایت — ۵ مگابایت */
+  SIZE_MAX_BYTES: 5 * 1024 * 1024,
+  /** سقف کاراکتر عنوان سند پس از trim */
+  TITLE_MAX: 80,
+  /** سقف کاراکتر نام فایل نمایشی (نام اصلی برای نمایش — هرگز مسیر دیسک نیست) */
+  FILE_NAME_MAX: 120,
+  /**
+   * انواع مجاز فایل — whitelist سخت‌گیرانه. علاوه بر نوع اعلامی کلاینت،
+   * امضای بایت‌ها (magic bytes) سمت سرور بررسی میشود؛ هر دو باید هم‌خوان
+   * و در همین فهرست باشند.
+   */
+  MIME_WHITELIST: [
+    "image/jpeg",
+    "image/png",
+    "image/webp",
+    "application/pdf",
+  ] as const,
+} as const;
+
+/** محتویات مجاز ATTACHMENT_LIMITS.MIME_WHITELIST به صورت Set برای بررسی سریع */
+export const ATTACHMENT_MIME_ALLOWED = new Set<string>(
+  ATTACHMENT_LIMITS.MIME_WHITELIST
+);
+
 export const COACH_PROFILE_LIMITS = {
   DISPLAY_NAME_MAX: 60,
   HEADLINE_MAX: 120,

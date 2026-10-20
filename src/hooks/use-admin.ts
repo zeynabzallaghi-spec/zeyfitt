@@ -268,6 +268,7 @@ export interface AdminApplicationRowClient {
   message: string | null;
   experienceYears: number | null;
   certifications: string[];
+  attachments: ApplicationAttachmentClient[];
   createdAt: string;
   decidedAt: string | null;
 }
@@ -413,15 +414,26 @@ export function useAdminActions() {
 
 /* ============================ درخواست مربی‌گری (کاربر) ============================ */
 
+export interface ApplicationAttachmentClient {
+  id: string;
+  title: string;
+  fileName: string;
+  mimeType: string;
+  sizeBytes: number;
+  createdAt: string;
+}
+
 export interface CoachApplicationClient {
   status: string;
   decidedAt: string | null;
   createdAt: string;
+  attachments?: ApplicationAttachmentClient[];
 }
 
 /**
  * GET وضعیت درخواست مربی‌گری خود کاربر + POST ثبت/ارسال مجدد.
  * (GET /api/coach/apply از مرحله ۱۵ موجود است؛ POST همان مسیر رسمی.)
+ * مرحله ۱۹.۵ب: بارگذاری/حذف سند پیوستی با عنوان (multipart).
  */
 export function useCoachApplication(enabled: boolean) {
   const { data, loading, error, refresh } = useApiList<{
@@ -451,6 +463,41 @@ export function useCoachApplication(enabled: boolean) {
     [refresh]
   );
 
+  /** بارگذاری سند با عنوان — multipart؛ Content-Type را مرورگر با boundary ست میکند */
+  const uploadAttachment = useCallback(
+    async (input: {
+      title: string;
+      file: File;
+    }): Promise<Result<ApplicationAttachmentClient>> => {
+      const form = new FormData();
+      form.set("title", input.title);
+      form.set("file", input.file);
+      setBusy(true);
+      const result = await jsonFetch<{ attachment: ApplicationAttachmentClient }>(
+        "/api/coach/apply/attachments",
+        { method: "POST", body: form }
+      );
+      setBusy(false);
+      if (result.ok) void refresh();
+      return result.ok ? { ok: true, data: result.data.attachment } : result;
+    },
+    [refresh]
+  );
+
+  const deleteAttachment = useCallback(
+    async (attachmentId: string): Promise<Result<{ deleted: boolean }>> => {
+      setBusy(true);
+      const result = await jsonFetch<{ deleted: boolean }>(
+        `/api/coach/apply/attachments/${encodeURIComponent(attachmentId)}`,
+        { method: "DELETE" }
+      );
+      setBusy(false);
+      if (result.ok) void refresh();
+      return result;
+    },
+    [refresh]
+  );
+
   return {
     application: data?.application ?? null,
     role: data?.role ?? null,
@@ -458,6 +505,8 @@ export function useCoachApplication(enabled: boolean) {
     error,
     busy,
     submit,
+    uploadAttachment,
+    deleteAttachment,
     refresh,
   };
 }

@@ -559,8 +559,37 @@ model CoachApplication {
   createdAt          DateTime  @default(now())
   updatedAt          DateTime  @updatedAt
   user               user      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  attachments        CoachApplicationAttachment[]
 
   @@index([status, createdAt])
+}
+
+// ----------------------------------------
+// پیوست درخواست مربی‌گری — سند/تصویر با عنوان (مرحله ۱۹.۵ب)
+// ----------------------------------------
+// مدارک متقاضی (مدرک مربی‌گری، سابقه کار و…) که با عنوان دلخواه بارگذاری
+// میشود. فایل روی دیسک خارج از public نگهداری میشود و فقط از مسیر API
+// مالکیت‌محور خوانده میشود: مالک درخواست یا ادمین. محتوای فایل هرگز از
+// کلاینت قابل تغییر نیست (دربردارنده مالکیت است) و پس از تصمیم ادمین برای
+// تاریخچه حفظ میشود. کل اندازه هر فایل و نوع MIME در لایه سرور و
+// whitelist سخت‌گیرانه کنترل میشود؛ نام فایل روی دیسک هرگز از ورودی
+// کاربر گرفته نمیشود (جلوگیری از path traversal).
+
+model CoachApplicationAttachment {
+  id            String    @id @default(cuid())
+  applicationId String
+  // عنوان دلخواه سند — سقف طول در لایه اعتبارسنجی
+  title         String
+  // نام اصلی فایل فقط برای نمایش به ادمین/مالک — هرگز برای مسیر دیسک استفاده نمیشود
+  fileName      String
+  mimeType      String
+  sizeBytes     Int
+  // مسیر نسبی ذخیره روی دیسک (داخل data/uploads/coach-applications)
+  storagePath   String
+  createdAt     DateTime  @default(now())
+  application   CoachApplication @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+
+  @@index([applicationId, createdAt])
 }
 
 // ----------------------------------------

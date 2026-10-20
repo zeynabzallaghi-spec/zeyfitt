@@ -69,6 +69,21 @@ export interface SupportStrings {
   coachIsCoachNote: string;
   coachApplyDecisionNoteLabel: string;
 
+  // پیوست سند در درخواست مربی‌گری — مرحله ۱۹.۵ب
+  coachApplyAttachmentsLabel: string;
+  coachApplyAttachmentHint: string;
+  attachmentTitleLabel: string;
+  attachmentTitlePlaceholder: string;
+  attachmentChooseFile: string;
+  attachmentAddAction: string;
+  attachmentRemoveAction: string;
+  attachmentViewAction: string;
+  attachmentEmptyNote: string;
+  attachmentCount: (n: number) => string;
+  attachmentFileRequired: string;
+  attachmentAddedNote: string;
+  attachmentPendingAddAction: string;
+
   // مشترک
   loading: string;
   retry: string;
@@ -136,10 +151,24 @@ const SUPPORT_STRINGS: Record<Locale, SupportStrings> = {
     coachApplyExperiencePlaceholder: "مثلاً ۵",
     coachApplyCertificationsLabel: "مدارک (هر خط یک مدرک)",
     coachApplyCertificationsPlaceholder: "مثلاً:\nمدرک بین‌المللی بدنسازی\nعلوم ورزشی",
-    coachApplyCertificationsHint: "مدارک صرفاً اعلامی است؛ سند در این مرحله بارگذاری نمی‌شود.",
+    coachApplyCertificationsHint: "مدارک صرفاً اعلامی است؛ می‌توانید تصویر یا PDF سند را در بخش «اسناد پیوستی» با عنوان بارگذاری کنید.",
     coachApplySubmit: "ارسال درخواست",
     coachIsCoachNote: "حساب شما مربی است؛ پنل مربی در منو فعال است.",
     coachApplyDecisionNoteLabel: "یادداشت مدیریت",
+
+    coachApplyAttachmentsLabel: "اسناد پیوستی",
+    coachApplyAttachmentHint: "تا ۵ سند، هر فایل تا ۵ مگابایت (JPEG، PNG، WebP یا PDF). سند با عنوان دلخواه برای مدیریت ارسال می‌شود و پس از تأیید قابل حذف نیست.",
+    attachmentTitleLabel: "عنوان سند",
+    attachmentTitlePlaceholder: "مثلاً: مدرک مربی‌گری سطح ۲",
+    attachmentChooseFile: "انتخاب فایل…",
+    attachmentAddAction: "افزودن سند",
+    attachmentRemoveAction: "حذف سند",
+    attachmentViewAction: "مشاهده سند",
+    attachmentEmptyNote: "هنوز سندی پیوست نکرده‌اید؛ برای رسیدگی سریع‌تر، مدارک خود را با عنوان بارگذاری کنید.",
+    attachmentCount: (n) => `${localeNumber(n, "fa")} سند پیوست شده`,
+    attachmentFileRequired: "برای افزودن سند، ابتدا فایل را انتخاب کنید.",
+    attachmentAddedNote: "سند شما بارگذاری شد و برای مدیریت ارسال شد.",
+    attachmentPendingAddAction: "افزودن سند به درخواست",
 
     loading: "در حال بارگذاری…",
     retry: "تلاش دوباره",
@@ -205,10 +234,24 @@ const SUPPORT_STRINGS: Record<Locale, SupportStrings> = {
     coachApplyExperiencePlaceholder: "e.g. 5",
     coachApplyCertificationsLabel: "Certifications (one per line)",
     coachApplyCertificationsPlaceholder: "e.g.:\nInternational bodybuilding certificate\nSports science degree",
-    coachApplyCertificationsHint: "Certifications are self-declared; no documents are uploaded at this stage.",
+    coachApplyCertificationsHint: "Certifications are self-declared; you can attach a photo or PDF of each document with a title in “Attachments”.",
     coachApplySubmit: "Submit application",
     coachIsCoachNote: "Your account is a coach; the Coach Panel is available in the menu.",
     coachApplyDecisionNoteLabel: "Admin note",
+
+    coachApplyAttachmentsLabel: "Attachments",
+    coachApplyAttachmentHint: "Up to 5 documents, max 5 MB each (JPEG, PNG, WebP, or PDF). Each document is uploaded with a title for the admin and cannot be removed after approval.",
+    attachmentTitleLabel: "Document title",
+    attachmentTitlePlaceholder: "e.g. Level-2 coaching certificate",
+    attachmentChooseFile: "Choose file…",
+    attachmentAddAction: "Add document",
+    attachmentRemoveAction: "Remove document",
+    attachmentViewAction: "View document",
+    attachmentEmptyNote: "No documents attached yet; uploading your documents with a title speeds up the review.",
+    attachmentCount: (n) => `${localeNumber(n, "en")} document(s) attached`,
+    attachmentFileRequired: "Choose a file before adding a document.",
+    attachmentAddedNote: "Your document was uploaded and sent to the admin.",
+    attachmentPendingAddAction: "Add a document to your application",
 
     loading: "Loading…",
     retry: "Retry",

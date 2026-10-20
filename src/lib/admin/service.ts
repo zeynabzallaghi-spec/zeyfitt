@@ -242,6 +242,15 @@ export async function adminSetSubscription(
 
 /* ------------------------------ درخواست مربی‌گری ------------------------------ */
 
+export interface AdminApplicationAttachmentRow {
+  id: string;
+  title: string;
+  fileName: string;
+  mimeType: string;
+  sizeBytes: number;
+  createdAt: string;
+}
+
 export interface AdminApplicationRow {
   id: string;
   userId: string;
@@ -251,6 +260,7 @@ export interface AdminApplicationRow {
   message: string | null;
   experienceYears: number | null;
   certifications: string[];
+  attachments: AdminApplicationAttachmentRow[];
   createdAt: string;
   decidedAt: string | null;
 }
@@ -262,7 +272,22 @@ export async function adminCoachApplications(
     where: status ? { status } : undefined,
     orderBy: { createdAt: "desc" },
     take: 100,
-    include: { user: { select: { name: true, email: true } } },
+    include: {
+      user: { select: { name: true, email: true } },
+      // مدارک پیوستی متقاضی — فقط metadata؛ محتوا از مسیر GET جداگانه
+      // با مجوز ادمین خوانده میشود و مسیر دیسک هرگز به کلاینت نمیرود
+      attachments: {
+        orderBy: { createdAt: "asc" as const },
+        select: {
+          id: true,
+          title: true,
+          fileName: true,
+          mimeType: true,
+          sizeBytes: true,
+          createdAt: true,
+        },
+      },
+    },
   });
   return rows.map((r) => ({
     id: r.id,
@@ -273,6 +298,14 @@ export async function adminCoachApplications(
     message: r.message,
     experienceYears: r.experienceYears,
     certifications: safeStringArray(r.certificationsJson),
+    attachments: r.attachments.map((a) => ({
+      id: a.id,
+      title: a.title,
+      fileName: a.fileName,
+      mimeType: a.mimeType,
+      sizeBytes: a.sizeBytes,
+      createdAt: a.createdAt.toISOString(),
+    })),
     createdAt: r.createdAt.toISOString(),
     decidedAt: r.decidedAt?.toISOString() ?? null,
   }));

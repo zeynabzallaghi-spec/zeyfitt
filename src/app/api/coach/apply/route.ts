@@ -18,6 +18,19 @@ export async function GET() {
     const user = await requireUser();
     const row = await db.coachApplication.findUnique({
       where: { userId: user.id },
+      include: {
+        attachments: {
+          orderBy: { createdAt: "asc" as const },
+          select: {
+            id: true,
+            title: true,
+            fileName: true,
+            mimeType: true,
+            sizeBytes: true,
+            createdAt: true,
+          },
+        },
+      },
     });
     return NextResponse.json({
       application: row
@@ -25,6 +38,14 @@ export async function GET() {
             status: row.status,
             decidedAt: row.decidedAt ? row.decidedAt.toISOString() : null,
             createdAt: row.createdAt.toISOString(),
+            attachments: row.attachments.map((a) => ({
+              id: a.id,
+              title: a.title,
+              fileName: a.fileName,
+              mimeType: a.mimeType,
+              sizeBytes: a.sizeBytes,
+              createdAt: a.createdAt.toISOString(),
+            })),
           }
         : null,
       role: user.role,

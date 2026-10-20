@@ -21,11 +21,18 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
-import { RefreshCw, ClipboardList, Crown, LifeBuoy, Info } from "lucide-react";
+import {
+  RefreshCw,
+  ClipboardList,
+  Crown,
+  LifeBuoy,
+  Info,
+  FileText,
+} from "lucide-react";
 import { useStrings } from "@/lib/i18n/use-strings";
 import { useLocale } from "@/lib/i18n/locale";
 import { adminStrings } from "@/lib/i18n/sections/admin";
-import { localeDateTimeLabel } from "@/lib/i18n/format";
+import { localeDateTimeLabel, localeNumber } from "@/lib/i18n/format";
 import { EmptyState } from "../../shared/empty-state";
 import {
   useAdminCoachApplications,
@@ -84,6 +91,58 @@ function RefreshButton({ onClick, label }: { onClick: () => void; label: string 
     <Button variant="outline" size="icon" onClick={onClick} aria-label={label} className="size-9 shrink-0">
       <RefreshCw className="size-3.5" aria-hidden="true" />
     </Button>
+  );
+}
+
+/** برچسب حجم سند به زبان فعال — عدد با ارقام محلی */
+function attachmentSizeLabel(bytes: number, locale: "fa" | "en"): string {
+  if (bytes >= 1024 * 1024) {
+    return `${localeNumber(Math.round((bytes / (1024 * 1024)) * 10) / 10, locale)} MB`;
+  }
+  if (bytes >= 1024) return `${localeNumber(Math.round(bytes / 1024), locale)} KB`;
+  return `${localeNumber(bytes, locale)} B`;
+}
+
+/** فهرست اسناد پیوستی متقاضی — لینک مشاهده همان مسیر API مالکیت‌محور ادمین */
+function ApplicationAttachments({
+  attachments,
+  t,
+  locale,
+}: {
+  attachments: AdminApplicationRowClient["attachments"];
+  t: AdminT;
+  locale: "fa" | "en";
+}) {
+  return (
+    <div className="flex flex-col gap-1">
+      <p className="text-[10px] font-bold text-muted-foreground">
+        {t.applicationAttachmentsLabel} ({localeNumber(attachments.length, locale)}):
+      </p>
+      {attachments.length === 0 ? (
+        <p className="text-[10px] text-muted-foreground/70">{t.attachmentNoAttachments}</p>
+      ) : (
+        attachments.map((att) => (
+          <div
+            key={att.id}
+            className="flex flex-wrap items-center gap-1.5 rounded-lg border border-border/50 bg-background/40 px-2.5 py-1.5"
+          >
+            <FileText className="size-3.5 shrink-0 text-muted-foreground" aria-hidden="true" />
+            <p className="min-w-0 flex-1 truncate text-[11px] font-bold">{att.title}</p>
+            <span dir="ltr" className="truncate text-[10px] text-muted-foreground">
+              {att.fileName} · {attachmentSizeLabel(att.sizeBytes, locale)}
+            </span>
+            <a
+              href={`/api/coach/apply/attachments/${encodeURIComponent(att.id)}`}
+              target="_blank"
+              rel="noreferrer"
+              className="shrink-0 text-[10px] font-bold text-primary underline-offset-2 hover:underline"
+            >
+              {t.attachmentViewAction}
+            </a>
+          </div>
+        ))
+      )}
+    </div>
   );
 }
 
@@ -186,6 +245,7 @@ function ApplicationsTab({ t }: { t: AdminT }) {
                 <p className="rounded-lg border border-border/50 bg-background/40 p-2.5 text-[11px] leading-6">
                   {row.message ?? t.noMessage}
                 </p>
+                <ApplicationAttachments attachments={row.attachments} t={t} locale={locale} />
                 {row.decidedAt && (
                   <p className="text-[10px] text-muted-foreground/70">{t.decidedAt(localeDateTimeLabel(row.decidedAt, locale))}</p>
                 )}
