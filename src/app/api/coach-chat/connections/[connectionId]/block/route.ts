@@ -9,7 +9,7 @@ import {
   unblockStudentInConversation,
 } from "@/lib/coaching/chat";
 
-type Params = { params: Promise<{ id: string }> };
+type Params = { params: Promise<{ connectionId: string }> };
 
 /**
  * GET /api/coach-chat/connections/[id]/block — وضعیت مسدودی برای مربی مالک.

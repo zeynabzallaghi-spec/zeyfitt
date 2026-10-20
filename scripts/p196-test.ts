@@ -168,7 +168,7 @@ async function main() {
     body: JSON.stringify({ coachId: coach.userId, cooperationType: "PRIVATE" }),
   });
   ok("درخواست اول ثبت میشود", r1.status === 201, `got ${r1.status}`);
-  const connectionId = String(r1.body.connection?.id ?? r1.body.request?.id ?? "");
+  const connectionId = String((r1.body.connection as { id?: string } | null | undefined)?.id ?? (r1.body.request as { id?: string } | null | undefined)?.id ?? "");
   if (!connectionId) {
     // شکل پاسخ متفاوت — از دیتابیس بگیر
     const row = await db.coachStudentConnection.findFirst({
@@ -192,7 +192,7 @@ async function main() {
     body: JSON.stringify({ coachId: coach2.userId, cooperationType: "PRIVATE" }),
   });
   ok("درخواست به مربی دیگر مستقل است", r2b.status === 201, `got ${r2b.status}`);
-  const connStudent2CoachId = String(r2b.body.connection?.id ?? r2b.body.request?.id ?? "");
+  const connStudent2CoachId = String((r2b.body.connection as { id?: string } | null | undefined)?.id ?? (r2b.body.request as { id?: string } | null | undefined)?.id ?? "");
 
   const r2c = await api(student2, "/api/coach-connections", {
     method: "POST",
@@ -200,13 +200,13 @@ async function main() {
     body: JSON.stringify({ coachId: coach.userId, cooperationType: "PRIVATE" }),
   });
   ok("درخواست دانشجوی دیگر مستقل است", r2c.status === 201, `got ${r2c.status}`);
-  const conn2Id = String(r2c.body.connection?.id ?? r2c.body.request?.id ?? "");
+  const conn2Id = String((r2c.body.connection as { id?: string } | null | undefined)?.id ?? (r2c.body.request as { id?: string } | null | undefined)?.id ?? "");
 
   /* ---------------- بخش ۳ — گفت‌وگوی پیش از تأیید ---------------- */
   console.log("\n== بخش ۳: گفت‌وگوی پیش از تأیید ==");
   const chatOpen = await api(coach, `/api/coach-chat/connections/${connectionId}/open`, { method: "POST" });
   ok("مربی میتواند پیش از تأیید گفتوگو را باز کند", chatOpen.status === 200 || chatOpen.status === 201, `got ${chatOpen.status}`);
-  const convId = String(chatOpen.body.conversation?.conversationId ?? "");
+  const convId = String((chatOpen.body.conversation as { conversationId?: string } | null | undefined)?.conversationId ?? "");
 
   const preMsg = await api(coach, `/api/coach-chat/conversations/${convId}/messages`, {
     method: "POST",

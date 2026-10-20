@@ -459,9 +459,14 @@ async function main() {
     const blockedC = await api(coachA, "POST", `/api/coach-chat/conversations/${cId?.id}/messages`, { content: "مربی به دانشجوی منقضی" });
     ok("ارسال مربی به دانشجوی منقضی: 403 SUBSCRIPTION_REQUIRED", blockedC.status === 403 && blockedC.json.error === "SUBSCRIPTION_REQUIRED");
 
-    // گشودن مجدد هم مسدود (بدون مکالمه جدید برای غیرمجاز)
+    // قرارداد مرحله ۱۹.۶: مکالمه موجود همیشه باز میشود (تاریخچه فقطخواندنی)؛
+    // ارسال طبق blockReason مسدود میماند — مکالمه جدید برای غیرمجاز ساخته نمیشود
     const reopen = await api(studentC, "POST", `/api/coach-chat/connections/${connC}/open`);
-    ok("گشودن با اشتراک منقضی: 403", reopen.status === 403);
+    const reopenView = (reopen.json.conversation ?? {}) as { canSend?: boolean; blockReason?: string | null };
+    ok(
+      "گشودن با اشتراک منقضی: 201 فقطخواندنی (canSend=false)",
+      reopen.status === 201 && reopenView.canSend === false && reopenView.blockReason === "SUBSCRIPTION_REQUIRED"
+    );
 
     // تاریخچه حفظ میشود — فقط‌خواندنی
     const history = await api(studentC, "GET", `/api/coach-chat/conversations/${cId?.id}/messages`);
@@ -493,9 +498,9 @@ async function main() {
     ok("پایان ارتباط از مسیر مرحله ۱۵: 200", ended.status === 200);
 
     const blockedS = await api(studentC, "POST", `/api/coach-chat/conversations/${cId}/messages`, { content: "پس از پایان" });
-    ok("ارسال دانشجو پس از پایان: 403 CONNECTION_NOT_ACTIVE", blockedS.status === 403 && blockedS.json.error === "CONNECTION_NOT_ACTIVE");
+    ok("ارسال دانشجو پس از پایان: 403 CONNECTION_CLOSED", blockedS.status === 403 && blockedS.json.error === "CONNECTION_CLOSED");
     const blockedC = await api(coachA, "POST", `/api/coach-chat/conversations/${cId}/messages`, { content: "مربی پس از پایان" });
-    ok("ارسال مربی پس از پایان: 403 CONNECTION_NOT_ACTIVE", blockedC.status === 403 && blockedC.json.error === "CONNECTION_NOT_ACTIVE");
+    ok("ارسال مربی پس از پایان: 403 CONNECTION_CLOSED", blockedC.status === 403 && blockedC.json.error === "CONNECTION_CLOSED");
 
     const history = await api(studentC, "GET", `/api/coach-chat/conversations/${cId}/messages`);
     const histMsgs = (history.json.messages ?? []) as Array<Record<string, unknown>>;
@@ -505,7 +510,7 @@ async function main() {
 
     const sList = await api(studentC, "GET", "/api/coach-chat/conversations");
     const sEntry = ((sList.json.conversations ?? []) as Array<Record<string, unknown>>).find((x) => x.connectionId === connC);
-    ok("فهرست: وضعیت ENDED با canSend=false", sEntry?.connectionStatus === "ENDED" && sEntry?.blockReason === "CONNECTION_NOT_ACTIVE");
+    ok("فهرست: وضعیت ENDED با canSend=false", sEntry?.connectionStatus === "ENDED" && sEntry?.blockReason === "CONNECTION_CLOSED");
   }
 
   /* ---------------- ۱۴) تغییر نقش و تأیید مربی — اثر فوری ---------------- */
@@ -573,7 +578,9 @@ async function main() {
     const msgLeft = await db.coachMessage.count();
     ok("هیچ مکالمه/پیام آزمایشی باقی نماند", convLeft === 0 && msgLeft === 0);
     const realUsers = await db.user.count({ where: { email: { not: { contains: "p17test" } } } });
-    ok("کاربران واقعی دست‌نخورده (۵ کاربر پایه — شامل حساب واقعی مالک)", realUsers === 5, `count=${realUsers}`);
+    // به‌روزرسانی مرحله ۱۹.۶: پایه واقعی ۴ کاربر است (۳ دانشجو + ۱ ادمین)؛
+    // کاربر پنجم قدیمی پیش از این مرحله (بازیابی سندباکس) از دست رفته بود
+    ok("کاربران واقعی دست‌نخورده (۴ کاربر پایه — شامل حساب واقعی مالک)", realUsers === 4, `count=${realUsers}`);
 
     const ic2 = await db.$queryRawUnsafe<{ integrity_check: string }[]>("PRAGMA integrity_check");
     const fk2 = await db.$queryRawUnsafe<Record<string, unknown>[]>("PRAGMA foreign_key_check");

@@ -45,6 +45,7 @@ import { coachPlansStrings } from "@/lib/i18n/sections/coach-plans";
 import { sharedStrings } from "@/lib/i18n/sections/shared";
 import { coachesStrings } from "@/lib/i18n/sections/coaches";
 import { useLocale, useDir } from "@/lib/i18n/locale";
+import { LIBRARY_MUSCLE_GROUPS } from "@/lib/exercises/types";
 import { ViewIntro } from "../../shared/view-intro";
 import { EmptyState } from "../../shared/empty-state";
 import { useCoachExercises } from "@/hooks/use-p196";
@@ -69,8 +70,9 @@ interface ExerciseForm {
   enName: string;
   category: string;
   equipment: string;
-  primaryMuscles: string;
-  secondaryMuscles: string;
+  /** کلیدهای استاندارد عضله (همان واژه‌نامه بانک) — سقف ۶ سمت سرور */
+  primaryMuscles: string[];
+  secondaryMuscles: string[];
   description: string;
   tips: string;
 }
@@ -81,8 +83,8 @@ function emptyForm(): ExerciseForm {
     enName: "",
     category: "chest",
     equipment: "",
-    primaryMuscles: "",
-    secondaryMuscles: "",
+    primaryMuscles: [],
+    secondaryMuscles: [],
     description: "",
     tips: "",
   };
@@ -94,8 +96,8 @@ function formFromExercise(ex: CoachExerciseClient): ExerciseForm {
     enName: ex.enName,
     category: ex.category,
     equipment: ex.equipment.join(", "),
-    primaryMuscles: ex.primaryMuscles.join(", "),
-    secondaryMuscles: ex.secondaryMuscles.join(", "),
+    primaryMuscles: [...ex.primaryMuscles],
+    secondaryMuscles: [...ex.secondaryMuscles],
     description: ex.description,
     tips: ex.tips,
   };
@@ -144,8 +146,8 @@ export function CoachExercisesTab() {
       enName: form.enName.trim(),
       category: form.category,
       equipment: splitList(form.equipment),
-      primaryMuscles: splitList(form.primaryMuscles),
-      secondaryMuscles: splitList(form.secondaryMuscles),
+      primaryMuscles: form.primaryMuscles.slice(0, 6),
+      secondaryMuscles: form.secondaryMuscles.slice(0, 6),
       description: form.description.trim(),
       tips: form.tips.trim(),
     };
@@ -383,24 +385,74 @@ export function CoachExercisesTab() {
             </div>
             <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
               <div className="space-y-1.5">
-                <Label htmlFor="cex-pm" className="text-[11px] font-bold text-foreground">{t.exercisePrimaryMuscles}</Label>
-                <Input
-                  id="cex-pm"
-                  dir={locale === "fa" ? "rtl" : "ltr"}
-                  value={form.primaryMuscles}
-                  onChange={(e) => setForm((f) => ({ ...f, primaryMuscles: e.target.value.slice(0, 200) }))}
-                  className="text-xs"
-                />
+                <Label className="text-[11px] font-bold text-foreground">
+                  {t.exercisePrimaryMuscles}
+                  <span className="ms-1 font-normal text-muted-foreground">(≤۶)</span>
+                </Label>
+                <div className="flex flex-wrap gap-1.5">
+                  {LIBRARY_MUSCLE_GROUPS.map((m) => {
+                    const active = form.primaryMuscles.includes(m.id);
+                    return (
+                      <button
+                        key={m.id}
+                        type="button"
+                        aria-pressed={active}
+                        onClick={() =>
+                          setForm((f) => ({
+                            ...f,
+                            primaryMuscles: active
+                              ? f.primaryMuscles.filter((x) => x !== m.id)
+                              : [...f.primaryMuscles, m.id].slice(0, 6),
+                          }))
+                        }
+                        className={
+                          active
+                            ? "rounded-full border border-primary bg-primary/15 px-2.5 py-1 text-[10px] font-bold text-primary"
+                            : "rounded-full border border-border/70 px-2.5 py-1 text-[10px] text-muted-foreground hover:border-primary/40 hover:text-foreground"
+                        }
+                      >
+                        {locale === "fa" ? m.fa : m.en}
+                      </button>
+                    );
+                  })}
+                </div>
               </div>
               <div className="space-y-1.5">
-                <Label htmlFor="cex-sm" className="text-[11px] font-bold text-foreground">{t.exerciseSecondaryMuscles}</Label>
-                <Input
-                  id="cex-sm"
-                  dir={locale === "fa" ? "rtl" : "ltr"}
-                  value={form.secondaryMuscles}
-                  onChange={(e) => setForm((f) => ({ ...f, secondaryMuscles: e.target.value.slice(0, 200) }))}
-                  className="text-xs"
-                />
+                <Label className="text-[11px] font-bold text-foreground">
+                  {t.exerciseSecondaryMuscles}
+                  <span className="ms-1 font-normal text-muted-foreground">(≤۶)</span>
+                </Label>
+                <div className="flex flex-wrap gap-1.5">
+                  {LIBRARY_MUSCLE_GROUPS.map((m) => {
+                    const active = form.secondaryMuscles.includes(m.id);
+                    const inPrimary = form.primaryMuscles.includes(m.id);
+                    return (
+                      <button
+                        key={m.id}
+                        type="button"
+                        aria-pressed={active}
+                        disabled={inPrimary}
+                        onClick={() =>
+                          setForm((f) => ({
+                            ...f,
+                            secondaryMuscles: active
+                              ? f.secondaryMuscles.filter((x) => x !== m.id)
+                              : [...f.secondaryMuscles, m.id].slice(0, 6),
+                          }))
+                        }
+                        className={
+                          active
+                            ? "rounded-full border border-primary/60 bg-primary/10 px-2.5 py-1 text-[10px] font-bold text-primary"
+                            : inPrimary
+                              ? "rounded-full border border-border/40 px-2.5 py-1 text-[10px] text-muted-foreground/40"
+                              : "rounded-full border border-border/70 px-2.5 py-1 text-[10px] text-muted-foreground hover:border-primary/40 hover:text-foreground"
+                        }
+                      >
+                        {locale === "fa" ? m.fa : m.en}
+                      </button>
+                    );
+                  })}
+                </div>
               </div>
             </div>
             <div className="space-y-1.5">

@@ -398,7 +398,7 @@ async function main() {
     ok("foreign_key_check پس از پاک‌سازی: 0", post.fk === 0);
 
     const realUsers = await db.user.count();
-    ok("کاربران واقعی دست‌نخورده (۵)", realUsers === 5, `got ${realUsers}`);
+    ok("کاربران واقعی دست‌نخورده (۴ — پایه واقعی مرحله ۱۹.۶)", realUsers === 4, `got ${realUsers}`);
   }
 
   console.log(`\n=== نتیجه: ${passed} سبز، ${failed} قرمز ===`);
