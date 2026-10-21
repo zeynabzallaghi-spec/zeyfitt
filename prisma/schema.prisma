@@ -78,6 +78,11 @@ model user {
   coachStudentNotes          CoachStudentNote[]     @relation("CoachNotes")
   studentNotesAboutMe        CoachStudentNote[]     @relation("StudentNotes")
   coachExercises             CoachExercise[]
+  coachExerciseFolders       CoachExerciseFolder[]  @relation("CoachExerciseFolders")
+  // مرحله ۲۰ — گفتگوی آزاد بین هر دو کاربر (جفت مرتب‌شده برای یکتایی)
+  dmThreadsInitiated         DirectThread[]         @relation("DirectThreadA")
+  dmThreadsReceived          DirectThread[]         @relation("DirectThreadB")
+  directMessagesSent         DirectMessage[]        @relation("DirectMessageSender")
 }
 
 model account {
@@ -824,6 +829,9 @@ model CoachPlanDelivery {
   metaJson     String   @default("{}")
   // snapshot کامل و تغییرناپذیر محتوای برنامه در لحظه ارسال
   contentJson  String
+  // حذف نرم توسط دانشجو — فقط از فهرست خود دانشجو پنهان میشود؛
+  // تاریخچه مربی و سایر دیدگاهها دست‌نخورده میماند (مرحله ۲۰)
+  studentDeletedAt DateTime?
   sentAt       DateTime @default(now())
   coach        user     @relation("CoachPlanDeliveriesSent", fields: [coachId], references: [id], onDelete: Cascade)
   student      user     @relation("CoachPlanDeliveriesReceived", fields: [studentId], references: [id], onDelete: Cascade)
@@ -1235,7 +1243,8 @@ model CoachStudentNote {
   coach     user     @relation("CoachNotes", fields: [coachId], references: [id], onDelete: Cascade)
   student   user     @relation("StudentNotes", fields: [studentId], references: [id], onDelete: Cascade)
 
-  @@unique([coachId, studentId])
+  // چند یادداشت مستقل برای هر جفت مربی/دانشجو — هر ذخیره رکورد جدید (مرحله ۲۰)
+  @@index([coachId, studentId, createdAt])
   @@index([coachId, updatedAt])
 }
 
@@ -1251,6 +1260,8 @@ model CoachStudentNote {
 model CoachExercise {
   id                    String   @id @default(cuid())
   coachId               String
+  // پوشه دستهبندی اختیاری — null یعنی بدون پوشه (بیرون از پوشهها)
+  folderId              String?
   faName                String
   enName                String
   category              String
@@ -1262,9 +1273,64 @@ model CoachExercise {
   createdAt             DateTime @default(now())
   updatedAt             DateTime @updatedAt
   coach                 user     @relation(fields: [coachId], references: [id], onDelete: Cascade)
+  folder                CoachExerciseFolder? @relation(fields: [folderId], references: [id], onDelete: SetNull)
   media                 CoachExerciseMedia[]
 
   @@index([coachId, updatedAt])
+  @@index([coachId, folderId])
+}
+
+// پوشه دستهبندی حرکات شخصی مربی — مرحله ۲۰. فقط مالک میسازد/میبیند/حذف
+// میکند؛ حذف پوشه هرگز حرکات را حذف نمیکند (SetNull — حرکات به «بدون پوشه»
+// برمیگردند تا هیچ دادهای از دست نرود و برنامههای قدیمی سالم بمانند).
+model CoachExerciseFolder {
+  id        String   @id @default(cuid())
+  coachId   String
+  name      String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  coach     user     @relation("CoachExerciseFolders", fields: [coachId], references: [id], onDelete: Cascade)
+  exercises CoachExercise[]
+
+  @@unique([coachId, name])
+  @@index([coachId, createdAt])
+}
+
+// ----------------------------------------
+// گفتگوی آزاد بین هر دو کاربر — مرحله ۲۰ (بخش ۲ مشخصات)
+// ----------------------------------------
+// مستقل از ارتباط مربی/دانشجو؛ هر کاربر میتواند با هر کاربر دیگر گفتگو کند.
+// جفت کاربران به‌صورت مرتب‌شده (userAId <= userBId لغتنامهای) ذخیره میشود
+// تا هر جفت دقیقاً یک رشته داشته باشد (یکتایی در DB، ضد رقابت همزمان).
+// مسدودی چت موجود (ChatBlock) اینجا هم سمت سرور اعمال میشود.
+model DirectThread {
+  id            String    @id @default(cuid())
+  userAId       String    // همیشه شناسه کوچکتر لغتنامهای
+  userBId       String    // همیشه شناسه بزرگتر لغتنامهای
+  createdAt     DateTime  @default(now())
+  lastMessageAt DateTime?
+  userA         user      @relation("DirectThreadA", fields: [userAId], references: [id], onDelete: Cascade)
+  userB         user      @relation("DirectThreadB", fields: [userBId], references: [id], onDelete: Cascade)
+  messages      DirectMessage[]
+
+  @@unique([userAId, userBId])
+  @@index([userAId, lastMessageAt])
+  @@index([userBId, lastMessageAt])
+}
+
+// پیام گفتگوی آزاد — حذف فیزیکی نداریم (تاریخچه حفظ)؛ متن حداکثر ۴۰۰۰.
+model DirectMessage {
+  id          String       @id @default(cuid())
+  threadId    String
+  senderId    String
+  body        String
+  createdAt   DateTime     @default(now())
+  // زمانی که گیرنده رشته را باز کرد — پایه شمارش نخوانده
+  readAt      DateTime?
+  thread      DirectThread @relation(fields: [threadId], references: [id], onDelete: Cascade)
+  sender      user         @relation("DirectMessageSender", fields: [senderId], references: [id], onDelete: Cascade)
+
+  @@index([threadId, createdAt])
 }
 
 // رسانه حرکت شخصی — تصویر (JPEG/PNG/WebP ≤۵MB) یا ویدئو (MP4/WebM ≤۵۰MB)

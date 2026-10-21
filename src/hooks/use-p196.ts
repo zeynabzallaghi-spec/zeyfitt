@@ -384,8 +384,17 @@ export interface CoachExerciseClient {
   description: string;
   tips: string;
   media: CoachExerciseMediaClient[];
+  folderId: string | null;
+  folderName: string | null;
   createdAt: string;
   updatedAt: string;
+}
+
+export interface CoachExerciseFolderClient {
+  id: string;
+  name: string;
+  exercisesCount: number;
+  createdAt: string;
 }
 
 export function useCoachExercises(enabled: boolean) {
@@ -485,7 +494,99 @@ export function useCoachExercises(enabled: boolean) {
     [load]
   );
 
-  return { exercises, loading, error, create, update, remove, uploadMedia, deleteMedia, reload: load };
+  const move = useCallback(
+    async (exerciseId: string, folderId: string | null): Promise<Result<{ moved: boolean }>> => {
+      const result = await jsonFetch<{ moved: boolean }>(
+        `/api/coach/exercises/${encodeURIComponent(exerciseId)}/move`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ folderId }),
+        }
+      );
+      if (result.ok) void load();
+      return result;
+    },
+    [load]
+  );
+
+  return {
+    exercises,
+    loading,
+    error,
+    create,
+    update,
+    remove,
+    uploadMedia,
+    deleteMedia,
+    move,
+    reload: load,
+  };
+}
+
+/* ---------------------- پوشههای حرکات شخصی — مرحله ۲۰ ---------------------- */
+
+export function useCoachExerciseFolders(enabled: boolean) {
+  const [folders, setFolders] = useState<CoachExerciseFolderClient[] | null>(null);
+  const [loading, setLoading] = useState(enabled);
+  const [error, setError] = useState<string | null>(null);
+
+  const load = useCallback(async () => {
+    if (!enabled) return;
+    try {
+      const result = await jsonFetch<{ folders: CoachExerciseFolderClient[] }>(
+        "/api/coach/exercises/folders"
+      );
+      if (!mountedRef.current) return;
+      if (result.ok) {
+        setFolders(result.data.folders);
+        setError(null);
+      } else {
+        setError(result.message);
+      }
+    } finally {
+      if (mountedRef.current) setLoading(false);
+    }
+  }, [enabled]);
+
+  const mountedRef = useRef(true);
+  useEffect(() => {
+    mountedRef.current = true;
+    if (enabled) void load();
+    return () => {
+      mountedRef.current = false;
+    };
+  }, [enabled, load]);
+
+  const createFolder = useCallback(
+    async (name: string): Promise<Result<{ folder: CoachExerciseFolderClient }>> => {
+      const result = await jsonFetch<{ folder: CoachExerciseFolderClient }>(
+        "/api/coach/exercises/folders",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ name }),
+        }
+      );
+      if (result.ok) void load();
+      return result;
+    },
+    [load]
+  );
+
+  const deleteFolder = useCallback(
+    async (folderId: string): Promise<Result<{ deleted: boolean }>> => {
+      const result = await jsonFetch<{ deleted: boolean }>(
+        `/api/coach/exercises/folders/${encodeURIComponent(folderId)}`,
+        { method: "DELETE" }
+      );
+      if (result.ok) void load();
+      return result;
+    },
+    [load]
+  );
+
+  return { folders, loading, error, createFolder, deleteFolder, reload: load };
 }
 
 /* ------------------------------ اطلاعات تکمیلی دانشجو ------------------------------ */
@@ -503,7 +604,7 @@ export interface CoachStudentDetailClient {
     nutrition: { id: string; title: string; version: number; sentAt: string }[];
   };
   progress: { sessionsCount: number; lastSessionAt: string | null };
-  note: { content: string; createdAt: string; updatedAt: string } | null;
+  notes: { id: string; content: string; createdAt: string; updatedAt: string }[];
 }
 
 export function useCoachStudentDetail(studentId: string | null) {
@@ -541,15 +642,29 @@ export function useCoachStudentDetail(studentId: string | null) {
   }, [studentId, load]);
 
   const saveNote = useCallback(
-    async (content: string): Promise<Result<{ note: CoachStudentDetailClient["note"] }>> => {
+    async (
+      content: string
+    ): Promise<Result<{ note: CoachStudentDetailClient["notes"][number] }>> => {
       if (!studentId) return { ok: false, message: "" };
-      const result = await jsonFetch<{ note: CoachStudentDetailClient["note"] }>(
-        `/api/coach/students/${encodeURIComponent(studentId)}/note`,
-        {
-          method: "PUT",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ content }),
-        }
+      const result = await jsonFetch<{
+        note: CoachStudentDetailClient["notes"][number];
+      }>(`/api/coach/students/${encodeURIComponent(studentId)}/note`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ content }),
+      });
+      if (result.ok) void load();
+      return result;
+    },
+    [studentId, load]
+  );
+
+  const deleteNote = useCallback(
+    async (noteId: string): Promise<Result<{ deleted: boolean }>> => {
+      if (!studentId) return { ok: false, message: "" };
+      const result = await jsonFetch<{ deleted: boolean }>(
+        `/api/coach/students/${encodeURIComponent(studentId)}/note/${encodeURIComponent(noteId)}`,
+        { method: "DELETE" }
       );
       if (result.ok) void load();
       return result;
@@ -557,7 +672,7 @@ export function useCoachStudentDetail(studentId: string | null) {
     [studentId, load]
   );
 
-  return { detail, loading, error, saveNote, reload: load };
+  return { detail, loading, error, saveNote, deleteNote, reload: load };
 }
 
 /* ------------------------------ مسدودسازی پیام‌رسان ------------------------------ */

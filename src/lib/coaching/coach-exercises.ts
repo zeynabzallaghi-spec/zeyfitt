@@ -107,9 +107,25 @@ export interface CoachExerciseClient {
   description: string;
   tips: string;
   media: CoachExerciseMediaClient[];
+  /** پوشه دستهبندی اختیاری — مرحله ۲۰ */
+  folderId: string | null;
+  folderName: string | null;
   createdAt: string;
   updatedAt: string;
 }
+
+export interface CoachExerciseFolderClient {
+  id: string;
+  name: string;
+  exercisesCount: number;
+  createdAt: string;
+}
+
+export const FOLDER_NAME_MAX = 60;
+
+export const coachExerciseFolderSchema = z.object({
+  name: z.string().trim().min(1, "نام پوشه خالی است").max(FOLDER_NAME_MAX, "نام پوشه طولانی است"),
+});
 
 /** پیشوند شناسه حرکت شخصی در snapshot برنامه‌ها — از بانک عمومی جدا میماند */
 export const PERSONAL_EXERCISE_PREFIX = "cex-";
@@ -126,6 +142,8 @@ function toClient(row: {
   tips: string;
   createdAt: Date;
   updatedAt: Date;
+  folderId?: string | null;
+  folder?: { id: string; name: string } | null;
   media?: {
     id: string;
     kind: string;
@@ -161,6 +179,8 @@ function toClient(row: {
       sizeBytes: m.sizeBytes,
       createdAt: m.createdAt.toISOString(),
     })),
+    folderId: row.folderId ?? null,
+    folderName: row.folder?.name ?? null,
     createdAt: row.createdAt.toISOString(),
     updatedAt: row.updatedAt.toISOString(),
   };
@@ -168,7 +188,87 @@ function toClient(row: {
 
 const MEDIA_INCLUDE = {
   media: { orderBy: { createdAt: "asc" as const } },
+  folder: { select: { id: true, name: true } },
 } as const;
+
+/* ------------------------------ پوشههای حرکات شخصی — مرحله ۲۰ ------------------------------ */
+
+/** فهرست پوشههای خود مربی با شمار حرکات هر پوشه */
+export async function listCoachExerciseFolders(
+  coachId: string
+): Promise<CoachExerciseFolderClient[]> {
+  const rows = await db.coachExerciseFolder.findMany({
+    where: { coachId },
+    orderBy: { createdAt: "asc" },
+    include: { _count: { select: { exercises: true } } },
+  });
+  return rows.map((r) => ({
+    id: r.id,
+    name: r.name,
+    exercisesCount: r._count.exercises,
+    createdAt: r.createdAt.toISOString(),
+  }));
+}
+
+/** ساخت پوشه — نام تکراری برای همان مربی 409 */
+export async function createCoachExerciseFolder(
+  coachId: string,
+  input: unknown
+): Promise<{ ok: true; folder: CoachExerciseFolderClient } | { ok: false; code: "VALIDATION" | "DUPLICATE" }> {
+  const parsed = coachExerciseFolderSchema.safeParse(input);
+  if (!parsed.success) return { ok: false, code: "VALIDATION" };
+  const duplicate = await db.coachExerciseFolder.findFirst({
+    where: { coachId, name: parsed.data.name },
+    select: { id: true },
+  });
+  if (duplicate) return { ok: false, code: "DUPLICATE" };
+  const row = await db.coachExerciseFolder.create({
+    data: { coachId, name: parsed.data.name },
+  });
+  return {
+    ok: true,
+    folder: { id: row.id, name: row.name, exercisesCount: 0, createdAt: row.createdAt.toISOString() },
+  };
+}
+
+/** حذف پوشه — حرکات به «بدون پوشه» برمیگردند (SetNull؛ هیچ حرکتی حذف نمیشود) */
+export async function deleteCoachExerciseFolder(
+  coachId: string,
+  folderId: string
+): Promise<boolean> {
+  const existing = await db.coachExerciseFolder.findFirst({
+    where: { id: folderId, coachId },
+    select: { id: true },
+  });
+  if (!existing) return false;
+  await db.coachExerciseFolder.delete({ where: { id: folderId } });
+  return true;
+}
+
+/** جابهجایی حرکت به پوشه (یا بیرون از پوشهها با folderId=null) — فقط مالک */
+export async function moveCoachExerciseToFolder(
+  coachId: string,
+  exerciseId: string,
+  folderId: string | null
+): Promise<boolean> {
+  const exercise = await db.coachExercise.findFirst({
+    where: { id: exerciseId, coachId },
+    select: { id: true },
+  });
+  if (!exercise) return false;
+  if (folderId !== null) {
+    const folder = await db.coachExerciseFolder.findFirst({
+      where: { id: folderId, coachId },
+      select: { id: true },
+    });
+    if (!folder) return false;
+  }
+  await db.coachExercise.update({
+    where: { id: exerciseId },
+    data: { folderId },
+  });
+  return true;
+}
 
 /* ------------------------------ خواندن‌ها ------------------------------ */
 

@@ -90,6 +90,7 @@ export interface CoachPlanListItemClient {
   currentVersion: number;
   meta: CoachPlanMetaClient;
   assignedStudent: { userId: string; displayName: string } | null;
+  cooperationType: string | null;
   firstSentAt: string | null;
   lastSentAt: string | null;
   createdAt: string;
@@ -119,6 +120,7 @@ export interface DeliveryListItemClient {
   meta: CoachPlanMetaClient;
   sentAt: string;
   coach: { userId: string; displayName: string };
+  cooperationType: string | null;
 }
 
 export interface DeliveryDetailClient extends DeliveryListItemClient {

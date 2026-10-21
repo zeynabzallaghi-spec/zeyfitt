@@ -51,7 +51,7 @@ import { FOOD_BANK } from "@/lib/foods";
 import { foodGroupFa } from "@/lib/foods";
 import { mealTitleLabel } from "@/lib/i18n/engine-content";
 import { CoachNutritionContentView } from "./plan-content-view";
-import { PlanStatusBadge, PlanCardActions } from "./plans-shared";
+import { PlanStatusBadge, PlanCardActions, PlanListFilters, applyPlanFilters, type PlanTypeFilter } from "./plans-shared";
 import {
   useCoachNutritionPlans,
   createCoachNutritionPlan,
@@ -352,7 +352,7 @@ function NutritionBuilderDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-h-[90vh] max-w-2xl overflow-y-auto">
+      <DialogContent className="h-[100dvh] max-h-[100dvh] w-full max-w-none rounded-none border-0 overflow-y-auto sm:rounded-none">
         <DialogHeader>
           <DialogTitle className="text-sm">
             {planId ? t.builderTitleEdit : t.builderTitleNew}
@@ -666,6 +666,12 @@ export function CoachNutritionPlansTab() {
   const [editId, setEditId] = useState<string | null>(null);
   const [preview, setPreview] = useState<CoachPlanDetailClient | null>(null);
   const [previewLoading, setPreviewLoading] = useState(false);
+  // فیلتر فهرست بر اساس نام دانشجو و نوع خدمات — مرحله ۲۰
+  const [planSearch, setPlanSearch] = useState("");
+  const [planTypeFilter, setPlanTypeFilter] = useState<PlanTypeFilter>("all");
+  const filteredPlans = applyPlanFilters(plans ?? [], planSearch, planTypeFilter, (p) =>
+    p.assignedStudent?.displayName ?? ""
+  );
 
   const openPreview = async (plan: CoachPlanListItemClient) => {
     setPreviewLoading(true);
@@ -729,8 +735,24 @@ export function CoachNutritionPlansTab() {
       ) : !plans || plans.length === 0 ? (
         <EmptyState icon={UtensilsCrossed} title={t.emptyPlansTitle} description={t.emptyNutritionPlansNote} />
       ) : (
+        <div>
+          <PlanListFilters
+            search={planSearch}
+            onSearch={setPlanSearch}
+            typeFilter={planTypeFilter}
+            onTypeFilter={setPlanTypeFilter}
+            byStudent
+          />
+          {filteredPlans.length === 0 ? (
+            <EmptyState
+              icon={UtensilsCrossed}
+              title={t.emptyPlansTitle}
+              description={locale === "fa" ? "نتیجه‌ای با این فیلترها نیست." : "No results with these filters."}
+              compact
+            />
+          ) : (
         <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
-          {plans.map((plan) => (
+          {filteredPlans.map((plan) => (
             <Card key={plan.id} className="border-border/60 bg-card/70">
               <CardContent className="space-y-3 p-4">
                 <div className="flex flex-wrap items-start justify-between gap-2">
@@ -790,6 +812,8 @@ export function CoachNutritionPlansTab() {
             </Card>
           ))}
         </div>
+          )}
+        </div>
       )}
 
       <NutritionBuilderDialog
@@ -805,9 +829,19 @@ export function CoachNutritionPlansTab() {
             <DialogTitle className="text-sm">{preview?.title ?? t.previewTitle}</DialogTitle>
             <DialogDescription className="text-[11px]">{t.previewIntro}</DialogDescription>
           </DialogHeader>
+          {/* خروجی PDF از مسیر چاپ مرورگر — RTL و فونت فارسی درست رندر میشود */}
+          {preview && (
+            <div className="flex justify-end print:hidden">
+              <Button variant="outline" size="sm" onClick={() => window.print()}>
+                {t.actionPdf}
+              </Button>
+            </div>
+          )}
+          <div className="print-area">
           {preview && preview.kind === "nutrition" && (
             <CoachNutritionContentView content={preview.content as CoachNutritionContentClient} />
           )}
+          </div>
         </DialogContent>
       </Dialog>
     </div>

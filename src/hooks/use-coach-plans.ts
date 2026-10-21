@@ -205,6 +205,27 @@ export async function archiveCoachPlan(
   return jsonFetch(`${base}/${encodeURIComponent(id)}/archive`, { method: "POST" });
 }
 
+/**
+ * حذف برنامه خود مربی (مرحله ۲۰، بخش ۱۰) — فقط رکورد مربی حذف میشود؛
+ * نسخه‌های ارسال‌شده برای دانشجو باقی میمانند.
+ */
+export async function deleteCoachPlan(
+  kind: "workout" | "nutrition",
+  id: string
+): Promise<Result<{ deleted: boolean }>> {
+  const base = kind === "workout" ? "/api/coach/workout-plans" : "/api/coach/nutrition-plans";
+  return jsonFetch(`${base}/${encodeURIComponent(id)}`, { method: "DELETE" });
+}
+
+/** حذف برنامه دریافتی توسط خود دانشجو — حذف نرم از فهرست خودش (مرحله ۲۰) */
+export async function deleteMyDelivery(
+  deliveryId: string
+): Promise<Result<{ deleted: boolean }>> {
+  return jsonFetch(`/api/coach-plans/${encodeURIComponent(deliveryId)}`, {
+    method: "DELETE",
+  });
+}
+
 /* ------------------------------ سمت دانشجو ------------------------------ */
 
 export function useMyDeliveries(enabled: boolean, kind?: "workout" | "nutrition") {

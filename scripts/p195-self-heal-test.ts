@@ -41,7 +41,7 @@ async function main() {
   const emptyCount = await copy.exercise.count();
   ok("جدول Exercise در کپی خالی شد", emptyCount === 0, `count=${emptyCount}`);
   const usersInCopy = await copy.user.count();
-  ok("کاربران در کپی حفظ شدند (۴ — پایه واقعی مرحله ۱۹.۶)", usersInCopy === 4, `count=${usersInCopy}`);
+  ok("کاربران در کپی حفظ شدند (۶ — پایه واقعی مرحله ۲۰)", usersInCopy === 6, `count=${usersInCopy}`);
   await copy.$disconnect();
 
   // ۳) اجرای ensureExerciseBank در فرایند جدا با DATABASE_URL کپی
@@ -81,7 +81,7 @@ async function main() {
   const real = new PrismaClient();
   const realTotal = await real.exercise.count({ where: { status: "active" } });
   const realUsers = await real.user.count();
-  ok("دیتابیس واقعی دست‌نخورده ماند (۹۰۵ حرکت، ۴ کاربر)", realTotal === 905 && realUsers === 4, `total=${realTotal} users=${realUsers}`);
+  ok("دیتابیس واقعی دست‌نخورده ماند (۹۰۵ حرکت، ۶ کاربر)", realTotal === 905 && realUsers === 6, `total=${realTotal} users=${realUsers}`);
   await real.$disconnect();
 
   // ۶) پاک‌سازی فایل‌های تست

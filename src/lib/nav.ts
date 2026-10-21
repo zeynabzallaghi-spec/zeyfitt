@@ -9,6 +9,7 @@ import {
   UserRoundCog,
   Users,
   ClipboardList,
+  MessagesSquare,
   FolderOpen,
   type LucideIcon,
 } from "lucide-react";
@@ -25,6 +26,7 @@ export type ViewId =
   | "coaches"
   | "coachPlans"
   | "coachPanel"
+  | "messages"
   | "admin"
   | "profile";
 
@@ -200,6 +202,21 @@ export const NAV_ITEMS: NavItem[] = [
       "بررسی و پاسخ به درخواست‌های ارتباط دریافتی",
       "فهرست دانشجویان فعال و وضعیت هر ارتباط",
       "ساخت و ارسال برنامه‌های تمرینی و غذایی اختصاصی",
+    ],
+  },
+  {
+    id: "messages",
+    fa: "گفتگو",
+    en: "Messages",
+    description: "گفتگوی آزاد با همه کاربران — جست‌وجوی نام و ارسال پیام با به‌روزرسانی زنده",
+    descriptionEn:
+      "Free messaging with all users — name search and live-updating conversations",
+    icon: MessagesSquare,
+    stage: 20,
+    features: [
+      "جست‌وجوی هر کاربر با نام و شروع گفتگو",
+      "فهرست گفتگوها با شمار نخوانده",
+      "به‌روزرسانی زنده پیام‌ها و اعلان‌ها",
     ],
   },
   {

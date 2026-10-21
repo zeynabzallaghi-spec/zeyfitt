@@ -19,7 +19,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
-import { CalendarDays, MessagesSquare, RefreshCw } from "lucide-react";
+import { CalendarDays, MessagesSquare, RefreshCw, StickyNote, Trash2 } from "lucide-react";
 import { useStrings } from "@/lib/i18n/use-strings";
 import { phase196Strings } from "@/lib/i18n/sections/phase196";
 import { coachPlansStrings } from "@/lib/i18n/sections/coach-plans";
@@ -46,24 +46,36 @@ export function StudentDetailDialog({
   const shared = useStrings(sharedStrings);
   const locale = useLocale();
   const { toast } = useToast();
-  const { detail, loading, error, saveNote, reload } = useCoachStudentDetail(open ? studentId : null);
+  const { detail, loading, error, saveNote, deleteNote, reload } = useCoachStudentDetail(open ? studentId : null);
   const [noteDraft, setNoteDraft] = useState<string | null>(null);
   const [savingNote, setSavingNote] = useState(false);
+  const [deletingNoteId, setDeletingNoteId] = useState<string | null>(null);
 
   // الگوی رسمی «مشتق در رندر»: بستن دیالوگ پیش‌نویس را پاک میکند
   if (!open && noteDraft !== null) {
     setNoteDraft(null);
   }
 
-  const noteValue = noteDraft ?? detail?.note?.content ?? "";
-
   const doSaveNote = async () => {
+    const value = (noteDraft ?? "").trim();
+    if (value.length === 0) return;
     setSavingNote(true);
-    const result = await saveNote(noteValue.trim());
+    const result = await saveNote(value);
     setSavingNote(false);
     if (result.ok) {
       toast({ title: t.studentDetailNoteSaved });
       setNoteDraft(null);
+    } else {
+      toast({ title: panelT.loadError, description: result.message, variant: "destructive" });
+    }
+  };
+
+  const doDeleteNote = async (noteId: string) => {
+    setDeletingNoteId(noteId);
+    const result = await deleteNote(noteId);
+    setDeletingNoteId(null);
+    if (result.ok) {
+      toast({ title: locale === "fa" ? "یادداشت حذف شد" : "Note deleted" });
     } else {
       toast({ title: panelT.loadError, description: result.message, variant: "destructive" });
     }
@@ -197,32 +209,63 @@ export function StudentDetailDialog({
               )}
             </section>
 
-            {/* یادداشت خصوصی */}
-            <section className="space-y-1.5">
+            {/* یادداشت‌های خصوصی — چند یادداشت مستقل با حذف (مرحله ۲۰) */}
+            <section className="space-y-2">
               <Label htmlFor="coach-note" className="text-xs font-bold text-foreground">
                 {t.studentDetailNote}
               </Label>
+
+              {detail.notes.length > 0 && (
+                <ul className="space-y-2">
+                  {detail.notes.map((n) => (
+                    <li
+                      key={n.id}
+                      className="rounded-lg border border-border/50 bg-secondary/30 p-2.5"
+                    >
+                      <div className="flex items-start justify-between gap-2">
+                        <p className="whitespace-pre-wrap break-words text-[11px] leading-5 text-foreground">
+                          {n.content}
+                        </p>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="size-6 shrink-0 text-rose-300 hover:bg-rose-400/10 hover:text-rose-300"
+                          onClick={() => void doDeleteNote(n.id)}
+                          disabled={deletingNoteId !== null}
+                          aria-label={locale === "fa" ? "حذف یادداشت" : "Delete note"}
+                        >
+                          <Trash2 className="size-3.5" aria-hidden="true" />
+                        </Button>
+                      </div>
+                      <p className="mt-1 flex items-center gap-1 text-[9px] text-muted-foreground/60">
+                        <StickyNote className="size-2.5" aria-hidden="true" />
+                        {localeDateTimeLabel(n.createdAt, locale)}
+                      </p>
+                    </li>
+                  ))}
+                </ul>
+              )}
+
               <Textarea
                 id="coach-note"
                 dir={locale === "fa" ? "rtl" : "ltr"}
-                value={noteValue}
+                value={noteDraft ?? ""}
                 onChange={(e) => setNoteDraft(e.target.value.slice(0, 4000))}
                 placeholder={t.studentDetailNotePlaceholder}
-                rows={4}
+                rows={3}
                 maxLength={4000}
                 className="resize-none text-xs"
               />
               <div className="flex items-center justify-between gap-2">
                 <p className="text-[10px] text-muted-foreground/70">{t.studentDetailNotePrivacy}</p>
-                <Button size="sm" onClick={() => void doSaveNote()} disabled={savingNote}>
+                <Button
+                  size="sm"
+                  onClick={() => void doSaveNote()}
+                  disabled={savingNote || (noteDraft ?? "").trim().length === 0}
+                >
                   {savingNote ? plansT.saving : t.studentDetailNoteSave}
                 </Button>
               </div>
-              {detail.note?.updatedAt && (
-                <p className="text-[9px] text-muted-foreground/60">
-                  {plansT.updatedAtLabel}: {localeDateTimeLabel(detail.note.updatedAt, locale)}
-                </p>
-              )}
             </section>
 
             {/* گفت‌وگو */}

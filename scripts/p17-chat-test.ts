@@ -576,11 +576,22 @@ async function main() {
     ok("همه کاربران p17test حذف شدند", remaining === 0);
     const convLeft = await db.coachConversation.count();
     const msgLeft = await db.coachMessage.count();
-    ok("هیچ مکالمه/پیام آزمایشی باقی نماند", convLeft === 0 && msgLeft === 0);
+    // به‌روزرسانی مرحله ۲۰: مکالمه واقعی کاربران (مثلاً مورتزا↔عارف) اکنون
+    // مجاز است — فقط نباید ردیف p17test باقی مانده باشد؛ فهرست کاربران
+    // واقعی سمت بالا خوانده و مقایسه میشود
+    const convOwners = await db.coachConversation.findMany({
+      select: { connection: { select: { coach: { select: { email: true } }, student: { select: { email: true } } } } },
+    });
+    const fixtureConvs = convOwners.filter(
+      (c) =>
+        c.connection.coach.email.includes("p17test") ||
+        c.connection.student.email.includes("p17test")
+    );
+    ok("هیچ مکالمه آزمایشی p17test باقی نماند", fixtureConvs.length === 0, `left=${fixtureConvs.length} (real convs=${convLeft})`);
     const realUsers = await db.user.count({ where: { email: { not: { contains: "p17test" } } } });
-    // به‌روزرسانی مرحله ۱۹.۶: پایه واقعی ۴ کاربر است (۳ دانشجو + ۱ ادمین)؛
-    // کاربر پنجم قدیمی پیش از این مرحله (بازیابی سندباکس) از دست رفته بود
-    ok("کاربران واقعی دست‌نخورده (۴ کاربر پایه — شامل حساب واقعی مالک)", realUsers === 4, `count=${realUsers}`);
+    // به‌روزرسانی مرحله ۲۰: پایه واقعی ۶ کاربر است (۴ پایه + morteza مربی +
+    // aref دانشجو — حسابهای واقعی خود کاربر که پس از ۱۹.۶ ساخته شدند)
+    ok("کاربران واقعی دست‌نخورده (۶ کاربر پایه — شامل حساب واقعی مالک)", realUsers === 6, `count=${realUsers}`);
 
     const ic2 = await db.$queryRawUnsafe<{ integrity_check: string }[]>("PRAGMA integrity_check");
     const fk2 = await db.$queryRawUnsafe<Record<string, unknown>[]>("PRAGMA foreign_key_check");

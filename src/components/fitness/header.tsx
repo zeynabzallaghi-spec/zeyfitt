@@ -95,7 +95,8 @@ function NotificationBell() {
   const shell = useStrings(shellStrings);
   const locale = useLocale();
   const dir = useUiLang().dir;
-  const { items, unread, markRead, markAllRead } = useNotifications(Boolean(user));
+  // به200cروزرسانی زنده اعلان200cها — مرحله ۲۰: پوش ۵ ثانیه200cای (پیشتر ۲۰ ثانیه)
+  const { items, unread, markRead, markAllRead } = useNotifications(Boolean(user), 5000);
   const setActiveView = useAppStore((s) => s.setActiveView);
   if (!user) return null;
 

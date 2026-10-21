@@ -217,8 +217,11 @@ export function CoachPanelView() {
   const [detailStudentId, setDetailStudentId] = useState<string | null>(null);
   /** گفت‌وگوی مستقیم از درخواست/دانشجو — کلید تب پیام‌ها را عوض میکند */
   const [chatJump, setChatJump] = useState<{ id: string; n: number } | null>(null);
+  // تب فعال کنترل‌شده — پرش از درخواست/دانشجو به گفت‌وگو ممکن میشود (رفع باگ دکمه گفت‌وگو)
+  const [activeTab, setActiveTab] = useState("profile");
   const openChatWithConnection = (connectionId: string) => {
     setChatJump({ id: connectionId, n: Date.now() });
+    setActiveTab("messages");
   };
 
   // فرم پروفایل — همیشه مقدار واقعی سرور؛ بدون پیش‌فرض ساختگی
@@ -322,7 +325,7 @@ export function CoachPanelView() {
 
   return (
     <div>
-      <Tabs defaultValue="profile" className="gap-5">
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="gap-5">
         <TabsList className="w-full flex-wrap justify-start gap-1 overflow-x-auto">
           <TabsTrigger value="profile" className="text-[11px]">{plansT.existingTab}</TabsTrigger>
           <TabsTrigger value="workoutPlans" className="text-[11px]">{plansT.workoutPlansTab}</TabsTrigger>

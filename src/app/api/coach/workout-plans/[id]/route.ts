@@ -1,11 +1,16 @@
 import { NextResponse } from "next/server";
 import {
+  coachingErrorResponse,
   coachingErrorResponseWithSchema,
   parseWithSchema,
   readJsonBody,
   requireCoach,
 } from "@/lib/coaching/server";
-import { getCoachWorkoutPlan, updateCoachWorkoutPlan } from "@/lib/coaching/plans";
+import {
+  deleteCoachWorkoutPlan,
+  getCoachWorkoutPlan,
+  updateCoachWorkoutPlan,
+} from "@/lib/coaching/plans";
 import { createCoachWorkoutPlanSchema } from "@/lib/coaching/plan-schemas";
 
 type Params = { params: Promise<{ id: string }> };
@@ -46,6 +51,26 @@ export async function PUT(request: Request, { params }: Params) {
     return NextResponse.json({ plan });
   } catch (error) {
     return coachingErrorResponseWithSchema(error);
+  }
+}
+
+/**
+ * DELETE /api/coach/workout-plans/[id] — حذف برنامه خود مربی (مرحله ۲۰، بخش ۱۰).
+ * فقط رکورد برنامه مربی حذف میشود؛ نسخه‌های ارسال‌شده (snapshot مستقل)
+ * دست‌نخورده میمانند — دانشجو به برنامه دریافتی خود همچنان دسترسی دارد.
+ * ناموجود/مالک غیر → 404 یکسان (ضد IDOR).
+ */
+export async function DELETE(_request: Request, { params }: Params) {
+  try {
+    const coach = await requireCoach();
+    const { id } = await params;
+    const deleted = await deleteCoachWorkoutPlan(coach.id, id);
+    if (!deleted) {
+      return NextResponse.json({ error: "PLAN_NOT_FOUND" }, { status: 404 });
+    }
+    return NextResponse.json({ deleted: true });
+  } catch (error) {
+    return coachingErrorResponse(error);
   }
 }
 

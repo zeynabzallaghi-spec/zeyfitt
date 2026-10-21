@@ -51,6 +51,20 @@ export interface CoachPlansStrings {
   actionEdit: string;
   actionSend: string;
   actionArchive: string;
+  actionDelete: string;
+  actionPdf: string;
+  deleteConfirmTitle: string;
+  deleteConfirmNote: string;
+  deleteYes: string;
+  deleteNo: string;
+  deletedToast: string;
+  filterAllTypes: string;
+  filterPrivate: string;
+  filterSemiPrivate: string;
+  filterStudentPlaceholder: string;
+  filterCoachPlaceholder: string;
+  filterUnassigned: string;
+  filterNoType: string;
   archivedNote: string;
 
   // برچسب‌های کد
@@ -171,8 +185,8 @@ export interface CoachPlansStrings {
 
 const fa: CoachPlansStrings = {
   existingTab: "پروفایل و درخواست‌ها",
-  workoutPlansTab: "برنامه‌های تمرینی من",
-  nutritionPlansTab: "برنامه‌های غذایی من",
+  workoutPlansTab: "برنامه‌های تمرینی دانشجویان من",
+  nutritionPlansTab: "برنامه‌های غذایی دانشجویان من",
   documentTitleWorkout: "برنامه‌های تمرینی من",
   documentTitleNutrition: "برنامه‌های غذایی من",
 
@@ -213,6 +227,21 @@ const fa: CoachPlansStrings = {
   actionEdit: "ویرایش",
   actionSend: "ارسال به دانشجو",
   actionArchive: "بایگانی",
+  actionDelete: "حذف",
+  actionPdf: "خروجی PDF",
+  deleteConfirmTitle: "حذف برنامه؟",
+  deleteConfirmNote:
+    "این برنامه از فهرست شما حذف میشود. نسخه‌های ارسال‌شده برای دانشجو باقی میمانند و دانشجو همچنان به آنها دسترسی دارد.",
+  deleteYes: "بله، حذف کن",
+  deleteNo: "انصراف",
+  deletedToast: "برنامه حذف شد",
+  filterAllTypes: "همه انواع",
+  filterPrivate: "خصوصی",
+  filterSemiPrivate: "نیمه‌خصوصی",
+  filterStudentPlaceholder: "جست‌وجوی نام دانشجو…",
+  filterCoachPlaceholder: "جست‌وجوی نام مربی…",
+  filterUnassigned: "بدون دانشجو",
+  filterNoType: "بدون نوع خدمات",
   archivedNote: "این برنامه بایگانی شده است؛ فقط قابل مشاهده است و ویرایش یا ارسال ندارد.",
 
   workoutGoalLabel: (code) => {
@@ -353,8 +382,8 @@ const fa: CoachPlansStrings = {
 
 const en: CoachPlansStrings = {
   existingTab: "Profile & Requests",
-  workoutPlansTab: "My Workout Plans",
-  nutritionPlansTab: "My Nutrition Plans",
+  workoutPlansTab: "My Students' Workout Plans",
+  nutritionPlansTab: "My Students' Nutrition Plans",
   documentTitleWorkout: "My Workout Plans",
   documentTitleNutrition: "My Nutrition Plans",
 
@@ -395,6 +424,21 @@ const en: CoachPlansStrings = {
   actionEdit: "Edit",
   actionSend: "Send to student",
   actionArchive: "Archive",
+  actionDelete: "Delete",
+  actionPdf: "Export PDF",
+  deleteConfirmTitle: "Delete this plan?",
+  deleteConfirmNote:
+    "This plan is removed from your list. Versions already sent to the student remain available to them.",
+  deleteYes: "Yes, delete it",
+  deleteNo: "Cancel",
+  deletedToast: "Plan deleted",
+  filterAllTypes: "All types",
+  filterPrivate: "Private",
+  filterSemiPrivate: "Semi-private",
+  filterStudentPlaceholder: "Search student name…",
+  filterCoachPlaceholder: "Search coach name…",
+  filterUnassigned: "Unassigned",
+  filterNoType: "No service type",
   archivedNote: "This plan is archived; it is view-only and can no longer be edited or sent.",
 
   workoutGoalLabel: (code) => {

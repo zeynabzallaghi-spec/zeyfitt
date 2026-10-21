@@ -21,16 +21,28 @@ import {
 } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
-import { RefreshCw, FolderOpen, Info, UserRound, ShieldAlert } from "lucide-react";
+import { RefreshCw, FolderOpen, Info, UserRound, ShieldAlert, Trash2, FileDown } from "lucide-react";
 import { getNavItem } from "@/lib/nav";
 import { useStrings } from "@/lib/i18n/use-strings";
 import { coachDeliveriesStrings } from "@/lib/i18n/sections/coach-deliveries";
+import { coachPlansStrings } from "@/lib/i18n/sections/coach-plans";
 import { useLocale } from "@/lib/i18n/locale";
 import { localeDateTimeLabel } from "@/lib/i18n/format";
 import { ViewIntro } from "../shared/view-intro";
 import { EmptyState } from "../shared/empty-state";
 import { CoachWorkoutContentView, CoachNutritionContentView } from "./coach/plan-content-view";
-import { useMyDeliveries, getDelivery } from "@/hooks/use-coach-plans";
+import { PlanListFilters, applyPlanFilters, type PlanTypeFilter } from "./coach/plans-shared";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { useMyDeliveries, getDelivery, deleteMyDelivery } from "@/hooks/use-coach-plans";
 import type {
   DeliveryDetailClient,
   DeliveryListItemClient,
@@ -190,6 +202,13 @@ function DeliveryDetailDialog({
 
         {detail && (
           <div className="space-y-4">
+            {/* خروجی PDF از مسیر چاپ مرورگر — برای دانشجو هم فعال (مرحله ۲۰، بخش ۹) */}
+            <div className="flex justify-end print:hidden">
+              <Button variant="outline" size="sm" onClick={() => window.print()}>
+                <FileDown className="me-1 size-3.5" aria-hidden="true" />
+                {locale === "fa" ? "خروجی PDF" : "Export PDF"}
+              </Button>
+            </div>
             {/* منبع برنامه — تفکیک صادقانه از برنامه خودکار */}
             <div className="rounded-xl border border-primary/25 bg-primary/5 p-3">
               <p className="text-[11px] font-bold text-primary">{t.sourceCoachPlan}</p>
@@ -212,20 +231,23 @@ function DeliveryDetailDialog({
               </p>
             )}
 
-            {"days" in detail.content &&
-              (detail.planKind === "workout" ? (
-                <CoachWorkoutContentView
-                  content={detail.content as CoachWorkoutContentClient}
-                  onStartDay={(d) => void startDay(d)}
-                  startBusyDay={startBusyDay}
-                />
-              ) : (
-                <CoachNutritionContentView
-                  content={detail.content as CoachNutritionContentClient}
-                  onLogItem={(args) => void logItem(args)}
-                  logBusyId={logBusyId}
-                />
-              ))}
+            {/* محتوای برنامه — همین بلوک در چاپ/PDF رندر میشود (print-area) */}
+            <div className="print-area">
+              {"days" in detail.content &&
+                (detail.planKind === "workout" ? (
+                  <CoachWorkoutContentView
+                    content={detail.content as CoachWorkoutContentClient}
+                    onStartDay={(d) => void startDay(d)}
+                    startBusyDay={startBusyDay}
+                  />
+                ) : (
+                  <CoachNutritionContentView
+                    content={detail.content as CoachNutritionContentClient}
+                    onLogItem={(args) => void logItem(args)}
+                    logBusyId={logBusyId}
+                  />
+                ))}
+            </div>
 
             <p className="text-[10px] leading-5 text-muted-foreground/70">{t.historyKeptNote}</p>
           </div>
@@ -237,14 +259,26 @@ function DeliveryDetailDialog({
 
 /* ------------------------------ کارت برنامه ------------------------------ */
 
+/** برچسب محلی نوع خدمات — فقط نمایشی (مقادیر مجاز از سرور میآید) */
+function sharedCooperationLabel(value: string, locale: string): string {
+  if (value === "PRIVATE") return locale === "fa" ? "خصوصی" : "Private";
+  if (value === "SEMI_PRIVATE") return locale === "fa" ? "نیمه‌خصوصی" : "Semi-private";
+  return value;
+}
+
 function DeliveryCard({
   delivery,
   onOpen,
+  onDelete,
+  deleting,
 }: {
   delivery: DeliveryListItemClient;
   onOpen: () => void;
+  onDelete: () => void;
+  deleting: boolean;
 }) {
   const t = useStrings(coachDeliveriesStrings);
+  const plansT = useStrings(coachPlansStrings);
   const locale = useLocale();
   return (
     <Card className="border-border/60 bg-card/70">
@@ -260,6 +294,11 @@ function DeliveryCard({
               <span>
                 {t.sentAtLabel}: {localeDateTimeLabel(delivery.sentAt, locale)}
               </span>
+              {delivery.cooperationType && (
+                <span className="font-bold text-foreground">
+                  {sharedCooperationLabel(delivery.cooperationType, locale)}
+                </span>
+              )}
             </p>
           </div>
           <Badge
@@ -286,9 +325,22 @@ function DeliveryCard({
           )}
         </div>
 
-        <Button size="sm" variant="outline" onClick={onOpen}>
-          {t.viewDetails}
-        </Button>
+        <div className="flex flex-wrap gap-2">
+          <Button size="sm" variant="outline" onClick={onOpen}>
+            {t.viewDetails}
+          </Button>
+          <Button
+            size="sm"
+            variant="outline"
+            className="border-rose-400/30 text-rose-300 hover:bg-rose-400/10"
+            onClick={onDelete}
+            disabled={deleting}
+            aria-label={plansT.actionDelete}
+          >
+            <Trash2 className="me-1 size-3.5" aria-hidden="true" />
+            {plansT.actionDelete}
+          </Button>
+        </div>
       </CardContent>
     </Card>
   );
@@ -335,8 +387,31 @@ function DeliveriesList({
   emptyNote: string;
 }) {
   const t = useStrings(coachDeliveriesStrings);
+  const plansT = useStrings(coachPlansStrings);
+  const locale = useLocale();
+  const { toast } = useToast();
   const { deliveries, loading, error, refresh } = useMyDeliveries(true, kind);
   const [openId, setOpenId] = useState<string | null>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
+  // فیلتر بر اساس نام مربی و نوع خدمات — مرحله ۲۰ (بخش ۶)
+  const [planSearch, setPlanSearch] = useState("");
+  const [planTypeFilter, setPlanTypeFilter] = useState<PlanTypeFilter>("all");
+  const filtered = applyPlanFilters(deliveries ?? [], planSearch, planTypeFilter, (d) => d.coach.displayName);
+
+  const doDelete = async () => {
+    if (!confirmDeleteId) return;
+    setDeletingId(confirmDeleteId);
+    const result = await deleteMyDelivery(confirmDeleteId);
+    setDeletingId(null);
+    setConfirmDeleteId(null);
+    if (result.ok) {
+      toast({ title: plansT.deletedToast });
+      refresh();
+    } else {
+      toast({ title: t.loadError, description: result.message, variant: "destructive" });
+    }
+  };
 
   return (
     <div>
@@ -367,14 +442,64 @@ function DeliveriesList({
       ) : !deliveries || deliveries.length === 0 ? (
         <EmptyState icon={FolderOpen} title={t.emptyTitle} description={emptyNote} />
       ) : (
-        <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
-          {deliveries.map((d) => (
-            <DeliveryCard key={d.id} delivery={d} onOpen={() => setOpenId(d.id)} />
-          ))}
+        <div>
+          <PlanListFilters
+            search={planSearch}
+            onSearch={setPlanSearch}
+            typeFilter={planTypeFilter}
+            onTypeFilter={setPlanTypeFilter}
+            byStudent={false}
+          />
+          {filtered.length === 0 ? (
+            <EmptyState
+              icon={FolderOpen}
+              title={t.emptyTitle}
+              description={locale === "fa" ? "نتیجه‌ای با این فیلترها نیست." : "No results with these filters."}
+              compact
+            />
+          ) : (
+            <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
+              {filtered.map((d) => (
+                <DeliveryCard
+                  key={d.id}
+                  delivery={d}
+                  onOpen={() => setOpenId(d.id)}
+                  onDelete={() => setConfirmDeleteId(d.id)}
+                  deleting={deletingId === d.id}
+                />
+              ))}
+            </div>
+          )}
         </div>
       )}
 
       <DeliveryDetailDialog deliveryId={openId} onOpenChange={(v) => !v && setOpenId(null)} />
+
+      {/* تأیید حذف برنامه دریافتی — فقط از فهرست خود دانشجو حذف میشود (مرحله ۲۰) */}
+      <AlertDialog
+        open={confirmDeleteId !== null}
+        onOpenChange={(v) => !v && setConfirmDeleteId(null)}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="text-sm">{plansT.deleteConfirmTitle}</AlertDialogTitle>
+            <AlertDialogDescription className="text-[11px] leading-5">
+              {locale === "fa"
+                ? "این برنامه از فهرست شما حذف میشود؛ تاریخچه مربی دست‌نخورده میماند و بعداً در صورت نیاز دوباره برایتان ارسال میشود."
+                : "This plan is removed from your list; your coach's history is untouched and they can send it again later."}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel className="text-xs">{plansT.deleteNo}</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-rose-600 text-xs text-white hover:bg-rose-700"
+              onClick={doDelete}
+            >
+              {plansT.deleteYes}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

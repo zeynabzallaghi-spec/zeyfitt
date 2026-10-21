@@ -181,3 +181,29 @@
     padding-bottom: env(safe-area-inset-bottom);
   }
 }
+
+/* ----------------------------------------
+ * خروجی PDF برنامه‌ها — مرحله ۲۰ (بخش ۹)
+ * چاپ مرورگر: فقط محتوای .print-area چاپ میشود؛ RTL و فونت فارسی
+ * توسط موتور چاپ خود مرورگر درست رندر میشود (کاربر در دیالوگ چاپ،
+ * «ذخیره به‌صورت PDF» را انتخاب میکند).
+ * ---------------------------------------- */
+@media print {
+  body * {
+    visibility: hidden;
+  }
+  .print-area,
+  .print-area * {
+    visibility: visible;
+  }
+  .print-area {
+    position: absolute;
+    inset-inline-start: 0;
+    top: 0;
+    width: 100%;
+    max-height: none;
+    overflow: visible;
+    color: #111 !important;
+    background: #fff !important;
+  }
+}

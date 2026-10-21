@@ -38,7 +38,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
-import { Dumbbell, Film, Image as ImageIcon, Plus, RefreshCw, Trash2, X } from "lucide-react";
+import { Dumbbell, Film, Folder, Image as ImageIcon, Plus, RefreshCw, Trash2, X } from "lucide-react";
 import { useStrings } from "@/lib/i18n/use-strings";
 import { phase196Strings } from "@/lib/i18n/sections/phase196";
 import { coachPlansStrings } from "@/lib/i18n/sections/coach-plans";
@@ -48,7 +48,7 @@ import { useLocale, useDir } from "@/lib/i18n/locale";
 import { LIBRARY_MUSCLE_GROUPS } from "@/lib/exercises/types";
 import { ViewIntro } from "../../shared/view-intro";
 import { EmptyState } from "../../shared/empty-state";
-import { useCoachExercises } from "@/hooks/use-p196";
+import { useCoachExercises, useCoachExerciseFolders } from "@/hooks/use-p196";
 import type { CoachExerciseClient } from "@/hooks/use-p196";
 
 const CATEGORIES = [
@@ -111,15 +111,62 @@ export function CoachExercisesTab() {
   const locale = useLocale();
   const dir = useDir();
   const { toast } = useToast();
-  const { exercises, loading, create, update, remove, uploadMedia, deleteMedia, reload } =
+  const { exercises, loading, create, update, remove, uploadMedia, deleteMedia, move, reload } =
     useCoachExercises(true);
+  const {
+    folders,
+    createFolder,
+    deleteFolder,
+    reload: reloadFolders,
+  } = useCoachExerciseFolders(true);
 
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editId, setEditId] = useState<string | null>(null);
   const [form, setForm] = useState<ExerciseForm>(emptyForm);
   const [saving, setSaving] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<string | null>(null);
-  const [uploadingFor, setUploadingFor] = useState<string | null>(null);
+  // پوشههای دستهبندی — مرحله ۲۰ (بخش ۷)
+  const [folderFilter, setFolderFilter] = useState<string | null>(null);
+  const [newFolderName, setNewFolderName] = useState("");
+  const [folderBusy, setFolderBusy] = useState(false);
+
+  const doCreateFolder = async () => {
+    const name = newFolderName.trim();
+    if (name.length === 0 || folderBusy) return;
+    setFolderBusy(true);
+    const result = await createFolder(name);
+    setFolderBusy(false);
+    if (result.ok) {
+      setNewFolderName("");
+      toast({ title: locale === "fa" ? "پوشه ساخته شد" : "Folder created" });
+    } else {
+      toast({ title: plansT.loadError, description: result.message, variant: "destructive" });
+    }
+  };
+
+  const doDeleteFolder = async (folderId: string) => {
+    if (folderBusy) return;
+    setFolderBusy(true);
+    const result = await deleteFolder(folderId);
+    setFolderBusy(false);
+    if (result.ok) {
+      if (folderFilter === folderId) setFolderFilter(null);
+      toast({
+        title: locale === "fa" ? "پوشه حذف شد؛ حرکات به «بدون پوشه» برگشتند" : "Folder deleted; exercises moved to no-folder",
+      });
+    } else {
+      toast({ title: plansT.loadError, description: result.message, variant: "destructive" });
+    }
+  };
+
+  const doMove = async (exerciseId: string, folderId: string | null) => {
+    const result = await move(exerciseId, folderId);
+    if (result.ok) {
+      reloadFolders();
+    } else {
+      toast({ title: plansT.loadError, description: result.message, variant: "destructive" });
+    }
+  };
 
   const openNew = () => {
     setEditId(null);
@@ -173,9 +220,10 @@ export function CoachExercisesTab() {
     }
   };
 
-  const onUploadFile = async (file: File) => {
-    if (!uploadingFor) return;
-    const result = await uploadMedia(uploadingFor, file);
+  const onUploadFile = async (exerciseId: string, file: File) => {
+    // شناسه حرکت مستقیم پاس داده میشود — خواندن state اینجا race داشت و
+    // بارگذاری اول همیشه بی‌صدا رد میشد (رفع باگ مرحله ۲۰، بخش ۱۱)
+    const result = await uploadMedia(exerciseId, file);
     if (!result.ok) {
       toast({ title: plansT.loadError, description: result.message, variant: "destructive" });
     } else {
@@ -208,6 +256,63 @@ export function CoachExercisesTab() {
         </Button>
       </div>
 
+      {/* نوار پوشهها — دستهبندی حرکات (مرحله ۲۰، بخش ۷) */}
+      <div className="mb-4 space-y-2 rounded-xl border border-border/60 bg-card/60 p-3">
+        <p className="text-[10px] font-bold text-muted-foreground">
+          {locale === "fa" ? "پوشه‌های دسته‌بندی" : "Category folders"}
+        </p>
+        <div className="flex flex-wrap items-center gap-1.5">
+          <button
+            type="button"
+            onClick={() => setFolderFilter(null)}
+            aria-pressed={folderFilter === null}
+            className={
+              folderFilter === null
+                ? "rounded-full border border-primary/40 bg-primary/15 px-2.5 py-1 text-[10px] font-bold text-primary"
+                : "rounded-full border border-border/50 bg-secondary/30 px-2.5 py-1 text-[10px] font-bold text-muted-foreground hover:border-primary/30"
+            }
+          >
+            {locale === "fa" ? "همه حرکات" : "All exercises"}
+          </button>
+          {(folders ?? []).map((f) => (
+            <span
+              key={f.id}
+              className={
+                folderFilter === f.id
+                  ? "inline-flex items-center gap-1 rounded-full border border-primary/40 bg-primary/15 px-2.5 py-1 text-[10px] font-bold text-primary"
+                  : "inline-flex items-center gap-1 rounded-full border border-border/50 bg-secondary/30 px-2.5 py-1 text-[10px] font-bold text-muted-foreground"
+              }
+            >
+              <button type="button" onClick={() => setFolderFilter(folderFilter === f.id ? null : f.id)}>
+                <Folder className="me-0.5 inline size-3" aria-hidden="true" />
+                {f.name} ({f.exercisesCount})
+              </button>
+              <button
+                type="button"
+                aria-label={`${t.exerciseDelete} ${f.name}`}
+                className="text-rose-300 hover:text-rose-200"
+                onClick={() => void doDeleteFolder(f.id)}
+              >
+                <X className="size-3" aria-hidden="true" />
+              </button>
+            </span>
+          ))}
+        </div>
+        <div className="flex items-center gap-1.5">
+          <Input
+            value={newFolderName}
+            onChange={(e) => setNewFolderName(e.target.value.slice(0, 60))}
+            placeholder={locale === "fa" ? "نام پوشه جدید…" : "New folder name…"}
+            className="h-8 max-w-48 text-xs"
+            aria-label={locale === "fa" ? "نام پوشه جدید" : "New folder name"}
+          />
+          <Button size="sm" variant="outline" onClick={() => void doCreateFolder()} disabled={folderBusy || newFolderName.trim().length === 0}>
+            <Plus className="me-1 size-3.5" aria-hidden="true" />
+            {locale === "fa" ? "پوشه جدید" : "New folder"}
+          </Button>
+        </div>
+      </div>
+
       {loading ? (
         <div className="space-y-3" aria-busy="true" aria-live="polite">
           {[0, 1].map((i) => (
@@ -218,7 +323,9 @@ export function CoachExercisesTab() {
         <EmptyState icon={Dumbbell} title={t.exercisesSectionTitle} description={t.exercisesEmpty} />
       ) : (
         <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
-          {exercises.map((ex) => (
+          {exercises
+            .filter((ex) => folderFilter === null || ex.folderId === folderFilter)
+            .map((ex) => (
             <Card key={ex.id} className="border-border/60 bg-card/70">
               <CardContent className="space-y-2.5 p-4">
                 <div className="flex items-start justify-between gap-2">
@@ -294,8 +401,7 @@ export function CoachExercisesTab() {
                       onChange={(e) => {
                         const f = e.target.files?.[0];
                         if (f) {
-                          setUploadingFor(ex.id);
-                          void onUploadFile(f);
+                          void onUploadFile(ex.id, f);
                         }
                         e.currentTarget.value = "";
                       }}
@@ -303,7 +409,7 @@ export function CoachExercisesTab() {
                   </label>
                 </div>
 
-                <div className="flex items-center gap-2 pt-1">
+                <div className="flex flex-wrap items-center gap-2 pt-1">
                   <Button variant="outline" size="sm" onClick={() => openEdit(ex)}>
                     {t.exerciseEdit}
                   </Button>
@@ -316,6 +422,28 @@ export function CoachExercisesTab() {
                     <Trash2 className="me-1 size-3.5" aria-hidden="true" />
                     {t.exerciseDelete}
                   </Button>
+                  {/* جابهجایی به پوشه — مرحله ۲۰ */}
+                  <Select
+                    value={ex.folderId ?? "none"}
+                    onValueChange={(v) => void doMove(ex.id, v === "none" ? null : v)}
+                  >
+                    <SelectTrigger
+                      className="h-8 w-36 text-[10px]"
+                      aria-label={locale === "fa" ? "انتقال به پوشه" : "Move to folder"}
+                    >
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none" className="text-[10px]">
+                        {locale === "fa" ? "بدون پوشه" : "No folder"}
+                      </SelectItem>
+                      {(folders ?? []).map((f) => (
+                        <SelectItem key={f.id} value={f.id} className="text-[10px]">
+                          {f.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
               </CardContent>
             </Card>

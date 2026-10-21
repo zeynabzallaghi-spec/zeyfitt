@@ -108,6 +108,8 @@ export interface CoachPlanListItem {
   currentVersion: number;
   meta: CoachPlanMeta;
   assignedStudent: { userId: string; displayName: string } | null;
+  /** نوع خدمات ارتباط مبنا — PRIVATE | SEMI_PRIVATE | null (پیش‌نویس بی‌دانشجو) — فیلتر مرحله ۲۰ */
+  cooperationType: string | null;
   firstSentAt: string | null;
   lastSentAt: string | null;
   createdAt: string;
@@ -136,11 +138,23 @@ async function studentNamesOf(ids: (string | null)[]): Promise<Map<string, strin
   return new Map(rows.map((r) => [r.id, r.name]));
 }
 
+/** نقشه connectionId → cooperationType برای فیلتر نوع خدمات فهرست برنامه‌ها (مرحله ۲۰) */
+async function connectionTypesOf(ids: (string | null)[]): Promise<Map<string, string>> {
+  const unique = [...new Set(ids.filter((v): v is string => Boolean(v)))];
+  if (unique.length === 0) return new Map();
+  const rows = await db.coachStudentConnection.findMany({
+    where: { id: { in: unique } },
+    select: { id: true, cooperationType: true },
+  });
+  return new Map(rows.map((r) => [r.id, r.cooperationType]));
+}
+
 /* ------------------------------ برنامه تمرینی مربی ------------------------------ */
 
 function workoutListItem(
   plan: CoachWorkoutPlan,
-  names: Map<string, string>
+  names: Map<string, string>,
+  connTypes: Map<string, string>
 ): CoachPlanListItem {
   return {
     id: plan.id,
@@ -152,6 +166,7 @@ function workoutListItem(
     currentVersion: plan.currentVersion,
     meta: metaOfWorkout(plan),
     assignedStudent: studentNameOf(plan.studentId, names),
+    cooperationType: plan.connectionId ? connTypes.get(plan.connectionId) ?? null : null,
     firstSentAt: plan.firstSentAt?.toISOString() ?? null,
     lastSentAt: plan.lastSentAt?.toISOString() ?? null,
     createdAt: plan.createdAt.toISOString(),
@@ -211,8 +226,30 @@ export async function listCoachWorkoutPlans(coachId: string): Promise<CoachPlanL
     orderBy: { updatedAt: "desc" },
     take: 100,
   });
-  const names = await studentNamesOf(plans.map((p) => p.studentId));
-  return plans.map((p) => workoutListItem(p, names));
+  const [names, connTypes] = await Promise.all([
+    studentNamesOf(plans.map((p) => p.studentId)),
+    connectionTypesOf(plans.map((p) => p.connectionId)),
+  ]);
+  return plans.map((p) => workoutListItem(p, names, connTypes));
+}
+
+/**
+ * حذف برنامه خود مربی — فقط رکورد برنامه مربی حذف میشود؛ نسخه‌های
+ * ارسال‌شده (snapshotهای مستقل CoachPlanDelivery) دست‌نخورده میمانند،
+ * پس دانشجو به برنامه دریافتی خود همچنان دسترسی دارد (مرحله ۲۰، بخش ۱۰).
+ * برنامه ناموجود/مالک غیر → null (404 یکسان).
+ */
+export async function deleteCoachWorkoutPlan(
+  coachId: string,
+  planId: string
+): Promise<boolean> {
+  const existing = await db.coachWorkoutPlan.findFirst({
+    where: { id: planId, coachId },
+    select: { id: true },
+  });
+  if (!existing) return false;
+  await db.coachWorkoutPlan.delete({ where: { id: planId } });
+  return true;
 }
 
 export async function getCoachWorkoutPlan(
@@ -223,9 +260,12 @@ export async function getCoachWorkoutPlan(
     where: { id: planId, coachId },
   });
   if (!plan) return null;
-  const names = await studentNamesOf(plan.studentId ? [plan.studentId] : []);
+  const [names, connTypes] = await Promise.all([
+    studentNamesOf(plan.studentId ? [plan.studentId] : []),
+    connectionTypesOf(plan.connectionId ? [plan.connectionId] : []),
+  ]);
   return {
-    ...workoutListItem(plan, names),
+    ...workoutListItem(plan, names, connTypes),
     meta: metaOfWorkout(plan),
     content: parseWorkoutContent(plan.contentJson),
   };
@@ -277,8 +317,11 @@ export async function archiveCoachWorkoutPlan(
   });
   const plan = await db.coachWorkoutPlan.findUnique({ where: { id: planId } });
   if (!plan) return null;
-  const names = await studentNamesOf(plan.studentId ? [plan.studentId] : []);
-  return workoutListItem(plan, names);
+  const [names, connTypes] = await Promise.all([
+    studentNamesOf(plan.studentId ? [plan.studentId] : []),
+    connectionTypesOf(plan.connectionId ? [plan.connectionId] : []),
+  ]);
+  return workoutListItem(plan, names, connTypes);
 }
 
 /**
@@ -395,7 +438,8 @@ export async function publishCoachWorkoutPlan(
 
 function nutritionListItem(
   plan: CoachNutritionPlan,
-  names: Map<string, string>
+  names: Map<string, string>,
+  connTypes: Map<string, string>
 ): CoachPlanListItem {
   return {
     id: plan.id,
@@ -407,6 +451,7 @@ function nutritionListItem(
     currentVersion: plan.currentVersion,
     meta: metaOfNutrition(plan),
     assignedStudent: studentNameOf(plan.studentId, names),
+    cooperationType: plan.connectionId ? connTypes.get(plan.connectionId) ?? null : null,
     firstSentAt: plan.firstSentAt?.toISOString() ?? null,
     lastSentAt: plan.lastSentAt?.toISOString() ?? null,
     createdAt: plan.createdAt.toISOString(),
@@ -441,7 +486,22 @@ export async function listCoachNutritionPlans(coachId: string): Promise<CoachPla
     take: 100,
   });
   const names = await studentNamesOf(plans.map((p) => p.studentId));
-  return plans.map((p) => nutritionListItem(p, names));
+  const connTypes = await connectionTypesOf(plans.map((p) => p.connectionId));
+  return plans.map((p) => nutritionListItem(p, names, connTypes));
+}
+
+/** حذف برنامه غذایی خود مربی — همان قرارداد deleteCoachWorkoutPlan (مرحله ۲۰) */
+export async function deleteCoachNutritionPlan(
+  coachId: string,
+  planId: string
+): Promise<boolean> {
+  const existing = await db.coachNutritionPlan.findFirst({
+    where: { id: planId, coachId },
+    select: { id: true },
+  });
+  if (!existing) return false;
+  await db.coachNutritionPlan.delete({ where: { id: planId } });
+  return true;
 }
 
 export async function getCoachNutritionPlan(
@@ -452,9 +512,12 @@ export async function getCoachNutritionPlan(
     where: { id: planId, coachId },
   });
   if (!plan) return null;
-  const names = await studentNamesOf(plan.studentId ? [plan.studentId] : []);
+  const [names, connTypes] = await Promise.all([
+    studentNamesOf(plan.studentId ? [plan.studentId] : []),
+    connectionTypesOf(plan.connectionId ? [plan.connectionId] : []),
+  ]);
   return {
-    ...nutritionListItem(plan, names),
+    ...nutritionListItem(plan, names, connTypes),
     content: parseNutritionContent(plan.contentJson),
   };
 }
@@ -502,8 +565,11 @@ export async function archiveCoachNutritionPlan(
   });
   const plan = await db.coachNutritionPlan.findUnique({ where: { id: planId } });
   if (!plan) return null;
-  const names = await studentNamesOf(plan.studentId ? [plan.studentId] : []);
-  return nutritionListItem(plan, names);
+  const [names, connTypes] = await Promise.all([
+    studentNamesOf(plan.studentId ? [plan.studentId] : []),
+    connectionTypesOf(plan.connectionId ? [plan.connectionId] : []),
+  ]);
+  return nutritionListItem(plan, names, connTypes);
 }
 
 export async function publishCoachNutritionPlan(
@@ -643,8 +709,11 @@ export async function listCoachPlanDeliveriesForStudent(
     orderBy: { sentAt: "desc" },
     take: 100,
   });
-  const names = await coachNamesOf(rows.map((r) => r.coachId));
-  return rows.map((r) => toDeliveryItem(r, names));
+  const [names, connTypes] = await Promise.all([
+    coachNamesOf(rows.map((r) => r.coachId)),
+    connectionTypesOf(rows.map((r) => r.connectionId)),
+  ]);
+  return rows.map((r) => toDeliveryItem(r, names, connTypes));
 }
 
 /* ------------------------------ سمت دانشجو ------------------------------ */
@@ -659,6 +728,8 @@ export interface DeliveryListItem {
   meta: CoachPlanMeta;
   sentAt: string;
   coach: { userId: string; displayName: string };
+  /** نوع خدمات ارتباط مبنا — PRIVATE | SEMI_PRIVATE | null (قدیمی‌ها بدون ارتباط) — فیلتر مرحله ۲۰ */
+  cooperationType: string | null;
 }
 
 export interface DeliveryDetail extends DeliveryListItem {
@@ -679,7 +750,8 @@ async function coachNamesOf(ids: (string | null)[]): Promise<Map<string, string>
 
 function toDeliveryItem(
   row: CoachPlanDelivery,
-  coachNames: Map<string, string>
+  coachNames: Map<string, string>,
+  connTypes: Map<string, string>
 ): DeliveryListItem {
   return {
     id: row.id,
@@ -694,21 +766,46 @@ function toDeliveryItem(
       userId: row.coachId,
       displayName: coachNames.get(row.coachId) ?? "—",
     },
+    cooperationType: connTypes.get(row.connectionId) ?? null,
   };
 }
 
-/** فهرست برنامه‌های اختصاصی دریافتی دانشجو — فقط ارسال‌شده‌های خودش */
+/** فهرست برنامه‌های اختصاصی دریافتی دانشجو — فقط ارسال‌شده‌های خودش؛ حذفشده‌های نرمی که خود دانشجو حذف کرده نمایش داده نمیشود */
 export async function listStudentDeliveries(
   studentId: string,
   kind?: "workout" | "nutrition"
 ): Promise<DeliveryListItem[]> {
   const rows = await db.coachPlanDelivery.findMany({
-    where: { studentId, ...(kind ? { planKind: kind } : {}) },
+    where: { studentId, studentDeletedAt: null, ...(kind ? { planKind: kind } : {}) },
     orderBy: { sentAt: "desc" },
     take: 200,
   });
-  const names = await coachNamesOf(rows.map((r) => r.coachId));
-  return rows.map((r) => toDeliveryItem(r, names));
+  const [names, connTypes] = await Promise.all([
+    coachNamesOf(rows.map((r) => r.coachId)),
+    connectionTypesOf(rows.map((r) => r.connectionId)),
+  ]);
+  return rows.map((r) => toDeliveryItem(r, names, connTypes));
+}
+
+/**
+ * حذف برنامه دریافتی توسط خود دانشجو — حذف نرم (studentDeletedAt)؛ فقط
+ * از فهرست خود دانشجو پنهان میشود و تاریخچه مربی دست‌نخورده میماند
+ * (مرحله ۲۰، بخش ۱۰). رکورد مال غیر → null (404 یکسان، ضد IDOR).
+ */
+export async function deleteStudentDelivery(
+  studentId: string,
+  deliveryId: string
+): Promise<boolean> {
+  const existing = await db.coachPlanDelivery.findFirst({
+    where: { id: deliveryId, studentId },
+    select: { id: true },
+  });
+  if (!existing) return false;
+  await db.coachPlanDelivery.update({
+    where: { id: deliveryId },
+    data: { studentDeletedAt: new Date() },
+  });
+  return true;
 }
 
 /**
@@ -724,13 +821,16 @@ export async function getDeliveryForUser(
   const isStudent = row.studentId === user.id;
   const isCoach = row.coachId === user.id;
   if (!isStudent && !isCoach) return null;
-  const names = await coachNamesOf([row.coachId]);
+  const [names, connTypes] = await Promise.all([
+    coachNamesOf([row.coachId]),
+    connectionTypesOf(row.connectionId ? [row.connectionId] : []),
+  ]);
   const conn = await db.coachStudentConnection.findUnique({
     where: { id: row.connectionId },
     select: { status: true },
   });
   return {
-    ...toDeliveryItem(row, names),
+    ...toDeliveryItem(row, names, connTypes),
     content:
       row.planKind === "nutrition"
         ? parseNutritionContent(row.contentJson)

@@ -22,6 +22,7 @@ import { AssistantView } from "./views/assistant-view";
 import { CoachesView } from "./views/coaches-view";
 import { CoachPlansView } from "./views/coach-deliveries-view";
 import { CoachPanelView } from "./views/coach-panel-view";
+import { MessagesView } from "./views/messages-view";
 import { AdminView } from "./views/admin/admin-view";
 import { ProfileView } from "./views/profile-view";
 
@@ -82,6 +83,8 @@ function ActiveView() {
       return <CoachPlansView />;
     case "coachPanel":
       return <CoachPanelView />;
+    case "messages":
+      return <MessagesView />;
     case "admin":
       return <AdminView />;
     case "profile":

@@ -525,10 +525,27 @@ async function main() {
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ content: "یادداشت خصوصی درباره پیشرفت" }),
   });
-  ok("یادداشت خصوصی ذخیره میشود", noteSave.status === 200, `got ${noteSave.status}`);
+  // مرحله ۲۰: هر ذخیره یادداشت جدید میسازد (201) — چند یادداشت مستقل
+  ok("یادداشت خصوصی ذخیره میشود", noteSave.status === 201, `got ${noteSave.status}`);
 
   const noteGet = await api(coach, `/api/coach/students/${student.userId}/note`);
-  ok("یادداشت بازیابی میشود", (noteGet.body.note as { content?: string })?.content === "یادداشت خصوصی درباره پیشرفت");
+  const notesList = (noteGet.body.notes as { content?: string }[] | undefined) ?? [];
+  ok(
+    "یادداشت بازیابی میشود",
+    notesList.some((n) => n.content === "یادداشت خصوصی درباره پیشرفت")
+  );
+
+  // مرحله ۲۰: ذخیره دوم — رکورد مستقل + حذف
+  const noteSave2 = await api(coach, `/api/coach/students/${student.userId}/note`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ content: "یادداشت دوم" }),
+  });
+  const firstNoteId = (noteSave.body.note as { id?: string } | undefined)?.id;
+  const noteDel = firstNoteId
+    ? await api(coach, `/api/coach/students/${student.userId}/note/${firstNoteId}`, { method: "DELETE" })
+    : null;
+  ok("یادداشت دوم مستقل ذخیره و اولی حذف میشود", noteSave2.status === 201 && noteDel !== null && noteDel.status === 200, `save2=${noteSave2.status} del=${noteDel?.status ?? "-"}`);
 
   // یادداشت برای دانشجو نامرئی — دانشجو مسیر ندارد؛ در پروفایل خودش هم نیست
   const studentProfile = await api(student, "/api/profile");

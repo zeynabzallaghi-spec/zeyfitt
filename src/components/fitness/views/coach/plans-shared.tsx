@@ -9,6 +9,7 @@
 import { useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import {
   Dialog,
   DialogContent,
@@ -35,20 +36,99 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
-import { Send, Users, History, AlertTriangle } from "lucide-react";
+import { Send, Users, History, AlertTriangle, Trash2 } from "lucide-react";
 import { useStrings } from "@/lib/i18n/use-strings";
 import { coachPlansStrings } from "@/lib/i18n/sections/coach-plans";
 import { sharedStrings } from "@/lib/i18n/sections/shared";
 import { useLocale } from "@/lib/i18n/locale";
 import { localeDateTimeLabel } from "@/lib/i18n/format";
 import { useCoachStudents } from "@/hooks/use-coaching";
-import { archiveCoachPlan, publishCoachPlan } from "@/hooks/use-coach-plans";
+import { archiveCoachPlan, deleteCoachPlan, publishCoachPlan } from "@/hooks/use-coach-plans";
 import type {
   CoachPlanListItemClient,
   CoachPlanVersionClient,
 } from "@/lib/coaching/plans-client";
 
 /* ------------------------------ نشان وضعیت ------------------------------ */
+
+export type PlanTypeFilter = "all" | "PRIVATE" | "SEMI_PRIVATE" | "none";
+
+/**
+ * فیلتر فهرست برنامه‌ها — جست‌وجوی نام دانشجو/مربی + نوع خدمات
+ * (خصوصی/نیمه‌خصوصی) — مرحله ۲۰، بخش‌های ۵ و ۶. فقط نمایشی سمت کلاینت؛
+ * همه مجوزها سمت سرور است.
+ */
+export function PlanListFilters({
+  search,
+  onSearch,
+  typeFilter,
+  onTypeFilter,
+  byStudent,
+}: {
+  search: string;
+  onSearch: (v: string) => void;
+  typeFilter: PlanTypeFilter;
+  onTypeFilter: (v: PlanTypeFilter) => void;
+  /** true = جست‌وجوی نام دانشجو (پنل مربی)؛ false = جست‌وجوی نام مربی (پنل دانشجو) */
+  byStudent: boolean;
+}) {
+  const t = useStrings(coachPlansStrings);
+  const options: { value: PlanTypeFilter; label: string }[] = [
+    { value: "all", label: t.filterAllTypes },
+    { value: "PRIVATE", label: t.filterPrivate },
+    { value: "SEMI_PRIVATE", label: t.filterSemiPrivate },
+    { value: "none", label: byStudent ? t.filterUnassigned : t.filterNoType },
+  ];
+  return (
+    <div className="mb-4 flex flex-wrap items-center gap-2">
+      <Input
+        value={search}
+        onChange={(e) => onSearch(e.target.value)}
+        placeholder={byStudent ? t.filterStudentPlaceholder : t.filterCoachPlaceholder}
+        className="h-8 max-w-56 text-xs"
+        aria-label={byStudent ? t.filterStudentPlaceholder : t.filterCoachPlaceholder}
+      />
+      <div className="flex flex-wrap gap-1.5" role="group" aria-label={t.filterAllTypes}>
+        {options.map((o) => (
+          <button
+            key={o.value}
+            type="button"
+            onClick={() => onTypeFilter(o.value)}
+            aria-pressed={typeFilter === o.value}
+            className={
+              typeFilter === o.value
+                ? "rounded-full border border-primary/40 bg-primary/15 px-2.5 py-1 text-[10px] font-bold text-primary"
+                : "rounded-full border border-border/50 bg-secondary/30 px-2.5 py-1 text-[10px] font-bold text-muted-foreground hover:border-primary/30"
+            }
+          >
+            {o.label}
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+/** اعمال فیلتر جست‌وجو + نوع روی فهرست برنامه‌ها (مرحله ۲۰) */
+export function applyPlanFilters<T extends { cooperationType: string | null }>(
+  items: T[],
+  search: string,
+  typeFilter: PlanTypeFilter,
+  nameOf: (item: T) => string
+): T[] {
+  const q = search.trim().toLowerCase();
+  return items.filter((item) => {
+    if (typeFilter === "none" && item.cooperationType !== null) return false;
+    if (
+      (typeFilter === "PRIVATE" || typeFilter === "SEMI_PRIVATE") &&
+      item.cooperationType !== typeFilter
+    ) {
+      return false;
+    }
+    if (q.length > 0 && !nameOf(item).toLowerCase().includes(q)) return false;
+    return true;
+  });
+}
 
 export function PlanStatusBadge({ status }: { status: string }) {
   const t = useStrings(coachPlansStrings);
@@ -94,6 +174,7 @@ export function PlanCardActions({
   const { students } = useCoachStudents(true);
   const [sendOpen, setSendOpen] = useState(false);
   const [archiveOpen, setArchiveOpen] = useState(false);
+  const [deleteOpen, setDeleteOpen] = useState(false);
   const [selectedConnection, setSelectedConnection] = useState("");
   const [sending, setSending] = useState(false);
   const [versions, setVersions] = useState<CoachPlanVersionClient[] | null>(null);
@@ -127,6 +208,18 @@ export function PlanCardActions({
     }
   };
 
+  // حذف فقط برای مربی — نسخه‌های ارسال‌شده برای دانشجو باقی میمانند (مرحله ۲۰)
+  const doDelete = async () => {
+    const result = await deleteCoachPlan(kind, plan.id);
+    setDeleteOpen(false);
+    if (result.ok) {
+      toast({ title: t.deletedToast });
+      onDone();
+    } else {
+      toast({ title: t.loadError, description: result.message, variant: "destructive" });
+    }
+  };
+
   return (
     <div className="space-y-2">
       <div className="flex flex-wrap gap-2">
@@ -154,6 +247,16 @@ export function PlanCardActions({
             {t.actionArchive}
           </Button>
         )}
+        <Button
+          size="sm"
+          variant="outline"
+          className="border-rose-400/30 text-rose-300 hover:bg-rose-400/10"
+          onClick={() => setDeleteOpen(true)}
+          aria-label={t.actionDelete}
+        >
+          <Trash2 className="me-1 size-3.5" aria-hidden="true" />
+          {t.actionDelete}
+        </Button>
       </div>
 
       {plan.currentVersion > 0 && (
@@ -251,6 +354,27 @@ export function PlanCardActions({
             <AlertDialogCancel className="text-xs">{t.archiveNo}</AlertDialogCancel>
             <AlertDialogAction className="text-xs" onClick={archive}>
               {t.archiveYes}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* تأیید حذف — فقط فهرست مربی؛ نسخه‌های دانشجو دست‌نخورده (مرحله ۲۰) */}
+      <AlertDialog open={deleteOpen} onOpenChange={setDeleteOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="text-sm">{t.deleteConfirmTitle}</AlertDialogTitle>
+            <AlertDialogDescription className="text-[11px] leading-5">
+              {t.deleteConfirmNote}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel className="text-xs">{t.deleteNo}</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-rose-600 text-xs text-white hover:bg-rose-700"
+              onClick={doDelete}
+            >
+              {t.deleteYes}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
