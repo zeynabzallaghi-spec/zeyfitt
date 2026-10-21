@@ -1017,3 +1017,23 @@ Work Log:
 Stage Summary:
 - مخزن GitHub با توکن جدید کاربر تأیید شد: main محلی و main راه‌دور بیت‌به‌بیت یکسان (a5fa9d2)؛ مرحله ۱۹.۶ به‌طور کامل منتشر است
 - توکن جدید در چت نمایش داده شده — پس از این تأیید باید توسط کاربر لغو (revoke) شود
+
+---
+Task ID: 33
+Agent: Super Z (main agent)
+Task: ترمیم پیامد بازنشانی سندباکس — ارتقای دوباره ادمین (mahziar.parvizi@gmail.com) + بازسازی بانک ۹۰۵ حرکتی
+
+Work Log:
+- گزارش کاربر: اکانت mahziar.parvizi@gmail.com باید ادمین باشد → بررسی DB: نقش STUDENT بود!
+- ریشه‌یابی: سندباکس ساعت ۰۶:۱۸ بازنشانی شده بود (فقط یک بکاپ خودکار custom-20261021-061844.db مانده، بکاپ‌های قبلی پاک، لاگ bootstrap-admin خالی) — DB به اسنپ‌شات قدیمی برگشته بود
+- بکاپ پیش از تغییر: backups/pre-admin-rebootstrap-20261021-075306.db → اجرای scripts/p195-admin-bootstrap.ts --email mahziar.parvizi@gmail.com --confirm → نقش STUDENT → ADMIN + ثبت bootstrap-admin در AdminActionLog
+- کشف دوم: جدول‌های ۴۲گانه سالم بودند اما Exercise = 0 (بانک ۹۰۵ حرکتی از دست رفته بود) → اجرای رسمی idempotent: bun scripts/p18-import-exercises.ts (۹۰۵ حرکت، batch ثبت شد) + bun scripts/p19-import-mapping.ts (۹۰۵/۹۰۵ نگاشت سه‌بعدی ready، بدون بازنویسی مخرب)
+- تأیید انتها-به-انتها با اسکریپت جدید scripts/p196-admin-verify.ts (۵/۵ سبز): ثبت‌نام کاربر آزمایشی واقعی → API بانک حرکات با نشست: total=905 → API ادمین برای STUDENT: 403 (کنترل نقش سالم) → پاکسازی کامل fixture → ۴ کاربر واقعی دست‌نخورده (۱ ADMIN + ۳ STUDENT)
+- تأیید نیازی به خروج/ورود مجدد نیست: requireAdmin نقش را هر بار تازه از DB می‌خواند و page.tsx force-dynamic است — فقط رفرش صفحه کافی است
+- بکاپ پس از ترمیم: backups/post-restore-repair-20261021-075645.db (integrity ok)
+- یادداشت برای آینده: اگر سندباکس دوباره ریست شد، دو اقدام لازم است: ① bun scripts/p195-admin-bootstrap.ts --email mahziar.parvizi@gmail.com --confirm ② import خودکار بانک با اولین درخواست (self-heal) یا دستی p18+p19
+
+Stage Summary:
+- mahziar.parvizi@gmail.com دوباره ADMIN است (لاگ ممیزی ثبت شد)؛ بانک ۹۰۵ حرکتی با نگاشت سه‌بعدی کامل بازسازی شد؛ ۴ کاربر واقعی سالم
+- تست انتها-به-انتها ۵/۵ سبز؛ سرور در حال اجرا با نشست واقعی total=905 برگرداند
+- ریشه مشکل، باگ کد نبود — بازنشانی زیرساخت سندباکس بود؛ هر دو اقدام ترمیم مستند شد
