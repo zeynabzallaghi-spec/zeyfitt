@@ -228,11 +228,19 @@ export async function saveCoachProfile(input: {
   experienceYears: number | null;
   cooperationTypes: string[];
 }): Promise<Result<CoachProfileClient>> {
-  return jsonFetch("/api/coach/profile", {
-    method: "PUT",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(input),
-  });
+  // پاسخ سرور پاکه است: { profile: {...} } — باز کردن پاکه اینجا انجام
+  // میشود تا قرارداد تایپ خروجی (Result<CoachProfileClient>) صادقانه بماند؛
+  // پیشتر بدنه خام برگشت داده میشد و setProfile در ویو state را با شکل
+  // اشتباه پر میکرد و رندر چیپهای تخصص روی undefined کرش میکرد.
+  const result = await jsonFetch<{ profile: CoachProfileClient }>(
+    "/api/coach/profile",
+    {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(input),
+    }
+  );
+  return result.ok ? { ok: true, data: result.data.profile } : result;
 }
 
 /** POST /api/coach/profile/publish — تغییر انتشار عمومی */
