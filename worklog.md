@@ -1200,3 +1200,45 @@ Work Log:
 Stage Summary:
 - P0 کامل و اثبات‌شده: حرکت شخصی از برنامه‌ساز UI تا ذخیره موفق کار میکند (FA و EN)؛ قرارداد شناسه حالا تک‌منبع و idempotent است؛ هیچ تغییر schema، هیچ migration، هیچ داده واقعی حذف نشد
 - P1..P4 اجرا نشده‌اند — منتظر تأیید کاربر
+
+---
+Task ID: 42
+Agent: Super Z (main agent)
+Task: بررسی فقط‌خواندنی سلامت داده پیش از P1 (مقایسه آمار قبل/پس از P0 + اعتبارسنجی بکاپ) — بدون هیچ تغییر کد یا داده
+
+Work Log:
+- ممیزی ۱۰۰٪ فقط‌خواندنی: bun:sqlite (readonly) + snapshot معکوس‌شده از live با serialize() در scratch — هیچ نوشتنی روی db/custom.db انجام نشد
+- اسکریپت‌ها: scripts/p21-data-health.ts (integrity/fk/counts/diff id-level) و scripts/p21-extra-evidence.ts (کاربران بکاپ + ExerciseImportBatch + AdminActionLog)
+- کشف ریست پنجم سندباکس بین 08:54 (کامیت P0) و 10:54: بکاپ 10:54:12 حالت post-reset را ثبت کرده (mahziar=STUDENT + exercises=0)؛ AdminActionLog «bootstrap-admin» در 10:54:13؛ dev.log سرور Ready در 10:54:41 (predev → auto-recover)؛ بانک 905 در 10:54:15 باز-import شد؛ بکاپ‌های قدیمی (از جمله post-repair 08:18) توسط ریست پاک شدند — این رویداد قبلاً در هیچ worklog ثبت نشده بود
+- مقایسه آمار قبل از P0 (چک خودکار p196 در Task 40: users=4 شامل 1 ADMIN + 3 STUDENT، exercises=905) با وضعیت فعلی: دقیقاً همان ۴ هویت (id-level با ایمیل/نقش) + 905 حرکت
+- مقایسه id-level بکاپ@10:54 با live: deleted=0 / added=0 در هر ۴ جدول (user، WorkoutPlan، CoachWorkoutPlan، CoachExercise)؛ بدون ردپای fixture؛ CoachMessage/DirectMessage=0؛ FitnessProfile=4؛ integrity_check=ok و fk_violations=0 در هر دو فایل
+- بررسی کد تست P0 (p20a-library-test.ts): پاکسازی فقط scoped به cleanupUserIds (بدون deleteMany سراسری)؛ کامیت 995984d فقط کد/دک/تست، بدون migration
+- اعتبارسنجی بکاپ موجود: باز شدن readonly + integrity ok + کوئری‌گیری موفق — ولی محتوایش حالت post-reset است (بانک 905 را ندارد)
+- snapshot سالم از وضعیت فعلی ساخته شد: scratch/p21-data-health/live-snapshot.db (integrity ok) — ارتقای آن به backups/ منتظر تأیید کاربر
+- ls-remote (با پاک‌سازی توکن از خروجی): remote main = local main = 995984d
+
+Stage Summary:
+- داده سالم است: هیچ شواهدی از حذف داده واقعی یا محتوای کاربران توسط تست‌های P0؛ ۴ کاربر واقعی + بانک 905 + نقش ادمین سالم
+- ریست پنجم به‌صورت خودکار و بدون دخالت دستی توسط auto-recover ترمیم شد؛ سیستم self-healing کار میکند
+- نکته مهندسی برای P1+: p196 دارای verification.deleteMany({}) سراسری است (pre-P0) — توکن‌های موقت auth، بدون آسیب محتوایی؛ الگوی p20a (scoped) مرجع باشد
+- P1 شروع نشده — منتظر تأیید کاربر
+
+---
+Task ID: 43
+Agent: Super Z (main agent)
+Task: بکاپ رسمی پیش از P1 + اعتبارسنجی بازیابی‌پذیری (به دستور کاربر — P1 هنوز تأیید نشده)
+
+Work Log:
+- حادثه کشف و رفع شد: کامیت خودکار پلتفرم 47d0e53 (پیام UUID، ساعت 11:14) اسنپ‌شات دیتابیس (scratch/p21-data-health/live-snapshot.db) و گزارش ممیزی حاوی ایمیل کاربران را به index git برده بود؛ remote هرگز دریافت نکرد (remote=995984d در تمام مدت) → git reset --mixed به 995984d (کامیت local-only و push نشده بود) + سخت‌گیری .gitignore (scratch/ و download/*.db*)؛ پس از پوش نهایی، پاکسازی blob با reflog expire + gc و اثبات حذف
+- دروازه سلامت قبل از بکاپ (فقط‌خواندنی): quick_check=ok | users=4 | exercises=905 | mahziar=ADMIN
+- journal_mode = delete (WAL نیست)؛ با این حال روش رسمی VACUUM INTO سازگار با WAL است و snapshot اتمی همگام می‌دهد حتی با نوشتن هم‌زمان سرور
+- بکاپ رسمی با scripts/p20-db-backup.ts (روش رسمی پروژه): backups/pre-p1-official-2026-10-22T12-13-20.db
+- اعتبارسنجی با scripts/p22-backup-verify.ts (جدید): integrity_check=ok | fk_violations=0 | sha256=9821b37d2af57a9be878680df5baf9a0caefc07f62f8c706058d4d5a5436ef33 | 2,342,912 بایت | شمارش‌ها: user=4 (1 ADMIN + 3 STUDENT)، Exercise=905، WorkoutPlan=0، CoachWorkoutPlan=0، CoachExercise=0، پیام‌ها=0، FitnessProfile=4
+- بازیابی آزمایشی ایزوله: کپی در scratch/p22-restore-test/custom.db و باز شدن در حالت عادی (نه readonly) → integrity ok + شمارش‌ها دقیقاً یکسان + کوئری نمونه موفق (حرکات با نام دوزبانه) → VERDICT: PASS
+- نسخه قابل دریافت: download/pre-p1-official-2026-10-22T12-13-20.db (+ سایدکار .sha256) — checksum با بکاپ اصلی بایت‌به‌بایت یکسان (sha256sum -c = OK)
+- ایمیل‌ها در همه خروجی‌ها ماسک شدند؛ هیچ توکن/رمزی چاپ نشد؛ هیچ فایل دیتابیس/بکاپ commit نشد
+
+Stage Summary:
+- بکاپ رسمی سالم و اثبات‌شدهِ بازیابی‌پذیر از وضعیت سالم فعلی آماده است (PASS کامل)
+- بکاپ فقط داخل سندباکس است — تنها مسیر ماندگاری خارج از سندباکس، دانلود فایل download/ توسط کاربر است (git/OSS به دلیل داده شخصی ممنوع/ناموجود)؛ در فاجعه ریست، بازسازی کامل از git + recovery playbook (bootstrap + p18/p19) هم ممکن است
+- P1 شروع نشده — منتظر تأیید جداگانه کاربر
