@@ -1161,3 +1161,21 @@ Stage Summary:
 - طرح کامل تحویل شد؛ پیاده‌سازی منوط به تأیید کاربر و پاسخ Q1..Q9 است
 - باگ P0 درج حرکت شخصی مستند شد و رفع آن در بسته P0 طرح است (بدون اجرا در این نوبت)
 - کامیت و پوش شد؛ مخزن همگام
+
+---
+Task ID: 40
+Agent: Super Z (main agent)
+Task: چک همگام‌سازی + publish با توکن چهارم + کشف و ترمیم چهارمین reset سندباکس + مهاجرت remote به مخزن جدید
+
+Work Log:
+- کشف چهارمین reset سندباکس: mahziar=STUDENT + exercises=0 → فرمان تک‌مرحله‌ای ترمیم اجرا شد: bootstrap ادمین + p18 (905 حرکت) + p19 (905/905 نگاشت) + وریفای ۵/۵ سبز + بکاپ post-repair-2026-10-22T08-18-11.db (integrity=ok)
+- publish با توکن چهارم: توکن جدید متعلق به اکانت zeynabzallaghi-spec است و به مخزن قدیمی mahziarparvizi/ai-fitness-coach دسترسی ندارد (404)
+- کشف مهم: کامیت Task 39 (5e9a04d) قبلاً به مخزن zeynabzallaghi-spec/zeyfitt پوش شده بود (زمان کامیت 23:05:55، پوش 23:05:56) — مخزن واقعی پروژه تغییر کرده
+- origin به‌روزرسانی شد به zeynabzallaghi-spec/zeyfitt با توکن چهارم؛ push: «Everything up-to-date»؛ ls-remote: remote main = local main = 5e9a04d
+- سرور dev زنده: root=200 (~0.06s)، FA/RTL فعال؛ auto-recover در predev همچنان فعال است
+- هیچ تغییر کد یا داده محصولی انجام نشد؛ طرح فاز ۲۰ همچنان در انتظار تأیید کاربر است (Q1..Q9 در docs/phase20-execution-plan.md)
+
+Stage Summary:
+- مخزن کاملاً همگام است (5e9a04d روی zeyfitt)؛ چهارمین reset کامل ترمیم شد؛ remote URL جدید پایدار شد
+- توکن چهارم در چت نمایش داده شده — پس از تأیید باید توسط کاربر لغو شود
+- گام بعدی: awaiting تأیید کاربر برای شروع پیاده‌سازی فاز ۲۰
