@@ -38,7 +38,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
-import { Dumbbell, Film, Folder, Image as ImageIcon, Plus, RefreshCw, Trash2, X } from "lucide-react";
+import { Dumbbell, Film, Folder, Image as ImageIcon, Plus, RefreshCw, Search, SearchX, Trash2, X } from "lucide-react";
 import { useStrings } from "@/lib/i18n/use-strings";
 import { phase196Strings } from "@/lib/i18n/sections/phase196";
 import { coachPlansStrings } from "@/lib/i18n/sections/coach-plans";
@@ -50,6 +50,7 @@ import { ViewIntro } from "../../shared/view-intro";
 import { EmptyState } from "../../shared/empty-state";
 import { useCoachExercises, useCoachExerciseFolders } from "@/hooks/use-p196";
 import type { CoachExerciseClient } from "@/hooks/use-p196";
+import { normalizeSearchText } from "@/lib/exercises/search";
 
 const CATEGORIES = [
   { value: "chest", fa: "سینه", en: "Chest" },
@@ -111,7 +112,7 @@ export function CoachExercisesTab() {
   const locale = useLocale();
   const dir = useDir();
   const { toast } = useToast();
-  const { exercises, loading, create, update, remove, uploadMedia, deleteMedia, move, reload } =
+  const { exercises, cap, loading, create, update, remove, uploadMedia, deleteMedia, move, reload } =
     useCoachExercises(true);
   const {
     folders,
@@ -129,6 +130,38 @@ export function CoachExercisesTab() {
   const [folderFilter, setFolderFilter] = useState<string | null>(null);
   const [newFolderName, setNewFolderName] = useState("");
   const [folderBusy, setFolderBusy] = useState(false);
+  // جست‌وجو و فیلتر کتابخانه شخصی — مرحله ۲۰/P1-R1.1 (سمت کلاینت؛
+  // داده فهرست فقط خود مربی است — جداسازی داده سمت سرور تضمین میشود)
+  const [searchQuery, setSearchQuery] = useState("");
+  const [categoryFilter, setCategoryFilter] = useState<string>("all");
+  const [muscleFilter, setMuscleFilter] = useState<string>("all");
+
+  const q = normalizeSearchText(searchQuery);
+  const filteredExercises = (exercises ?? []).filter((ex) => {
+    if (folderFilter !== null && ex.folderId !== folderFilter) return false;
+    if (categoryFilter !== "all" && ex.category !== categoryFilter) return false;
+    if (
+      muscleFilter !== "all" &&
+      !ex.primaryMuscles.includes(muscleFilter) &&
+      !ex.secondaryMuscles.includes(muscleFilter)
+    ) {
+      return false;
+    }
+    if (q.length > 0) {
+      const fa = normalizeSearchText(ex.faName);
+      const en = normalizeSearchText(ex.enName);
+      if (!fa.includes(q) && !en.includes(q)) return false;
+    }
+    return true;
+  });
+  const hasSearchFilters =
+    searchQuery.trim().length > 0 || categoryFilter !== "all" || muscleFilter !== "all";
+
+  const clearSearchFilters = () => {
+    setSearchQuery("");
+    setCategoryFilter("all");
+    setMuscleFilter("all");
+  };
 
   const doCreateFolder = async () => {
     const name = newFolderName.trim();
@@ -247,13 +280,86 @@ export function CoachExercisesTab() {
       <ViewIntro item={item} />
 
       <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
-        <Button size="sm" onClick={openNew}>
-          <Plus className="me-1 size-3.5" aria-hidden="true" />
-          {t.exerciseCreate}
-        </Button>
+        <div className="flex flex-wrap items-center gap-2">
+          <Button size="sm" onClick={openNew}>
+            <Plus className="me-1 size-3.5" aria-hidden="true" />
+            {t.exerciseCreate}
+          </Button>
+          {/* نشان سهمیه کتابخانه — مرحله ۲۰/P1-R1.3؛ مقدار سقف از سرور */}
+          {typeof cap === "number" && exercises !== null && (
+            <Badge
+              variant="outline"
+              className={
+                cap - exercises.length <= 10
+                  ? "border-amber-500/40 bg-amber-500/10 text-[10px] font-bold text-amber-500"
+                  : "border-border/60 bg-secondary/30 text-[10px] font-bold text-muted-foreground"
+              }
+              aria-label={t.libraryCapBadgeAria(exercises.length, cap)}
+            >
+              {t.libraryCapBadge(exercises.length, cap)}
+            </Badge>
+          )}
+        </div>
         <Button variant="ghost" size="icon" className="size-8" onClick={() => void reload()} aria-label={plansT.refresh}>
           <RefreshCw className="size-3.5" aria-hidden="true" />
         </Button>
+      </div>
+
+      {/* نوار جست‌وجو و فیلتر — مرحله ۲۰/P1-R1.1 (سمت کلاینت روی فهرست خود مربی) */}
+      <div className="mb-4 space-y-2 rounded-xl border border-border/60 bg-card/60 p-3">
+        <div className="relative">
+          <Search
+            className="pointer-events-none absolute end-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground/50"
+            aria-hidden="true"
+          />
+          <Input
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            placeholder={t.librarySearchPlaceholder}
+            className="pe-9 text-xs"
+            aria-label={t.librarySearchAria}
+          />
+          {searchQuery.length > 0 && (
+            <button
+              type="button"
+              aria-label={t.librarySearchClear}
+              className="absolute start-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+              onClick={() => setSearchQuery("")}
+            >
+              <X className="size-3.5" aria-hidden="true" />
+            </button>
+          )}
+        </div>
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="text-[10px] font-bold text-muted-foreground">{t.libraryFilterCategory}</span>
+          <Select value={categoryFilter} onValueChange={setCategoryFilter}>
+            <SelectTrigger className="h-8 w-32 text-[10px]" aria-label={t.libraryFilterCategory}>
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all" className="text-[10px]">{t.libraryFilterAll}</SelectItem>
+              {CATEGORIES.map((c) => (
+                <SelectItem key={c.value} value={c.value} className="text-[10px]">
+                  {locale === "fa" ? c.fa : c.en}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <span className="text-[10px] font-bold text-muted-foreground">{t.libraryFilterMuscle}</span>
+          <Select value={muscleFilter} onValueChange={setMuscleFilter}>
+            <SelectTrigger className="h-8 w-32 text-[10px]" aria-label={t.libraryFilterMuscle}>
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all" className="text-[10px]">{t.libraryFilterAll}</SelectItem>
+              {LIBRARY_MUSCLE_GROUPS.map((m) => (
+                <SelectItem key={m.id} value={m.id} className="text-[10px]">
+                  {locale === "fa" ? m.fa : m.en}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
       </div>
 
       {/* نوار پوشهها — دستهبندی حرکات (مرحله ۲۰، بخش ۷) */}
@@ -321,11 +427,21 @@ export function CoachExercisesTab() {
         </div>
       ) : !exercises || exercises.length === 0 ? (
         <EmptyState icon={Dumbbell} title={t.exercisesSectionTitle} description={t.exercisesEmpty} />
+      ) : filteredExercises.length === 0 ? (
+        // وضعیت بدون نتیجه — صادقانه با دکمه پاک‌کردن جست‌وجو (R1.1)
+        <div className="rounded-xl border border-border/50 bg-card/60 p-6 text-center">
+          <SearchX className="mx-auto mb-2 size-5 text-muted-foreground" aria-hidden="true" />
+          <p className="text-[11px] leading-6 text-muted-foreground">{t.libraryNoResults}</p>
+          {hasSearchFilters && (
+            <Button size="sm" variant="outline" className="mt-3" onClick={clearSearchFilters}>
+              <X className="me-1 size-3.5" aria-hidden="true" />
+              {t.librarySearchClear}
+            </Button>
+          )}
+        </div>
       ) : (
         <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
-          {exercises
-            .filter((ex) => folderFilter === null || ex.folderId === folderFilter)
-            .map((ex) => (
+          {filteredExercises.map((ex) => (
             <Card key={ex.id} className="border-border/60 bg-card/70">
               <CardContent className="space-y-2.5 p-4">
                 <div className="flex items-start justify-between gap-2">

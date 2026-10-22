@@ -41,6 +41,7 @@ import {
 } from "lucide-react";
 import { useStrings } from "@/lib/i18n/use-strings";
 import { coachPlansStrings } from "@/lib/i18n/sections/coach-plans";
+import { phase196Strings } from "@/lib/i18n/sections/phase196";
 import { useLocale } from "@/lib/i18n/locale";
 import { localeDateTimeLabel } from "@/lib/i18n/format";
 import { ViewIntro } from "../../shared/view-intro";
@@ -161,13 +162,18 @@ function ExercisePickerDialog({
   onPick: (ex: { id: string; fa: string; en: string; category: string; source: "public" | "personal" }) => void;
 }) {
   const t = useStrings(coachPlansStrings);
+  const t196 = useStrings(phase196Strings);
+  const { toast } = useToast();
   // بانک شخصی مربی — مرحله ۱۹.۶؛ سوییچ منبع در انتخابگر نمایش داده میشود
-  const { exercises: personal } = useCoachExercises(open);
+  const { exercises: personal, saveFromPublic } = useCoachExercises(open);
   const personalList = (personal ?? []).map((ex) => ({
     id: ex.id,
     faName: ex.faName,
     enName: ex.enName,
     category: ex.category,
+    // R1.4 (مرحله ۲۰/P1) — عضلات واقعی برای نمایش سازگار در انتخابگر
+    primaryMuscles: ex.primaryMuscles,
+    secondaryMuscles: ex.secondaryMuscles,
   }));
 
   return (
@@ -181,6 +187,17 @@ function ExercisePickerDialog({
             انشعاب با قرارداد واحد personal-exercise-id.ts — بدون رشته تکراری */}
         <ExercisePicker
           personalExercises={personalList}
+          onSaveToLibrary={async (publicId) => {
+            // R1.2 (مرحله ۲۰/P1): ذخیره حرکت عمومی در کتابخانه شخصی؛
+            // هوک پس از موفقیت فهرست شخصی را تازه میکند (شاخه شخصی همان دیالوگ)
+            const result = await saveFromPublic(publicId);
+            if (result.ok) {
+              toast({ title: t196.saveToLibrarySaved });
+              return true;
+            }
+            toast({ title: t.loadError, description: result.message, variant: "destructive" });
+            return false;
+          }}
           onPick={(id) => {
             if (isPersonalExerciseId(id)) {
               const personalId = stripPersonalPrefix(id);

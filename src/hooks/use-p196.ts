@@ -399,16 +399,20 @@ export interface CoachExerciseFolderClient {
 
 export function useCoachExercises(enabled: boolean) {
   const [exercises, setExercises] = useState<CoachExerciseClient[] | null>(null);
+  const [cap, setCap] = useState<number | null>(null);
   const [loading, setLoading] = useState(enabled);
   const [error, setError] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     if (!enabled) return;
     try {
-      const result = await jsonFetch<{ exercises: CoachExerciseClient[] }>("/api/coach/exercises");
+      // مرحله ۲۰/P1: پاسخ شامل cap (سقف کتابخانه از سرور) است؛
+      // نبودش (حالت قدیمی) یعنی بدون نشان سهمیه — بدون حدس کلاینت
+      const result = await jsonFetch<{ exercises: CoachExerciseClient[]; cap?: number }>("/api/coach/exercises");
       if (!mountedRef.current) return;
       if (result.ok) {
         setExercises(result.data.exercises);
+        setCap(typeof result.data.cap === "number" ? result.data.cap : null);
         setError(null);
       } else {
         setError(result.message);
@@ -510,8 +514,30 @@ export function useCoachExercises(enabled: boolean) {
     [load]
   );
 
+  /**
+   * مرحله ۲۰/P1 (R1.2): ذخیره حرکت بانک عمومی در کتابخانه شخصی —
+   * سرور رکورد شخصی مالکِ مربی میسازد (با snapshot عضلات) و بانک عمومی
+   * دست‌نخورده میماند؛ موفقیت → فهرست شخصی تازه میشود.
+   */
+  const saveFromPublic = useCallback(
+    async (exerciseId: string): Promise<Result<{ exercise: CoachExerciseClient }>> => {
+      const result = await jsonFetch<{ exercise: CoachExerciseClient }>(
+        "/api/coach/exercises/from-public",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ exerciseId }),
+        }
+      );
+      if (result.ok) void load();
+      return result;
+    },
+    [load]
+  );
+
   return {
     exercises,
+    cap,
     loading,
     error,
     create,
@@ -520,6 +546,7 @@ export function useCoachExercises(enabled: boolean) {
     uploadMedia,
     deleteMedia,
     move,
+    saveFromPublic,
     reload: load,
   };
 }

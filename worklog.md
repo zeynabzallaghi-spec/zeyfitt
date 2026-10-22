@@ -1242,3 +1242,27 @@ Stage Summary:
 - بکاپ رسمی سالم و اثبات‌شدهِ بازیابی‌پذیر از وضعیت سالم فعلی آماده است (PASS کامل)
 - بکاپ فقط داخل سندباکس است — تنها مسیر ماندگاری خارج از سندباکس، دانلود فایل download/ توسط کاربر است (git/OSS به دلیل داده شخصی ممنوع/ناموجود)؛ در فاجعه ریست، بازسازی کامل از git + recovery playbook (bootstrap + p18/p19) هم ممکن است
 - P1 شروع نشده — منتظر تأیید جداگانه کاربر
+
+---
+Task ID: 44
+Agent: Super Z (main agent)
+Task: اجرای فاز ۲۰ — بسته P1 (کتابخانه اختصاصی مربی: جست‌وجو R1.1، سقف ۳۰۰ R1.3، snapshot عضلات R1.4، ذخیره از بانک عمومی R1.2)
+
+Work Log:
+- پیش‌پرواز: HEAD=a4abdd2 تمیز؛ DB سالم (users=4, exercises=905, coachExercises=0)
+- سندمحور اجرا شد: docs/phase20-execution-plan.md بخش ۳ (R1.1..R1.4) — تنها تغییر schema مجاز: CoachExercise.sourceExerciseId String? (افزودنی خالص، بدون FK — رکوردهای بانک هرگز حذف نمیشوند)؛ با db push اعمال و پابرجایی داده (4/905/0 + quick_check ok) تأیید شد
+- R1.3 (سقف ۳۰۰): getCoachExerciseLibraryCap (env COACH_EXERCISE_CAP، پیش‌فرض 300)؛ قفل درون‌پردازشی per-coach (withLibraryCreationLock) — هر دو مسیر ساخت (createCoachExercise و savePublicExerciseToLibrary) داخل قفل شمارش+درج می‌کنند → 409 COACH_EXERCISE_CAP_REACHED؛ listCoachExercises take از 200 به cap (هم‌ترازی فهرست با سقف)؛ پاسخ GET شامل cap برای نشان سهمیه (بدون حدس کلاینت)؛ ویرایش هرگز سقف نمی‌سنجد؛ کامنت P3: با آمدن آرشیو D9 شمارش باید فقط فعال‌ها شود؛ کامنت P3: در معماری چند-پردازشی قفل باید به DB برود
+- R1.2 (ذخیره از بانک): POST /api/coach/exercises/from-public — فقط خواندن رکورد فعال بانک (findExerciseRow؛ آرشیو/ناموجود → 404)؛ رکورد شخصی مالکِ مربی با snapshot عیناً JSON عضلات/تجهیز + sourceExerciseId؛ توضیح/نکات خالی (بدون کپی فیلد غیرضروری)؛ بانک عمومی دست‌نخورده؛ رفتار ذخیره دوباره طبق A1.3 سند طرح = کپی دوم مستقل با منشای ثبت‌شده (آزمون‌پذیر)
+- R1.4 (snapshot عضلات): SESSION_MUSCLE_GROUPS + filterSessionMuscles در fitness3d/types (منبع واحد ۱۲ گروه سه‌بعدی؛ primaryMusclesOf بازنویسی داخلی روی همین)؛ CoachPlanExerciseContent.primaryMuscles? (اختیاری — سازگار با محتوای قدیمی)؛ buildWorkoutContent برای هر دو منبع عضلات snapshot می‌کند؛ getPersonalExerciseForPlan عضلات پالایش‌شده برمی‌گرداند؛ session-storage: sessionMusclesFromContent — محتوای دارای فیلد در اولویت، محتوای قدیمی به حل از بانک (رفتار قبلی) — کلید R1.4 سند: «primaryMusclesJson» به‌صورت primaryMuscles آرایه‌ای در contentJson پیاده شد (بدون دوباره‌کدگذاری)؛ عضلات کتابخانه‌ای (adductors/lower-back/neck) صادقانه از snapshot جلسه حذف می‌شوند
+- R1.1 (جست‌وجو): سمت کلاینت طبق سند — نوار جست‌وجو (نرمال‌سازی فارسی normalizeSearchText + نام FA/EN) + فیلتر دسته + فیلتر عضله (اصلی/کمکی) + حالت بدون نتیجه صادقانه + پاک‌کردن جست‌وجو + نشان سهمیه (هشدار کهربایی در ۱۰ تای آخر) در exercises-tab؛ جداسازی داده با GET مالک‌محور سرور
+- UI picker: پراپ onSaveToLibrary → دکمه «ذخیره در کتابخانه من» روی ردیف‌های بانک عمومی (فقط در بافت برنامه‌ساز)؛ حالت busy/tick؛ شاخه شخصی picker اکنون عضلات واقعی دارد (قبلاً آرایه خالی صوری)؛ workout-plans-tab اتصال کامل + toast
+- i18n: کلیدهای جدید phase196 (librarySearch*/libraryFilter*/libraryCapBadge*/saveToLibrary*) در FA/EN متقارن؛ server-messages: COACH_EXERCISE_CAP_REACHED
+- تست p23-p1-test.ts: ۴۳/۴۳ سبز — شامل: جداسازی جست‌وجو دو مربی، پذیرش شماره ۳۰۰ و رد ۳۰۱ (هر دو مسیر)، هم‌زمانی (۱۰ درخواست موازی → دقیقاً ۴ پذیرش/۶ رد؛ بدون عبور)، snapshot در برابر تغییر منبع (mutate + بازگردانی دقیق با updatedAt)، بانک دست‌نخورده (row-compare)، ذخیره دوباره → کپی مستقل، استقلال کپی‌ها، ضد-IDOR، 403 دانشجو، 404/400 خطاها، عضلات محتوای برنامه با پالایش، چرخه re-save (رگرسیون P0)، بانک ۹۰۵، پاکسازی کامل fixture + integrity
+- رگرسیون: p20a 28/28 | p196 5/5 | p18 68/0 | check-i18n 56/0 | tsc src=0 خطا | ESLint فایل‌های لمس‌شده پاک | build ✓
+- مرورگر (Preview، 390px، fixture coach، پاک‌شده پس از تست): FA — تب بانک شخصی: جست‌وجو+فیلترها+نشان «از 300 حرکت: 0→1»، حالت بدون نتیجه+پاک‌کردن، ذخیره از picker (toast + tick) + کارت «کرانچ شکم» با badge «حرکت شخصی»؛ EN — تب حرکات: aria/placeholder/badge «1 of 300 exercises»/کارت «Abdominal Crunch»/badge «Personal exercise»؛ دکمه picker در EN مستقیم اسکرین‌نشده (برچسب همان کلید i18n با تعادل تضمین‌شده؛ جلسه EN در لاگین گیر کرد) — اسکرین‌شات‌ها: download/p1-*.png
+- محدودیت صادقانه: تست E2E «شروع جلسه از تحویل» (مسیر کامل session-storage) اجرا نشد — تغییر R1.4 آن با tsc و تست محتوای برنامه پوشش داده شد؛ سناریوی قدیمی (محتوای بدون فیلد) به رفتار قبلی fallback می‌کند
+- هیچ داده واقعی تغییر نکرد؛ fixtureها فقط خودشان را پاک کردند (کاربران نهایی 4/905/0)
+
+Stage Summary:
+- P1 کامل و اثبات‌شده: جست‌وجوی کتابخانه شخصی، سقف ۳۰۰ سمت سرور (شامل هم‌زمانی)، snapshot عضلات (بانک→شخصی→محتوای برنامه→جلسه)، ذخیره حرکت عمومی به کتابخانه شخصی با منشا — همه با FA/EN
+- P2..P4 اجرا نشده‌اند — منتظر تأیید کاربر

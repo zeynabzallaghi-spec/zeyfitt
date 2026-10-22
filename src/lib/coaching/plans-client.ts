@@ -23,6 +23,11 @@ export interface CoachPlanExerciseContentClient {
   coach3dId: string | null;
   /** منبع حرکت — سرور از ۱۹.۶ همیشه مینویسد؛ نبودش (داده قدیمی) یعنی public */
   source: "public" | "personal";
+  /**
+   * R1.4 (مرحله ۲۰/P1): snapshot عضلات اصلی از محتوای ذخیره‌شده —
+   * نبودش (داده قدیمی پیش از P1) یعنی حل از بانک در مسیرهای نمایش.
+   */
+  primaryMuscles?: string[];
   sets: number;
   repsMin: number;
   repsMax: number;

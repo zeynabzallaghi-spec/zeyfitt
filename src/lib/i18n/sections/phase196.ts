@@ -110,6 +110,20 @@ export interface Phase196Strings {
   exerciseSourcePersonal: string;
   exerciseSourcePublic: string;
   exercisePersonalBadge: string;
+  // مرحله ۲۰/P1 — جست‌وجوی کتابخانه شخصی، سقف و ذخیره از بانک عمومی
+  librarySearchPlaceholder: string;
+  librarySearchAria: string;
+  librarySearchClear: string;
+  libraryNoResults: string;
+  libraryFilterCategory: string;
+  libraryFilterMuscle: string;
+  libraryFilterAll: string;
+  libraryCapBadge: (count: number, cap: number) => string;
+  libraryCapBadgeAria: (count: number, cap: number) => string;
+  saveToLibrary: string;
+  saveToLibrarySaved: string;
+  saveToLibraryAria: (name: string) => string;
+  saveToLibraryBusyAria: string;
   // اطلاعات تکمیلی دانشجو
   studentDetailTitle: string;
   studentDetailProfile: string;
@@ -255,6 +269,19 @@ const fa: Phase196Strings = {
   exerciseSourcePersonal: "شخصی",
   exerciseSourcePublic: "عمومی",
   exercisePersonalBadge: "حرکت شخصی",
+  librarySearchPlaceholder: "جست‌وجو در حرکات شخصی (نام فارسی یا انگلیسی)…",
+  librarySearchAria: "جست‌وجو در بانک حرکات شخصی شما",
+  librarySearchClear: "پاک‌کردن جست‌وجو",
+  libraryNoResults: "هیچ حرکتی با این جست‌وجو یا فیلتر پیدا نشد.",
+  libraryFilterCategory: "دسته",
+  libraryFilterMuscle: "عضله",
+  libraryFilterAll: "همه",
+  libraryCapBadge: (count, cap) => `${count} از ${cap} حرکت`,
+  libraryCapBadgeAria: (count, cap) => `${count} حرکت از سقف ${cap} کتابخانه شخصی شما`,
+  saveToLibrary: "ذخیره در کتابخانه من",
+  saveToLibrarySaved: "حرکت عمومی به کتابخانه شخصی شما اضافه شد؛ اکنون قابل ویرایش است.",
+  saveToLibraryAria: (name) => `ذخیره ${name} در کتابخانه شخصی من`,
+  saveToLibraryBusyAria: "در حال ذخیره در کتابخانه شخصی",
   studentDetailTitle: "اطلاعات تکمیلی دانشجو",
   studentDetailProfile: "مشخصات پروفایل",
   studentDetailPlans: "برنامههای اختصاصیافته",
@@ -395,6 +422,19 @@ const en: Phase196Strings = {
   exerciseSourcePersonal: "Personal",
   exerciseSourcePublic: "Public",
   exercisePersonalBadge: "Personal exercise",
+  librarySearchPlaceholder: "Search personal exercises (Persian or English name)…",
+  librarySearchAria: "Search your personal exercise bank",
+  librarySearchClear: "Clear search",
+  libraryNoResults: "No exercises match this search or filter.",
+  libraryFilterCategory: "Category",
+  libraryFilterMuscle: "Muscle",
+  libraryFilterAll: "All",
+  libraryCapBadge: (count, cap) => `${count} of ${cap} exercises`,
+  libraryCapBadgeAria: (count, cap) => `${count} exercises out of your ${cap}-exercise library cap`,
+  saveToLibrary: "Save to my library",
+  saveToLibrarySaved: "Public exercise added to your personal library; it is now editable.",
+  saveToLibraryAria: (name) => `Save ${name} to my personal library`,
+  saveToLibraryBusyAria: "Saving to personal library",
   studentDetailTitle: "Student details",
   studentDetailProfile: "Profile",
   studentDetailPlans: "Assigned plans",

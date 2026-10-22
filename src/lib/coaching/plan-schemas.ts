@@ -18,7 +18,7 @@ import { findFood, FOOD_BANK } from "@/lib/foods";
 import { macrosForGrams } from "@/lib/foods/types";
 import { getPersonalExerciseForPlan } from "./coach-exercises";
 import { PERSONAL_EXERCISE_PREFIX } from "./personal-exercise-id";
-import type { MuscleGroupId } from "@/lib/fitness3d/types";
+import { filterSessionMuscles, type MuscleGroupId } from "@/lib/fitness3d/types";
 import { CoachingError } from "./constants";
 
 /* ------------------------------ ثابت‌های زمان ------------------------------ */
@@ -82,6 +82,13 @@ export interface CoachPlanExerciseContent {
   coach3dId: string | null;
   /** منبع حرکت: بانک عمومی یا حرکت شخصی مربی (مرحله ۱۹.۶) — صادقانه */
   source: "public" | "personal";
+  /**
+   * R1.4 (مرحله ۲۰/P1): snapshot عضلات اصلی (۱۲ گروه سه‌بعدی) از منبع حرکت
+   * هنگام ذخیره برنامه — تغییر بعدی بانک عمومی یا حرکت شخصی این snapshot
+   * را تغییر نمیدهد؛ جلسه و پیشرفت عضلات از همین تغذیه میشوند. فیلد
+   * اختیاری است تا محتوای قدیمی (پیش از P1) بدون مهاجرت معتبر بماند.
+   */
+  primaryMuscles?: MuscleGroupId[];
   sets: number;
   repsMin: number;
   repsMax: number;
@@ -309,7 +316,7 @@ export async function buildWorkoutContent(
     const exercises: CoachPlanExerciseContent[] = [];
     for (let exIndex = 0; exIndex < day.exercises.length; exIndex += 1) {
       const ex = day.exercises[exIndex];
-      let card: { id: string; fa: string; en: string; category: string } | null;
+      let card: { id: string; fa: string; en: string; category: string; primaryMuscles: MuscleGroupId[] } | null;
       let coach3dId: string | null = null;
       let source: "public" | "personal" = "public";
       if (ex.exerciseId.startsWith(PERSONAL_EXERCISE_PREFIX)) {
@@ -324,7 +331,13 @@ export async function buildWorkoutContent(
       } else {
         const bank = getExerciseCardById(ex.exerciseId);
         card = bank
-          ? { id: bank.id, fa: bank.fa, en: bank.en, category: bank.category }
+          ? {
+              id: bank.id,
+              fa: bank.fa,
+              en: bank.en,
+              category: bank.category,
+              primaryMuscles: filterSessionMuscles(bank.primaryMuscles),
+            }
           : null;
         coach3dId = bank?.coach3dId ?? null;
       }
@@ -339,6 +352,7 @@ export async function buildWorkoutContent(
         category: card.category,
         coach3dId,
         source,
+        primaryMuscles: card.primaryMuscles,
         sets: ex.sets,
         repsMin: ex.repsMin,
         repsMax: ex.repsMax,
@@ -501,13 +515,11 @@ export function contentHashOf(content: unknown): string {
   return createHash("sha256").update(JSON.stringify(content)).digest("hex");
 }
 
-/** عضلات اصلی حرکت برای snapshot جلسه — از بانک زنده؛ نبود یعنی آرایه خالی */
+/** عضلات اصلی حرکت برای snapshot جلسه — از بانک زنده؛ نبود یعنی آرایه خالی.
+ *  پالایش به گروه‌های سه‌بعدی از منبع واحد SESSION_MUSCLE_GROUPS انجام میشود
+ *  (مرحله ۲۰/P1-R1.4 — همان فهرست برای snapshot محتوای برنامه). */
 export function primaryMusclesOf(exerciseId: string): MuscleGroupId[] {
   const card = getExerciseCardById(exerciseId);
   if (!card) return [];
-  // فقط گروه‌های سه‌بعدی (۱۲ گروه) به snapshot جلسه می‌روند؛ گروه‌های
-  // کتابخانه‌ای (مرحله ۱۸) Mesh سه‌بعدی ندارند و صادقانه حذف می‌شوند
-  return card.primaryMuscles.filter((m): m is MuscleGroupId =>
-    ["chest", "shoulders", "biceps", "triceps", "forearms", "abs", "back", "traps", "glutes", "quads", "hamstrings", "calves"].includes(m)
-  );
+  return filterSessionMuscles(card.primaryMuscles);
 }

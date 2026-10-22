@@ -11,7 +11,7 @@
  */
 
 import { useEffect, useMemo, useState } from "react";
-import { Box, Check, Play, Plus, RotateCcw, Search, SearchX, X } from "lucide-react";
+import { Box, BookmarkPlus, Check, Loader2, Play, Plus, RotateCcw, Search, SearchX, X } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import {
@@ -26,6 +26,7 @@ import { useStrings } from "@/lib/i18n/use-strings";
 import { workoutStrings } from "@/lib/i18n/sections/workout";
 import { coach3DStrings } from "@/lib/i18n/sections/coach3d";
 import { sharedStrings } from "@/lib/i18n/sections/shared";
+import { phase196Strings } from "@/lib/i18n/sections/phase196";
 import {
   useExerciseLibraryStore,
   ensureExerciseIndex,
@@ -52,6 +53,8 @@ export function ExercisePicker({
   showAddButton = true,
   /** بانک شخصی مربی (مرحله ۱۹.۶) — فعال‌کننده سوییچ منبع */
   personalExercises = null,
+  /** مرحله ۲۰/P1-R1.2 — فعال‌کننده دکمه «ذخیره در کتابخانه من» روی بانک عمومی */
+  onSaveToLibrary,
 }: {
   /** بازگشت true یعنی افزودن موفق و نشانگر پاک می‌شود */
   onPick?: (exerciseId: string) => Promise<boolean> | void;
@@ -66,11 +69,26 @@ export function ExercisePicker({
   /** پنهان‌کردن دکمه کنار هر ردیف (حالت انتخاب صرف) */
   showAddButton?: boolean;
   /** حرکات شخصی مربی — وقتی داده شود، انتخاب منبع نمایش داده میشود */
-  personalExercises?: { id: string; faName: string; enName: string; category: string }[] | null;
+  personalExercises?: {
+    id: string;
+    faName: string;
+    enName: string;
+    category: string;
+    /** R1.4 (مرحله ۲۰/P1) — عضلات واقعی حرکت شخصی برای نمایش سازگار */
+    primaryMuscles?: string[];
+    secondaryMuscles?: string[];
+  }[] | null;
+  /**
+   * مرحله ۲۰/P1 (R1.2): وقتی داده شود، حرکات بانک عمومی دکمه «ذخیره در
+   * کتابخانه من» میگیرند — سرور رکورد شخصی مالک مربی میسازد؛ بازگشت true
+   * یعنی ذخیره موفق (پدر toast و تازه‌سازی فهرست را انجام میدهد).
+   */
+  onSaveToLibrary?: (publicExerciseId: string) => Promise<boolean>;
 }) {
   const t = useStrings(workoutStrings);
   const shared = useStrings(sharedStrings);
   const t3d = useStrings(coach3DStrings);
+  const t196 = useStrings(phase196Strings);
   const locale = useLocale();
   const dir = useDir();
   const setScene = useCoach3DStore((s) => s.setScene);
@@ -87,6 +105,9 @@ export function ExercisePicker({
   const [visible, setVisible] = useState(PAGE_SIZE);
   // منبع حرکت — بانک عمومی یا حرکات شخصی مربی (مرحله ۱۹.۶)
   const [source, setSource] = useState<"public" | "personal">("public");
+  // ذخیره از بانک عمومی در کتابخانه شخصی — مرحله ۲۰/P1-R1.2
+  const [savingToLibraryId, setSavingToLibraryId] = useState<string | null>(null);
+  const [savedToLibraryIds, setSavedToLibraryIds] = useState<Set<string>>(new Set());
   // بازنشانی نمایش تدریجی با تغییر جست‌وجو/فیلتر — الگوی رسمی «مشتق در رندر»
   const [prevFilterKey, setPrevFilterKey] = useState("");
   const filterKey = `${query}|${category}`;
@@ -115,8 +136,9 @@ export function ExercisePicker({
           category: ex.category as ExerciseCategoryId,
           difficulty: "intermediate" as const,
           equipment: [] as string[],
-          primaryMuscles: [] as string[],
-          secondaryMuscles: [] as string[],
+          // R1.4: عضلات واقعی حرکت شخصی — نه آرایه خالی صوری
+          primaryMuscles: (ex.primaryMuscles ?? []) as string[],
+          secondaryMuscles: (ex.secondaryMuscles ?? []) as string[],
           has3d: false,
           coach3dId: null,
           animation3d: null,
@@ -133,6 +155,18 @@ export function ExercisePicker({
     if (disabled || !onPick) return;
     const ok = await onPick(exerciseId);
     if (ok === false) return;
+  };
+
+  /** ذخیره حرکت عمومی در کتابخانه شخصی — مرحله ۲۰/P1-R1.2 (فقط مسیر عمومی) */
+  const saveToLibrary = async (publicId: string) => {
+    if (!onSaveToLibrary || savingToLibraryId !== null) return;
+    setSavingToLibraryId(publicId);
+    try {
+      const ok = await onSaveToLibrary(publicId);
+      if (ok) setSavedToLibraryIds((prev) => new Set(prev).add(publicId));
+    } finally {
+      setSavingToLibraryId(null);
+    }
   };
 
   if (status === "error") {
@@ -273,6 +307,29 @@ export function ExercisePicker({
                   >
                     <Box className="size-3.5" aria-hidden="true" />
                     {t3d.previewAction}
+                  </Button>
+                )}
+                {onSaveToLibrary && source === "public" && (
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    disabled={disabled || savingToLibraryId !== null}
+                    onClick={() => void saveToLibrary(ex.id)}
+                    className="h-7 shrink-0 px-2 text-[10px] font-bold text-primary hover:bg-primary/10"
+                    aria-label={
+                      savingToLibraryId === ex.id
+                        ? t196.saveToLibraryBusyAria
+                        : t196.saveToLibraryAria(locale === "fa" ? ex.fa : ex.en)
+                    }
+                  >
+                    {savingToLibraryId === ex.id ? (
+                      <Loader2 className="size-3.5 animate-spin" aria-hidden="true" />
+                    ) : savedToLibraryIds.has(ex.id) ? (
+                      <Check className="size-3.5" aria-hidden="true" />
+                    ) : (
+                      <BookmarkPlus className="size-3.5" aria-hidden="true" />
+                    )}
+                    {savedToLibraryIds.has(ex.id) ? null : t196.saveToLibrary}
                   </Button>
                 )}
                 {showAddButton && (onPick || onToggle) && (

@@ -205,6 +205,12 @@ export const COACH_EXERCISE_LIMITS = {
   TIPS_MAX: 1000,
   MUSCLES_MAX: 6,
   EQUIPMENT_MAX: 6,
+  /**
+   * سقف حرکات شخصی هر مربی — مرحله ۲۰/P1 (تصمیم D7): پیش‌فرض ۳۰۰؛
+   * اعمال واقعی سمت سرور است و مقدار فعال با متغیر محیطی
+   * COACH_EXERCISE_CAP قابل تنظیم (getCoachExerciseLibraryCap).
+   */
+  LIBRARY_MAX: 300,
   /** سقف فایل رسانه به‌ازای هر حرکت شخصی */
   MEDIA_MAX_PER_EXERCISE: 4,
   /** تصویر — ۵ مگابایت */

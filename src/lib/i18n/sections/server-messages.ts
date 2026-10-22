@@ -226,6 +226,10 @@ export const API_ERROR_LABELS: Record<string, Bi> = {
     fa: "سقف رسانه‌های این حرکت پر است؛ حداکثر ۴ فایل.",
     en: "Media limit for this exercise is reached; up to 4 files.",
   },
+  COACH_EXERCISE_CAP_REACHED: {
+    fa: "سقف کتابخانه شخصی شما پر است؛ حذف حرکات استفاده‌نشده فضای جدید باز می‌کند.",
+    en: "Your personal library cap is reached; removing unused exercises frees space.",
+  },
   MEDIA_NOT_FOUND: {
     fa: "رسانه یافت نشد یا به شما تعلق ندارد.",
     en: "Media not found, or does not belong to you.",

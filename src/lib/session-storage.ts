@@ -36,7 +36,10 @@ import type {
   FinishSessionInput,
 } from "@/lib/workout-session/types";
 import { SESSION_EXERCISES_MAX as MAX_SESSION_EXERCISES } from "@/lib/workout-session/types";
-import { parseWorkoutContent } from "@/lib/coaching/plan-schemas";
+import {
+  parseWorkoutContent,
+  type CoachPlanExerciseContent,
+} from "@/lib/coaching/plan-schemas";
 
 /* ------------------------------ خطاهای دامنه ------------------------------ */
 
@@ -329,7 +332,7 @@ export async function startSession(
             enName: ex.enName,
             category: ex.category,
             coach3dId: ex.coach3dId,
-            primaryMusclesJson: primaryMusclesSnapshot(ex.exerciseId),
+            primaryMusclesJson: sessionMusclesFromContent(ex),
             note: ex.note,
             targetSets: ex.sets,
             targetRepsMin: ex.repsMin,
@@ -407,6 +410,19 @@ export async function startSession(
 function primaryMusclesSnapshot(exerciseId: string): string {
   const bank = getExerciseCardById(exerciseId);
   return JSON.stringify(bank?.primaryMuscles ?? []);
+}
+
+/**
+ * عضلات اصلی سطر جلسه از سطر محتوای برنامه مربی — مرحله ۲۰/P1 (R1.4):
+ * snapshot ذخیره‌شده در محتوای برنامه در اولویت است (تغییر بعدی منبع،
+ * جلسهٔ در حال ساخت را تغییر نمیدهد)؛ محتوای قدیمی بدون این فیلد به همان
+ * رفتار قبلی (حل از بانک زنده) برمی‌گردد — سازگار با نسخه‌های قبلی.
+ */
+function sessionMusclesFromContent(ex: CoachPlanExerciseContent): string {
+  if (Array.isArray(ex.primaryMuscles)) {
+    return JSON.stringify(ex.primaryMuscles);
+  }
+  return primaryMusclesSnapshot(ex.exerciseId);
 }
 
 /* ------------------------------ نوشتن ست‌ها ------------------------------ */

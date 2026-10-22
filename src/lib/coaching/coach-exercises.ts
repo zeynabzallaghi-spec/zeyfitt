@@ -17,6 +17,7 @@
 
 import { z } from "zod";
 import { db } from "@/lib/db";
+import type { MuscleGroupId } from "@/lib/fitness3d/types";
 import {
   CoachingError,
   COACH_EXERCISE_LIMITS,
@@ -30,6 +31,56 @@ import {
 } from "./media-storage";
 import { sanitizeDisplayName } from "./attachments";
 import { saveAttachmentFile } from "./attachments";
+import { ensureExerciseBank, findExerciseRow } from "@/lib/exercises/bank";
+import { filterSessionMuscles } from "@/lib/fitness3d/types";
+
+/* ------------------------------ سقف کتابخانه شخصی — مرحله ۲۰/P1 (R1.3) ------------------------------ */
+
+/**
+ * سقف حرکات شخصی هر مربی — پیش‌فرض ۳۰۰ (تصمیم D7)؛ با متغیر محیطی
+ * COACH_EXERCISE_CAP قابل تنظیم. فقط سمت سرور خوانده میشود؛ کلاینت مقدار
+ * را از پاسخ GET میگیرد تا هیچ فرضی دوباره تکرار نشود.
+ */
+export function getCoachExerciseLibraryCap(): number {
+  const raw = Number(process.env.COACH_EXERCISE_CAP);
+  if (Number.isInteger(raw) && raw >= 1 && raw <= 10_000) return raw;
+  return COACH_EXERCISE_LIMITS.LIBRARY_MAX;
+}
+
+/** شمار حرکات شخصی مربی — مبنای سقف؛ حرکات مربیان دیگر و بانک عمومی هرگز
+ *  در سهمیه مربی اثر ندارند. (وقتی آرشیو D9 در P3 اضافه شود، باید فقط
+ *  رکوردهای فعال را بشمارد — کامنت عمدی برای آن بازبینی.) */
+export async function countCoachExercises(coachId: string): Promise<number> {
+  return db.coachExercise.count({ where: { coachId } });
+}
+
+/**
+ * قفل درون‌پردازشی ساخت حرکت بهازای هر مربی — همه مسیرهای ساخت (ساخت از
+ * صفر، ذخیره از بانک عمومی) باید از این عبور کنند تا «شمارش سپس درج»
+ * در رقابت درخواستهای هم‌زمان از سقف عبور نکند. استقرار فعلی پروژه یک
+ * سرور تک-پردازشی است؛ اگر معماری چند-پردازشی شود، این قفل باید به سطح
+ * DB (INSERT اتمی) منتقل شود — نکته عمدی برای بازبینی P3.
+ */
+const libraryCreationLocks = new Map<string, Promise<unknown>>();
+
+async function withLibraryCreationLock<T>(coachId: string, fn: () => Promise<T>): Promise<T> {
+  const previous = libraryCreationLocks.get(coachId) ?? Promise.resolve();
+  const run = previous.catch(() => undefined).then(fn);
+  libraryCreationLocks.set(coachId, run);
+  try {
+    return await run;
+  } finally {
+    if (libraryCreationLocks.get(coachId) === run) libraryCreationLocks.delete(coachId);
+  }
+}
+
+/** سنجش سقف داخل قفل — عبور از سقف 409 با کد پایدار دو-زبانه */
+async function assertLibraryCapInside(coachId: string): Promise<void> {
+  const count = await countCoachExercises(coachId);
+  if (count >= getCoachExerciseLibraryCap()) {
+    throw new CoachingError(409, "COACH_EXERCISE_CAP_REACHED");
+  }
+}
 
 /* ------------------------------ اعتبارسنجی ------------------------------ */
 
@@ -276,12 +327,13 @@ export async function moveCoachExerciseToFolder(
 
 /* ------------------------------ خواندن‌ها ------------------------------ */
 
-/** فهرست حرکات شخصی مربی — فقط مالک */
+/** فهرست حرکات شخصی مربی — فقط مالک. سقف فهرست با سقف کتابخانه هم‌تراز
+ *  است (مرحله ۲۰/P1) تا کل کتابخانه قابل مشاهده و جست‌وجوی کلاینت‌محور باشد. */
 export async function listCoachExercises(coachId: string): Promise<CoachExerciseClient[]> {
   const rows = await db.coachExercise.findMany({
     where: { coachId },
     orderBy: { updatedAt: "desc" },
-    take: 200,
+    take: getCoachExerciseLibraryCap(),
     include: MEDIA_INCLUDE,
   });
   return rows.map(toClient);
@@ -308,21 +360,78 @@ export async function createCoachExercise(
 ): Promise<CoachExerciseClient> {
   if (role !== "COACH") throw new CoachingError(403, "ROLE_NOT_ALLOWED");
   const parsed = coachExerciseSchema.parse(input);
-  const row = await db.coachExercise.create({
-    data: {
-      coachId,
-      faName: parsed.faName,
-      enName: parsed.enName,
-      category: parsed.category,
-      equipmentJson: JSON.stringify(parsed.equipment),
-      primaryMusclesJson: JSON.stringify(parsed.primaryMuscles),
-      secondaryMusclesJson: JSON.stringify(parsed.secondaryMuscles),
-      description: parsed.description,
-      tips: parsed.tips,
-    },
-    include: MEDIA_INCLUDE,
+  // سقف ۳۰۰ داخل قفل درون‌پردازشی مربی سنجیده میشود تا درخواستهای
+  // هم‌زمان نتوانند از سقف عبور کنند (مرحله ۲۰/P1-R1.3)
+  return withLibraryCreationLock(coachId, async () => {
+    await assertLibraryCapInside(coachId);
+    const row = await db.coachExercise.create({
+      data: {
+        coachId,
+        faName: parsed.faName,
+        enName: parsed.enName,
+        category: parsed.category,
+        equipmentJson: JSON.stringify(parsed.equipment),
+        primaryMusclesJson: JSON.stringify(parsed.primaryMuscles),
+        secondaryMusclesJson: JSON.stringify(parsed.secondaryMuscles),
+        description: parsed.description,
+        tips: parsed.tips,
+      },
+      include: MEDIA_INCLUDE,
+    });
+    return toClient(row);
   });
-  return toClient(row);
+}
+
+/* ------------------- ذخیره حرکت عمومی در کتابخانه شخصی — مرحله ۲۰/P1 (R1.2) ------------------- */
+
+export const fromPublicExerciseSchema = z.object({
+  exerciseId: z.string({ message: "شناسه حرکت معتبر نیست" }).trim().min(1).max(64),
+});
+
+/**
+ * ذخیره یک حرکت بانک عمومی به‌عنوان نقطه شروع قابل‌ویرایش در کتابخانه شخصی.
+ *
+ * تضمینهای این مسیر:
+ *  - رکورد بانک عمومی فقط خوانده میشود؛ هیچ نوشتنی روی Exercise انجام
+ *    نمیشود (ذخیره دوباره همان حرکت → کپی دوم مستقل طبق A1.3 سند طرح؛
+ *    منشا با sourceExerciseId ثبت میشود تا رفتار آزمون‌پذیر و شفاف بماند).
+ *  - snapshot عضلات (P1.3/R1.4): equipmentJson/primaryMusclesJson/
+ *    secondaryMusclesJson عیناً از رکورد منبع کپی میشوند — تغییر بعدی
+ *    منبع هرگز رکورد شخصی را تغییر نمیدهد (سطر کاملاً جدا است).
+ *  - فیلدهای غیرضروری منبع (datasetVersion، sourceRef، محتوای آموزشی و…)
+ *    کپی نمیشوند؛ توضیح/نکات خالی میمانند تا مربی خودش بنویسد.
+ *  - سقف ۳۰۰ داخل قفل مربی سنجیده میشود؛ مالکیت با coachId سطر ساخته میشود.
+ */
+export async function savePublicExerciseToLibrary(
+  coachId: string,
+  role: string,
+  input: unknown
+): Promise<CoachExerciseClient> {
+  if (role !== "COACH") throw new CoachingError(403, "ROLE_NOT_ALLOWED");
+  const parsed = fromPublicExerciseSchema.parse(input);
+  await ensureExerciseBank();
+  // فقط رکورد فعال بانک؛ آرشیوشده و ناموجود هر دو 404 (شفاف، بدون افشا)
+  const source = findExerciseRow(parsed.exerciseId);
+  if (!source) throw new CoachingError(404, "EXERCISE_NOT_IN_BANK");
+  return withLibraryCreationLock(coachId, async () => {
+    await assertLibraryCapInside(coachId);
+    const row = await db.coachExercise.create({
+      data: {
+        coachId,
+        faName: source.faName && source.faName.trim().length >= 2 ? source.faName : source.enName,
+        enName: source.enName,
+        category: source.category,
+        equipmentJson: source.equipmentJson,
+        primaryMusclesJson: source.primaryMusclesJson,
+        secondaryMusclesJson: source.secondaryMusclesJson,
+        description: "",
+        tips: "",
+        sourceExerciseId: source.id,
+      },
+      include: MEDIA_INCLUDE,
+    });
+    return toClient(row);
+  });
 }
 
 export async function updateCoachExercise(
@@ -471,17 +580,34 @@ export async function deleteCoachExerciseMedia(
   return true;
 }
 
-/** برای buildWorkoutContent — snapshot حرکت شخصی مالک */
+/**
+ * برای buildWorkoutContent — snapshot حرکت شخصی مالک.
+ * مرحله ۲۰/P1 (R1.4): عضلات اصلی (۱۲ گروه سه‌بعدی) هم از رکورد شخصی
+ * برمی‌گردد تا در محتوای برنامه snapshot شود و جلسه/پیشرفت عضلات خالی نماند.
+ */
 export async function getPersonalExerciseForPlan(
   coachId: string,
   personalId: string
-): Promise<{ id: string; fa: string; en: string; category: string } | null> {
+): Promise<{ id: string; fa: string; en: string; category: string; primaryMuscles: MuscleGroupId[] } | null> {
   const row = await db.coachExercise.findFirst({
     where: { id: personalId, coachId },
-    select: { id: true, faName: true, enName: true, category: true },
+    select: { id: true, faName: true, enName: true, category: true, primaryMusclesJson: true },
   });
   if (!row) return null;
-  return { id: row.id, fa: row.faName, en: row.enName, category: row.category };
+  let parsedMuscles: string[] = [];
+  try {
+    const value: unknown = JSON.parse(row.primaryMusclesJson);
+    if (Array.isArray(value)) parsedMuscles = value.filter((m): m is string => typeof m === "string");
+  } catch {
+    // JSON خراب — آرایه خالی صادقانه
+  }
+  return {
+    id: row.id,
+    fa: row.faName,
+    en: row.enName,
+    category: row.category,
+    primaryMuscles: filterSessionMuscles(parsedMuscles),
+  };
 }
 
 // re-export برای Route Handler — بدون خواندن مستقیم لایه ذخیره از مسیر

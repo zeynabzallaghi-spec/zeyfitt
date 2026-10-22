@@ -23,6 +23,37 @@ export type MuscleGroupId =
   | "hamstrings"
   | "calves";
 
+/**
+ * گروه‌های عضلانی که به snapshot جلسه/برنامه می‌روند — همان ۱۲ گروه
+ * سه‌بعدی. گروه‌های کتابخانه‌ای (مرحله ۱۸: adductors/lower-back/neck)
+ * Mesh سه‌بعدی ندارند و صادقانه حذف می‌شوند — منبع واحد این فهرست همین‌جاست
+ * (مرحله ۲۰/P1-R1.4: مسیر snapshot عضلات برنامه و جلسه از همین تغذیه میشود).
+ */
+export const SESSION_MUSCLE_GROUPS: readonly MuscleGroupId[] = [
+  "chest",
+  "shoulders",
+  "biceps",
+  "triceps",
+  "forearms",
+  "abs",
+  "back",
+  "traps",
+  "glutes",
+  "quads",
+  "hamstrings",
+  "calves",
+] as const;
+
+/**
+ * پالایش عضلات به گروه‌های سه‌بعدی جلسه — ورودی میتواند هر واژگان بانک
+ * (۱۵ گروه) باشد؛ خروجی فقط عضلاتی که snapshot جلسه معنادار می‌شوند.
+ */
+export function filterSessionMuscles(muscles: readonly string[]): MuscleGroupId[] {
+  return muscles.filter((m): m is MuscleGroupId =>
+    (SESSION_MUSCLE_GROUPS as readonly string[]).includes(m)
+  );
+}
+
 /** نام مفاصل قابل کنترل مدل پروسیجرال */
 export type JointName =
   | "spine"

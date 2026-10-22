@@ -1262,6 +1262,11 @@ model CoachExercise {
   coachId               String
   // پوشه دستهبندی اختیاری — null یعنی بدون پوشه (بیرون از پوشهها)
   folderId              String?
+  // مرحله ۲۰/P1 (R1.2): منشا حرکت شخصی از بانک عمومی — شناسه رکورد Exercise
+  // هنگام «ذخیره از بانک» ثبت میشود؛ بدون FK سخت (رکوردهای بانک هرگز حذف
+  // نمیشوند — فقط آرشیو) و هرگز به منبع وصل نمیماند (snapshot مستقل است).
+  // برای حرکات ساختهشده از صفر null میماند.
+  sourceExerciseId      String?
   faName                String
   enName                String
   category              String
