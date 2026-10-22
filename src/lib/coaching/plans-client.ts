@@ -21,6 +21,8 @@ export interface CoachPlanExerciseContentClient {
   enName: string;
   category: string;
   coach3dId: string | null;
+  /** منبع حرکت — سرور از ۱۹.۶ همیشه مینویسد؛ نبودش (داده قدیمی) یعنی public */
+  source: "public" | "personal";
   sets: number;
   repsMin: number;
   repsMax: number;
@@ -132,7 +134,10 @@ export interface DeliveryDetailClient extends DeliveryListItemClient {
 
 /** ورودی حرکت در فرم مربی — نام‌ها برای نمایش انتخاب از بانک؛ سرور بازتأیید می‌کند */
 export interface BuilderExerciseInput {
+  /** قالب سیم: حرکت شخصی با پیشوند cex- (قرارداد واحد personal-exercise-id.ts) */
   exerciseId: string;
+  /** منبع حرکت — بر اساس آن بج «شخصی» و بازسازی قالب سیم در ویرایش */
+  source: "public" | "personal";
   faName: string;
   enName: string;
   category: string;

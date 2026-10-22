@@ -127,8 +127,12 @@ export const coachExerciseFolderSchema = z.object({
   name: z.string().trim().min(1, "نام پوشه خالی است").max(FOLDER_NAME_MAX, "نام پوشه طولانی است"),
 });
 
-/** پیشوند شناسه حرکت شخصی در snapshot برنامه‌ها — از بانک عمومی جدا میماند */
-export const PERSONAL_EXERCISE_PREFIX = "cex-";
+/**
+ * پیشوند شناسه حرکت شخصی در snapshot برنامه‌ها — از بانک عمومی جدا میماند.
+ * مرحله ۲۰/P0: منبع حقیقت قرارداد ماژول personal-exercise-id.ts است؛
+ * این re-export برای سازگاری به عقب واردکنندگان قبلی حفظ شده است.
+ */
+export { PERSONAL_EXERCISE_PREFIX } from "./personal-exercise-id";
 
 function toClient(row: {
   id: string;

@@ -56,6 +56,11 @@ import {
   getCoachWorkoutPlan,
 } from "@/hooks/use-coach-plans";
 import { useCoachExercises } from "@/hooks/use-p196";
+import {
+  isPersonalExerciseId,
+  stripPersonalPrefix,
+  storedExerciseIdToWire,
+} from "@/lib/coaching/personal-exercise-id";
 import type {
   BuilderDayInput,
   BuilderExerciseInput,
@@ -70,6 +75,7 @@ const DIFFICULTIES = ["beginner", "intermediate", "advanced"] as const;
 function emptyExercise(): BuilderExerciseInput {
   return {
     exerciseId: "",
+    source: "public",
     faName: "",
     enName: "",
     category: "",
@@ -114,7 +120,11 @@ function formFromDetail(detail: CoachPlanDetailClient): WorkoutForm {
   const days = content.days.map((d) => ({
     title: d.title,
     exercises: d.exercises.map((ex) => ({
-      exerciseId: ex.exerciseId,
+      // قرارداد واحد مرحله ۲۰/P0: قالب سیم از سطر ذخیره‌شده بازسازی میشود —
+      // حرکت شخصی دوباره با پیشوند cex- ارسال میشود تا re-save با 422 شکست نخورد؛
+      // نبود source (داده قدیمی) یعنی public
+      exerciseId: storedExerciseIdToWire(ex),
+      source: ex.source === "personal" ? ("personal" as const) : ("public" as const),
       faName: ex.faName,
       enName: ex.enName,
       category: ex.category,
@@ -148,7 +158,7 @@ function ExercisePickerDialog({
 }: {
   open: boolean;
   onOpenChange: (v: boolean) => void;
-  onPick: (ex: { id: string; fa: string; en: string; category: string }) => void;
+  onPick: (ex: { id: string; fa: string; en: string; category: string; source: "public" | "personal" }) => void;
 }) {
   const t = useStrings(coachPlansStrings);
   // بانک شخصی مربی — مرحله ۱۹.۶؛ سوییچ منبع در انتخابگر نمایش داده میشود
@@ -166,20 +176,22 @@ function ExercisePickerDialog({
         <DialogHeader>
           <DialogTitle className="text-sm">{t.exercisePickerTitle}</DialogTitle>
         </DialogHeader>
-        {/* بانک عمومی کامل مرحله ۱۸ + بانک شخصی مرحله ۱۹.۶ — جست‌وجو دو-زبانه */}
+        {/* بانک عمومی کامل مرحله ۱۸ + بانک شخصی مرحله ۱۹.۶ — جست‌وجو دو-زبانه.
+            انتخابگر از مرحله ۲۰/P0 در شاخه شخصی قالب سیم (cex-) منتشر میکند؛
+            انشعاب با قرارداد واحد personal-exercise-id.ts — بدون رشته تکراری */}
         <ExercisePicker
           personalExercises={personalList}
           onPick={(id) => {
-            if (id.startsWith("cex-")) {
-              const personalId = id.slice(4);
+            if (isPersonalExerciseId(id)) {
+              const personalId = stripPersonalPrefix(id);
               const found = personalList.find((p) => p.id === personalId);
               if (found) {
-                onPick({ id, fa: found.faName, en: found.enName, category: found.category });
+                onPick({ id, fa: found.faName, en: found.enName, category: found.category, source: "personal" });
               }
             } else {
               const card = useExerciseLibraryStore.getState().getById(id);
               if (card) {
-                onPick({ id: card.id, fa: card.fa, en: card.en, category: card.category });
+                onPick({ id: card.id, fa: card.fa, en: card.en, category: card.category, source: "public" });
               }
             }
             onOpenChange(false);
@@ -477,9 +489,9 @@ function WorkoutBuilderDialog({
                         {ex.exerciseId ? (
                           <span dir="auto" className="inline-flex items-center gap-1">
                             {locale === "fa" ? ex.faName : ex.enName}
-                            {ex.exerciseId.startsWith("cex-") && (
+                            {ex.source === "personal" && (
                               <span className="rounded border border-primary/30 bg-primary/10 px-1 text-[8px] font-bold text-primary">
-                                {locale === "fa" ? "شخصی" : "Personal"}
+                                {t.personalExerciseBadge}
                               </span>
                             )}
                           </span>
@@ -640,6 +652,7 @@ function WorkoutBuilderDialog({
                           : {
                               ...e,
                               exerciseId: picked.id,
+                              source: picked.source,
                               faName: picked.fa,
                               enName: picked.en,
                               category: picked.category,

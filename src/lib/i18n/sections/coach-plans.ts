@@ -98,6 +98,7 @@ export interface CoachPlansStrings {
   // ویرایشگر حرکت
   addExercise: string;
   exercisePickerTitle: string;
+  personalExerciseBadge: string;
   exerciseSearchPlaceholder: string;
   noExerciseResults: string;
   selectExercise: string;
@@ -294,6 +295,7 @@ const fa: CoachPlansStrings = {
   estMinutesLabel: "زمان تقریبی",
 
   addExercise: "افزودن حرکت",
+  personalExerciseBadge: "شخصی",
   exercisePickerTitle: "انتخاب حرکت از کتابخانه",
   exerciseSearchPlaceholder: "جست‌وجوی نام حرکت…",
   noExerciseResults: "حرکتی با این جست‌وجو یافت نشد.",
@@ -491,6 +493,7 @@ const en: CoachPlansStrings = {
   estMinutesLabel: "Estimated time",
 
   addExercise: "Add exercise",
+  personalExerciseBadge: "Personal",
   exercisePickerTitle: "Pick an exercise from the library",
   exerciseSearchPlaceholder: "Search exercises…",
   noExerciseResults: "No exercise matched your search.",

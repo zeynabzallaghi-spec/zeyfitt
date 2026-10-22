@@ -35,6 +35,7 @@ import { resolveScene } from "@/lib/fitness3d/resolve";
 import type { MuscleGroupId } from "@/lib/fitness3d/types";
 import { filterCards } from "@/lib/exercises/search";
 import { EXERCISE_CATEGORIES, type ExerciseCategoryId } from "@/lib/exercises/types";
+import { withPersonalPrefix } from "@/lib/coaching/personal-exercise-id";
 import { MiniCoachScene } from "@/components/fitness/coach3d/MiniCoachScene";
 
 const PAGE_SIZE = 30;
@@ -105,7 +106,10 @@ export function ExercisePicker({
       return personalExercises
         .filter((ex) => (q.length === 0 ? true : ex.faName.includes(q) || ex.enName.toLowerCase().includes(q)))
         .map((ex) => ({
-          id: ex.id,
+          // قرارداد واحد مرحله ۲۰/P0: خروجی انتخابگر در شاخه شخصی، قالب سیم
+          // با پیشوند cex- است (idempotent) — همان که سرور برنامه‌ساز انتظار دارد؛
+          // بدون این پیشوند درج حرکت شخصی بی‌صدا شکست میخورد
+          id: withPersonalPrefix(ex.id),
           fa: ex.faName,
           en: ex.enName,
           category: ex.category as ExerciseCategoryId,

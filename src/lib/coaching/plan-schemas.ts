@@ -16,7 +16,8 @@ import { createHash } from "node:crypto";
 import { getExerciseCardById, ensureExerciseBank } from "@/lib/exercises/bank";
 import { findFood, FOOD_BANK } from "@/lib/foods";
 import { macrosForGrams } from "@/lib/foods/types";
-import { getPersonalExerciseForPlan, PERSONAL_EXERCISE_PREFIX } from "./coach-exercises";
+import { getPersonalExerciseForPlan } from "./coach-exercises";
+import { PERSONAL_EXERCISE_PREFIX } from "./personal-exercise-id";
 import type { MuscleGroupId } from "@/lib/fitness3d/types";
 import { CoachingError } from "./constants";
 

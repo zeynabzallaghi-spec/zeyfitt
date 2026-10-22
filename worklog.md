@@ -1179,3 +1179,24 @@ Stage Summary:
 - مخزن کاملاً همگام است (5e9a04d روی zeyfitt)؛ چهارمین reset کامل ترمیم شد؛ remote URL جدید پایدار شد
 - توکن چهارم در چت نمایش داده شده — پس از تأیید باید توسط کاربر لغو شود
 - گام بعدی: awaiting تأیید کاربر برای شروع پیاده‌سازی فاز ۲۰
+
+---
+Task ID: 41
+Agent: Super Z (main agent)
+Task: اجرای فاز ۲۰ — بسته P0 (رفع باگ cex- با قرارداد واحد + بهداشت i18n مسیر لمس‌شده + تست رگرسیون)
+
+Work Log:
+- ۹ تصمیم تأییدشده کاربر (D1..D9) در docs/phase20-execution-plan.md (بخش ۰.ب) ثبت و با بسته‌ها هماهنگ شد؛ بخش ۹ (سؤالات باز) بسته شد
+- ماژول قرارداد واحد جدید src/lib/coaching/personal-exercise-id.ts: PERSONAL_EXERCISE_PREFIX + توابع idempotent (withPersonalPrefix/stripPersonalPrefix/isPersonalExerciseId/storedExerciseIdToWire) — client-safe بدون وابستگی؛ سرور (coach-exercises.ts re-export + plan-schemas.ts) و کلاینت هر دو از همین منبع import میکنند
+- ریشه باگ: انتخابگر (exercise-picker.tsx) شناسه حرکت شخصی را بدون پیشوند cex- منتشر میکرد در حالی که قرارداد سرور پیشوند میخواهد → درج از UI بی‌صدا شکست میخورد؛ عیب ثانویه همان ریشه: re-save برنامه حاوی حرکت شخصی (شناسه خام از محتوای ذخیره‌شده) → 422 سرور
+- اصلاح‌ها: picker شاخه شخصی با withPersonalPrefix منتشر میکند؛ دیالوگ با isPersonalExerciseId/stripPersonalPrefix انشعاب میکند (بدون رشته تکراری cex-)؛ formFromDetail با storedExerciseIdToWire قالب سیم را بازسازی میکند (re-save درست)؛ بج «شخصی» بر اساس source به‌جای رشته؛ CoachPlanExerciseContentClient و BuilderExerciseInput فیلد source گرفتند؛ کلید i18n جدید personalExerciseBadge در هر دو زبان (حذف hardcode)
+- سوئیت جدید scripts/p20a-library-test.ts (۲۸ چک): ۱۲ چک واحد قرارداد (شامل ضد-پیشوند-دوباره و حفظ بانک عمومی) + ۱۶ چک انتها-به-انتها: قالب خراب قدیمی → 422 (بازتولید)، قالب اصلاح‌شده → 201 با snapshot درست، رگرسیون عمومی (source=public)، چرخه ویرایش re-save → 200، ضد-IDOR مربی دیگر → 422، بانک ۹۰۵ دست‌نخورده، پاکسازی کامل fixture + integrity
+- اسکریپت‌های پشتیبان: p20a-seed-fixture-profile.ts (پرش آنبوردینگ) و p20a-verify-saved-plan.ts (اثبات ذخیره UI در DB)
+- اعتبارسنجی: p20a 28/28 سبز | p196 91/0 | p18 68/0 | check-i18n 56/0 | tsc src/ صفر خطا | ESLint ۷ فایل لمس‌شده پاک | next build ✓ (exit 0)
+- تست مرورگر واقعی (Preview، 390px، کوکی نشست fixture): FA — سوییچ «حرکات شخصی من» → آیتم فهرست شد → افزودن → ردیف با بج «شخصی» → ذخیره پیش‌نویس موفق → اثبات DB: سطر با شناسه خام + source=personal (VERDICT: PASS)؛ EN — «My personal exercises» → «Demo Personal Move Personal» با dir=ltr/en؛ اسکرین‌شات‌ها: download/p0-fa-personal-badge.png، p0-fa-saved.png، p0-en-personal-badge.png
+- مشکل محیطی: dev server سندباکس پس از پایان هر فرمان tool بی‌صدا reap میشد (یک بار OOM کرنل هم ثبت شد) → الگوی «ری‌استارت + گرم‌کردن + اجرا در یک نشست» برای همه تست‌ها؛ هیچ داده واقعی دست نخورد
+- پاکسازی نهایی: users=4 | exercises=905 | workoutPlans=0 | coachExercises=0 | integrity=ok
+
+Stage Summary:
+- P0 کامل و اثبات‌شده: حرکت شخصی از برنامه‌ساز UI تا ذخیره موفق کار میکند (FA و EN)؛ قرارداد شناسه حالا تک‌منبع و idempotent است؛ هیچ تغییر schema، هیچ migration، هیچ داده واقعی حذف نشد
+- P1..P4 اجرا نشده‌اند — منتظر تأیید کاربر
