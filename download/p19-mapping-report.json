@@ -1,13 +1,13 @@
 {
   "phase": 19,
-  "generatedAt": "2026-10-21T21:30:25.085Z",
+  "generatedAt": "2026-10-22T08:18:05.115Z",
   "totalActive": 905,
   "legacyPreserved": 6,
-  "legacyNormalized": 6,
+  "legacyNormalized": 0,
   "mapped": {
-    "accepted": 899,
+    "accepted": 0,
     "updated": 0,
-    "unchanged": 0
+    "unchanged": 899
   },
   "needsMapping": 0,
   "buildErrors": [],
