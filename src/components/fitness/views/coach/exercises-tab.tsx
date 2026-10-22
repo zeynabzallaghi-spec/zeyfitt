@@ -48,6 +48,10 @@ import { useLocale, useDir } from "@/lib/i18n/locale";
 import { LIBRARY_MUSCLE_GROUPS } from "@/lib/exercises/types";
 import { ViewIntro } from "../../shared/view-intro";
 import { EmptyState } from "../../shared/empty-state";
+import {
+  ExerciseVideoPlayerDialog,
+  type ExerciseMediaItem,
+} from "../../shared/exercise-video-player";
 import { useCoachExercises, useCoachExerciseFolders } from "@/hooks/use-p196";
 import type { CoachExerciseClient } from "@/hooks/use-p196";
 import { normalizeSearchText } from "@/lib/exercises/search";
@@ -135,6 +139,8 @@ export function CoachExercisesTab() {
   const [searchQuery, setSearchQuery] = useState("");
   const [categoryFilter, setCategoryFilter] = useState<string>("all");
   const [muscleFilter, setMuscleFilter] = useState<string>("all");
+  // پلیر ویدئوی حرکت — مرحله ۲۰/P2 (R2.2)
+  const [videoTarget, setVideoTarget] = useState<{ title: string; media: ExerciseMediaItem[] } | null>(null);
 
   const q = normalizeSearchText(searchQuery);
   const filteredExercises = (exercises ?? []).filter((ex) => {
@@ -484,14 +490,30 @@ export function CoachExercisesTab() {
                           ) : (
                             <ImageIcon className="size-3 text-primary" aria-hidden="true" />
                           )}
-                          <a
-                            href={`/api/coach/exercises/media/${encodeURIComponent(m.id)}`}
-                            target="_blank"
-                            rel="noreferrer noopener"
-                            className="max-w-32 truncate font-bold text-foreground hover:text-primary"
-                          >
-                            {m.fileName}
-                          </a>
+                          {m.kind === "video" ? (
+                            // P2 (R2.2): ویدئو با پلیر امن پخش میشود — نه لینک خام
+                            <button
+                              type="button"
+                              className="max-w-32 truncate font-bold text-foreground hover:text-primary"
+                              onClick={() =>
+                                setVideoTarget({
+                                  title: locale === "fa" ? ex.faName : ex.enName,
+                                  media: ex.media,
+                                })
+                              }
+                            >
+                              {m.fileName}
+                            </button>
+                          ) : (
+                            <a
+                              href={`/api/coach/exercises/media/${encodeURIComponent(m.id)}`}
+                              target="_blank"
+                              rel="noreferrer noopener"
+                              className="max-w-32 truncate font-bold text-foreground hover:text-primary"
+                            >
+                              {m.fileName}
+                            </a>
+                          )}
                           <button
                             type="button"
                             aria-label={`${t.exerciseDelete} ${m.fileName}`}
@@ -744,6 +766,16 @@ export function CoachExercisesTab() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* پلیر ویدئوی حرکت — مرحله ۲۰/P2 (R2.2) */}
+      <ExerciseVideoPlayerDialog
+        open={videoTarget !== null}
+        onOpenChange={(v) => {
+          if (!v) setVideoTarget(null);
+        }}
+        title={videoTarget?.title ?? ""}
+        source={videoTarget ? { type: "ready", media: videoTarget.media } : null}
+      />
     </div>
   );
 }

@@ -36,7 +36,11 @@ import { resolveScene } from "@/lib/fitness3d/resolve";
 import type { MuscleGroupId } from "@/lib/fitness3d/types";
 import { filterCards } from "@/lib/exercises/search";
 import { EXERCISE_CATEGORIES, type ExerciseCategoryId } from "@/lib/exercises/types";
-import { withPersonalPrefix } from "@/lib/coaching/personal-exercise-id";
+import { stripPersonalPrefix, withPersonalPrefix } from "@/lib/coaching/personal-exercise-id";
+import {
+  ExerciseVideoPlayerDialog,
+  type ExerciseMediaItem,
+} from "@/components/fitness/shared/exercise-video-player";
 import { MiniCoachScene } from "@/components/fitness/coach3d/MiniCoachScene";
 
 const PAGE_SIZE = 30;
@@ -77,6 +81,8 @@ export function ExercisePicker({
     /** R1.4 (مرحله ۲۰/P1) — عضلات واقعی حرکت شخصی برای نمایش سازگار */
     primaryMuscles?: string[];
     secondaryMuscles?: string[];
+    /** P2 (R2.2) — حرکت ویدئو دارد؛ دکمه پخش امن نمایش داده میشود */
+    hasVideo?: boolean;
   }[] | null;
   /**
    * مرحله ۲۰/P1 (R1.2): وقتی داده شود، حرکات بانک عمومی دکمه «ذخیره در
@@ -108,6 +114,8 @@ export function ExercisePicker({
   // ذخیره از بانک عمومی در کتابخانه شخصی — مرحله ۲۰/P1-R1.2
   const [savingToLibraryId, setSavingToLibraryId] = useState<string | null>(null);
   const [savedToLibraryIds, setSavedToLibraryIds] = useState<Set<string>>(new Set());
+  // P2 (R2.2): پخش ویدئوی حرکت شخصی — فهرست رسانه هنگام بازشدن از API مجاز
+  const [videoTarget, setVideoTarget] = useState<string | null>(null);
   // بازنشانی نمایش تدریجی با تغییر جست‌وجو/فیلتر — الگوی رسمی «مشتق در رندر»
   const [prevFilterKey, setPrevFilterKey] = useState("");
   const filterKey = `${query}|${category}`;
@@ -150,6 +158,14 @@ export function ExercisePicker({
   }, [items, query, category, bodyweightOnly, source, personalExercises]);
 
   const visibleResults = results.slice(0, visible);
+  /** P2 (R2.2): شناسههای خام حرکات شخصی دارای ویدئو برای دکمه پخش */
+  const personalVideoIds = useMemo(() => {
+    const set = new Set<string>();
+    for (const ex of personalExercises ?? []) {
+      if (ex.hasVideo) set.add(stripPersonalPrefix(withPersonalPrefix(ex.id)));
+    }
+    return set;
+  }, [personalExercises]);
 
   const pick = async (exerciseId: string) => {
     if (disabled || !onPick) return;
@@ -297,6 +313,19 @@ export function ExercisePicker({
                     {ex.has3d && <span className="font-bold text-primary">{t.has3d}</span>}
                   </p>
                 </div>
+                {source === "personal" && personalVideoIds.has(stripPersonalPrefix(ex.id)) && (
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    disabled={disabled}
+                    onClick={() => setVideoTarget(stripPersonalPrefix(ex.id))}
+                    className="h-7 shrink-0 px-2 text-[10px] font-bold text-primary hover:bg-primary/10"
+                    aria-label={t196.personalVideoPlayAria(locale === "fa" ? ex.fa : ex.en)}
+                  >
+                    <Play className="size-3.5" aria-hidden="true" />
+                    {t196.personalVideoPlay}
+                  </Button>
+                )}
                 {ex.has3d && (
                   <Button
                     size="sm"
@@ -429,6 +458,34 @@ export function ExercisePicker({
           )}
         </DialogContent>
       </Dialog>
+
+      {/* P2 (R2.2): پلیر ویدئوی حرکت شخصی — سرو استریم امن همان مسیر سرور */}
+      <ExerciseVideoPlayerDialog
+        open={videoTarget !== null}
+        onOpenChange={(v) => {
+          if (!v) setVideoTarget(null);
+        }}
+        title={
+          visibleResults.find((ex) => stripPersonalPrefix(ex.id) === videoTarget)?.[
+            locale === "fa" ? "fa" : "en"
+          ] ?? ""
+        }
+        source={
+          videoTarget
+            ? {
+                type: "load",
+                load: async (): Promise<ExerciseMediaItem[] | null> => {
+                  const res = await fetch(
+                    `/api/coach/exercises/${encodeURIComponent(videoTarget)}/media`
+                  );
+                  if (!res.ok) return null;
+                  const data = (await res.json()) as { media?: ExerciseMediaItem[] };
+                  return Array.isArray(data.media) ? data.media : [];
+                },
+              }
+            : null
+        }
+      />
     </div>
   );
 }

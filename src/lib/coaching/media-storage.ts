@@ -15,6 +15,11 @@ import { randomUUID } from "node:crypto";
 import { mkdir, readFile, unlink, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { COACH_EXERCISE_LIMITS } from "@/lib/coaching/constants";
+import {
+  buildMediaStorageKey,
+  getStorageProvider,
+  type StorageNamespace,
+} from "@/lib/storage/provider";
 
 /* ------------------------------ پیوست گفت‌وگو ------------------------------ */
 
@@ -170,16 +175,18 @@ export async function deleteChatAttachmentFile(storagePath: string): Promise<voi
   }
 }
 
-/* --------------------------- رسانه حرکت شخصی مربی --------------------------- */
+/* --------------------------- رسانه حرکات — مرحله ۲۰/P2 --------------------------- */
 
-export const COACH_EXERCISE_MEDIA_ROOT = path.join(
-  process.cwd(),
-  "data",
-  "uploads",
-  "coach-exercises"
-);
+/**
+ * رسانه حرکات (شخصی مربی + بانک عمومی) از مرحله ۲۰/P2 از لایه
+ * storage-provider عبور میکند (تصمیم D4): کلید نسبی namespace دار
+ * (`coach-exercises/…` و `bank-exercises/…`)، ذخیره/خواندن استریم/حذف
+ * همه از مرز واحد provider. توابع مستقیم دیسک قبلی حذف شدند تا یک مسیر
+ * واحد بماند؛ دادههای موجود رسانه در زمان تغییر صفر ردیف بودند (ممیزی
+ * pre-P2) و هیچ مهاجرت مسیری لازم نبود.
+ */
 
-/** تشخیص نوع رسانه حرکت شخصی — تصویر یا ویدئو؛ خروجی فقط whitelist یا null */
+/** تشخیص نوع رسانه حرکت — تصویر یا ویدئو؛ خروجی فقط whitelist یا null */
 export function sniffCoachExerciseMediaMime(bytes: Uint8Array): string | null {
   const sniffed = sniffChatMime(bytes);
   const allowed = new Set<string>([
@@ -190,7 +197,7 @@ export function sniffCoachExerciseMediaMime(bytes: Uint8Array): string | null {
 }
 
 /**
- * تأیید نهایی نوع رسانه حرکت شخصی: نوع اعلامی باید با امضای واقعی هم‌خوان
+ * تأیید نهایی نوع رسانه حرکت: نوع اعلامی باید با امضای واقعی هم‌خوان
  * و در whitelist باشد — در غیر این صورت null (رد).
  */
 export function resolveVerifiedExerciseMediaMime(
@@ -206,44 +213,37 @@ export function resolveVerifiedExerciseMediaMime(
   return sniffed === declaredType ? sniffed : null;
 }
 
-export async function saveCoachExerciseMediaFile(
+/** ذخیره رسانه حرکت از مسیر provider — خروجی کلید نسبی namespace دار */
+export async function saveExerciseMediaFile(
+  namespace: StorageNamespace,
   exerciseId: string,
   bytes: Uint8Array
 ): Promise<{ storagePath: string }> {
   if (!/^[a-z0-9]+$/i.test(exerciseId)) {
     throw new Error("UNSAFE_ATTACHMENT_PATH");
   }
-  const dir = path.join(COACH_EXERCISE_MEDIA_ROOT, exerciseId);
-  await mkdir(dir, { recursive: true });
-  const fileName = `${Date.now().toString(36)}-${randomUUID()}`;
-  const storagePath = path.posix.join(exerciseId, fileName);
-  const abs = path.join(COACH_EXERCISE_MEDIA_ROOT, storagePath);
-  if (!abs.startsWith(path.resolve(COACH_EXERCISE_MEDIA_ROOT) + path.sep)) {
-    throw new Error("UNSAFE_ATTACHMENT_PATH");
-  }
-  await writeFile(abs, bytes);
+  // نام دیسک هرگز از ورودی کاربر نمیآید: الگوی داخلی ثابت + uuid تصادفی
+  const fileStem = `${Date.now().toString(36)}-${randomUUID()}`;
+  const storagePath = buildMediaStorageKey(namespace, exerciseId, fileStem);
+  await getStorageProvider().put(storagePath, bytes);
   return { storagePath };
 }
 
-export async function readCoachExerciseMediaFile(storagePath: string): Promise<Uint8Array> {
-  const abs = path.resolve(COACH_EXERCISE_MEDIA_ROOT, storagePath);
-  if (!abs.startsWith(path.resolve(COACH_EXERCISE_MEDIA_ROOT) + path.sep)) {
-    throw new Error("UNSAFE_ATTACHMENT_PATH");
-  }
-  const buf = await readFile(abs);
-  const out = new Uint8Array(buf.byteLength);
-  out.set(buf);
-  return out;
+/** بازکردن جریان بازه‌ای رسانه — استریم واقعی بدون بافر کامل (R2.0) */
+export async function openExerciseMediaRange(
+  storagePath: string,
+  start: number,
+  endInclusive: number
+): Promise<ReadableStream<Uint8Array> | null> {
+  return getStorageProvider().openRange(storagePath, start, endInclusive);
 }
 
-export async function deleteCoachExerciseMediaFile(storagePath: string): Promise<void> {
-  const abs = path.resolve(COACH_EXERCISE_MEDIA_ROOT, storagePath);
-  if (!abs.startsWith(path.resolve(COACH_EXERCISE_MEDIA_ROOT) + path.sep)) {
-    return;
-  }
-  try {
-    await unlink(abs);
-  } catch {
-    // idempotent
-  }
+/** اندازه رسانه روی storage — مفقود → null (پاسخ امن 404) */
+export async function exerciseMediaSize(storagePath: string): Promise<number | null> {
+  return getStorageProvider().sizeOf(storagePath);
+}
+
+/** حذف رسانه از مسیر provider — idempotent */
+export async function deleteExerciseMediaFile(storagePath: string): Promise<void> {
+  await getStorageProvider().delete(storagePath);
 }

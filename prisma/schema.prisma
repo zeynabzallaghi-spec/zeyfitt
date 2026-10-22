@@ -1102,6 +1102,8 @@ model Exercise {
   createdAt            DateTime @default(now())
   updatedAt            DateTime @updatedAt
   importBatch          ExerciseImportBatch? @relation(fields: [importBatchId], references: [id], onDelete: SetNull)
+  // رسانه بانک عمومی — مرحله ۲۰/P2 (R2.3)؛ آپلود فقط ادمین
+  media                ExerciseMedia[]
 
   @@unique([sourceKey, sourceRef])
   @@index([status, category])
@@ -1352,6 +1354,31 @@ model CoachExerciseMedia {
   storagePath String
   createdAt   DateTime      @default(now())
   exercise    CoachExercise @relation(fields: [exerciseId], references: [id], onDelete: Cascade)
+
+  @@index([exerciseId, createdAt])
+}
+
+// ----------------------------------------
+// رسانه حرکت بانک عمومی — مرحله ۲۰/P2 (R2.3)
+// ----------------------------------------
+// آینه CoachExerciseMedia برای رکوردهای بانک عمومی (Exercise)؛ فقط برای
+// رکوردهای origin=core و status=active و فقط با آپلود ادمین. فایل خارج
+// از public با نام تصادفی از لایه storage-provider ذخیره میشود؛ سرو فقط
+// از مسیر API با نشست معتبر (همان قواعد دید بانک عمومی) — هیچ دسترسی
+// عمومی بدون احراز هویت. ویدئو videoStatus رکورد را uploaded میکند؛
+// این فیلد طبق قرارداد فاز ۱۸ هرگز به کلاینت نمیرسد (whitelist).
+// هیچ رکورد بانک حذف نمیشود؛ حذف رسانه فقط فایل رسانه را پاک میکند.
+
+model ExerciseMedia {
+  id          String   @id @default(cuid())
+  exerciseId  String
+  kind        String
+  fileName    String
+  mimeType    String
+  sizeBytes   Int
+  storagePath String
+  createdAt   DateTime @default(now())
+  exercise    Exercise @relation(fields: [exerciseId], references: [id], onDelete: Cascade)
 
   @@index([exerciseId, createdAt])
 }

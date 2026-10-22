@@ -20,6 +20,22 @@ export interface AdminStrings {
   coachApplicationsTab: string;
   premiumRequestsTab: string;
   ticketsTab: string;
+  // P2 (R2.3) — تب رسانه بانک حرکات
+  bankMediaTab: string;
+  bankMediaIntro: string;
+  bankMediaSearchPlaceholder: string;
+  bankMediaSearchEmpty: string;
+  bankMediaPickHint: string;
+  bankMediaCurrent: string;
+  bankMediaNone: string;
+  bankMediaUploadImage: string;
+  bankMediaUploadVideo: string;
+  bankMediaPlay: string;
+  bankMediaDelete: string;
+  bankMediaOriginNote: string;
+  bankMediaUploaded: string;
+  bankMediaDeleted: string;
+  bankMediaError: string;
 
   // نمای کلی
   overviewIntro: string;
@@ -150,6 +166,21 @@ const ADMIN_STRINGS: Record<Locale, AdminStrings> = {
     coachApplicationsTab: "درخواست مربی‌گری",
     premiumRequestsTab: "درخواست ارتقا",
     ticketsTab: "تیکت پشتیبانی",
+    bankMediaTab: "رسانه بانک حرکات",
+    bankMediaIntro: "افزودن رسانه به رکوردهای پایه بانک عمومی — فقط origin=core فعال؛ ویدئوی مشارکت مربی با گردشکار انتشار (مرحله بعد) می‌آید.",
+    bankMediaSearchPlaceholder: "جست‌وجوی حرکت در بانک…",
+    bankMediaSearchEmpty: "حرکتی یافت نشد",
+    bankMediaPickHint: "یک حرکت را انتخاب کنید تا رسانه‌های آن مدیریت شود",
+    bankMediaCurrent: "رسانه‌های ثبت‌شده",
+    bankMediaNone: "رسانه‌ای ثبت نشده است",
+    bankMediaUploadImage: "آپلود تصویر",
+    bankMediaUploadVideo: "آپلود ویدئو",
+    bankMediaPlay: "پخش",
+    bankMediaDelete: "حذف",
+    bankMediaOriginNote: "این مدیریت رسانه، مجوز انتشار حرکت مربیان را نمی‌سازد",
+    bankMediaUploaded: "رسانه آپلود شد",
+    bankMediaDeleted: "رسانه حذف شد",
+    bankMediaError: "عملیات رسانه ناموفق بود",
 
     overviewIntro: "شمارش زنده از دیتابیس — بدون هیچ آمار ساختگی.",
     countUsers: "کل کاربران",
@@ -272,6 +303,21 @@ const ADMIN_STRINGS: Record<Locale, AdminStrings> = {
     coachApplicationsTab: "Coach Applications",
     premiumRequestsTab: "Upgrade Requests",
     ticketsTab: "Support Tickets",
+    bankMediaTab: "Bank Exercise Media",
+    bankMediaIntro: "Add media to public bank core records — only active origin=core; coach-contribution videos come with the publishing workflow (next phase).",
+    bankMediaSearchPlaceholder: "Search exercises in the bank…",
+    bankMediaSearchEmpty: "No exercise found",
+    bankMediaPickHint: "Pick an exercise to manage its media",
+    bankMediaCurrent: "Registered media",
+    bankMediaNone: "No media registered",
+    bankMediaUploadImage: "Upload image",
+    bankMediaUploadVideo: "Upload video",
+    bankMediaPlay: "Play",
+    bankMediaDelete: "Delete",
+    bankMediaOriginNote: "This media management does not grant coach exercise publishing",
+    bankMediaUploaded: "Media uploaded",
+    bankMediaDeleted: "Media deleted",
+    bankMediaError: "Media operation failed",
 
     overviewIntro: "Live counts straight from the database — no made-up statistics.",
     countUsers: "Total users",

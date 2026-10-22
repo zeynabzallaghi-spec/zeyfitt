@@ -102,6 +102,9 @@ export interface Phase196Strings {
   exerciseTips: string;
   exerciseMedia: string;
   exerciseMediaUpload: string;
+  // P2 (R2.2) — پخش ویدئوی حرکت شخصی
+  personalVideoPlay: string;
+  personalVideoPlayAria: (name: string) => string;
   exerciseMediaEmpty: string;
   exerciseMediaImageNote: string;
   exerciseMediaVideoNote: string;
@@ -261,6 +264,8 @@ const fa: Phase196Strings = {
   exerciseTips: "نکات اجرای صحیح",
   exerciseMedia: "رسانههای آموزشی",
   exerciseMediaUpload: "افزودن رسانه",
+  personalVideoPlay: "ویدئو",
+  personalVideoPlayAria: (name) => `پخش ویدئوی حرکت ${name}`,
   exerciseMediaEmpty: "هنوز رسانهای بارگذاری نشده است.",
   exerciseMediaImageNote: "تصویر: JPEG/PNG/WebP حداکثر ۵ مگابایت",
   exerciseMediaVideoNote: "ویدئو: MP4/WebM حداکثر ۵۰ مگابایت",
@@ -414,6 +419,8 @@ const en: Phase196Strings = {
   exerciseTips: "Execution tips",
   exerciseMedia: "Training media",
   exerciseMediaUpload: "Add media",
+  personalVideoPlay: "Video",
+  personalVideoPlayAria: (name) => `Play exercise video of ${name}`,
   exerciseMediaEmpty: "No media uploaded yet.",
   exerciseMediaImageNote: "Image: JPEG/PNG/WebP up to 5 MB",
   exerciseMediaVideoNote: "Video: MP4/WebM up to 50 MB",

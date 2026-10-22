@@ -347,6 +347,22 @@ export interface LibraryExerciseDetail extends LibraryExerciseCard {
   sourceKey: "editorial" | "free-exercise-db";
   /** حرکات مشابه بر اساس ارتباط واقعی عضلات/تجهیزات/دسته */
   similar: LibraryExerciseCard[];
+  /**
+   * رسانه رکورد بانک — مرحله ۲۰/P2 (R2.3). فقط فیلدهای whitelist؛
+   * بایتها فقط از مسیر استریم احرازنشست‌دار سرو میشوند. نبود فیلد =
+   * رسانهای ثبت نشده (نمایش صادقانه «بدون ویدئو»).
+   */
+  media?: ExerciseMediaClientInfo[];
+}
+
+/** فیلدهای مجاز نمایشی رسانه — آینه whitelist سرور (بدون storagePath) */
+export interface ExerciseMediaClientInfo {
+  id: string;
+  kind: string;
+  fileName: string;
+  mimeType: string;
+  sizeBytes: number;
+  createdAt: string;
 }
 
 /** حروف اختصاری کوتاه دسته برای گرافیک یکپارچه کارت — خالص و مشترک */

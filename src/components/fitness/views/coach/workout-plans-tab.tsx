@@ -174,6 +174,8 @@ function ExercisePickerDialog({
     // R1.4 (مرحله ۲۰/P1) — عضلات واقعی برای نمایش سازگار در انتخابگر
     primaryMuscles: ex.primaryMuscles,
     secondaryMuscles: ex.secondaryMuscles,
+    // P2 (R2.2) — دکمه پخش ویدئو فقط برای حرکاتی که واقعاً ویدئو دارند
+    hasVideo: ex.media.some((m) => m.kind === "video"),
   }));
 
   return (

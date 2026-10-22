@@ -221,6 +221,19 @@ export const COACH_EXERCISE_LIMITS = {
   VIDEO_MIME_WHITELIST: ["video/mp4", "video/webm"] as const,
 } as const;
 
+/**
+ * سقف ویدئو حرکت — مرحله ۲۰/P2: پیشفرض ۵۰ مگابایت (تصمیم D7)؛ با متغیر
+ * محیطی EXERCISE_VIDEO_MAX_MB قابل تنظیم (۱..۵۰۰). فقط سمت سرور اعمال
+ * میشود و روی هر دو مسیر رسانه حرکت شخصی و رسانه بانک عمومی حاکم است.
+ * UI این مقدار را فقط برای تجربه کاربری پیش از آپلود میشناسد؛ کنترل
+ * امنیتی واقعی همان بررسی سمت سرور است.
+ */
+export function getExerciseVideoMaxBytes(): number {
+  const raw = Number(process.env.EXERCISE_VIDEO_MAX_MB);
+  const mb = Number.isInteger(raw) && raw >= 1 && raw <= 500 ? raw : 50;
+  return mb * 1024 * 1024;
+}
+
 /* --------------------------- خطای دامنه با وضعیت HTTP --------------------------- */
 
 /**

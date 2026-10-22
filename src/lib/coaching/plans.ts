@@ -264,10 +264,12 @@ export async function getCoachWorkoutPlan(
     studentNamesOf(plan.studentId ? [plan.studentId] : []),
     connectionTypesOf(plan.connectionId ? [plan.connectionId] : []),
   ]);
+  // P2 (R2.2): پیش‌نمایش مربی هم hasVideo میگیرد تا همان نمایش دانشجو باشد
+  const content = await attachPersonalHasVideo(parseWorkoutContent(plan.contentJson));
   return {
     ...workoutListItem(plan, names, connTypes),
     meta: metaOfWorkout(plan),
-    content: parseWorkoutContent(plan.contentJson),
+    content,
   };
 }
 
@@ -829,13 +831,49 @@ export async function getDeliveryForUser(
     where: { id: row.connectionId },
     select: { status: true },
   });
+  const content =
+    row.planKind === "nutrition"
+      ? parseNutritionContent(row.contentJson)
+      : await attachPersonalHasVideo(parseWorkoutContent(row.contentJson));
   return {
     ...toDeliveryItem(row, names, connTypes),
-    content:
-      row.planKind === "nutrition"
-        ? parseNutritionContent(row.contentJson)
-        : parseWorkoutContent(row.contentJson),
+    content,
     connectionStatus: conn?.status ?? null,
+  };
+}
+
+/**
+ * غنیسازی خواندنی P2 (R2.2): برای ردیفهای source=personal محتوای تمرینی
+ * یک کوئری batch روی CoachExerciseMedia انجام میشود و ردیفهای دارای
+ * ویدئو hasVideo=true میگیرند. این فقط روی پاسخ API اعمال میشود؛ در
+ * snapshot ذخیره نمیشود و تغییری در داده ایجاد نمیکند.
+ */
+async function attachPersonalHasVideo(
+  content: CoachWorkoutContent
+): Promise<CoachWorkoutContent> {
+  const personalIds = new Set<string>();
+  for (const day of content.days) {
+    for (const ex of day.exercises) {
+      if (ex.source === "personal") personalIds.add(ex.exerciseId);
+    }
+  }
+  if (personalIds.size === 0) return content;
+  const withVideo = await db.coachExerciseMedia.findMany({
+    where: { exerciseId: { in: [...personalIds] }, kind: "video" },
+    select: { exerciseId: true },
+    distinct: ["exerciseId"],
+  });
+  if (withVideo.length === 0) return content;
+  const videoSet = new Set(withVideo.map((r) => r.exerciseId));
+  return {
+    days: content.days.map((day) => ({
+      ...day,
+      exercises: day.exercises.map((ex) =>
+        ex.source === "personal" && videoSet.has(ex.exerciseId)
+          ? { ...ex, hasVideo: true }
+          : ex
+      ),
+    })),
   };
 }
 

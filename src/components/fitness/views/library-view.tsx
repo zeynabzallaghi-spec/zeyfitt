@@ -32,7 +32,13 @@ import {
   TriangleAlert,
   Wind,
   Wrench,
+  Film,
 } from "lucide-react";
+import {
+  ExerciseVideoPlayerDialog,
+  bankMediaStreamUrl,
+  type ExerciseMediaItem,
+} from "../shared/exercise-video-player";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import {
@@ -367,6 +373,10 @@ function ExerciseDetailsDialog({
   const locale = useLocale();
   const id = card?.id ?? null;
   const { state, retry } = useExerciseDetail(open ? id : null);
+  // P2 (R2.3): پخش ویدئوی رکورد بانک عمومی — فهرست رسانه در پاسخ جزئیات است
+  const [videoOpen, setVideoOpen] = useState(false);
+  const bankMedia: ExerciseMediaItem[] =
+    state.kind === "ready" ? (state.detail.media ?? []) : [];
 
   if (!card) return null;
   const detail = state.kind === "ready" ? state.detail : null;
@@ -484,6 +494,22 @@ function ExerciseDetailsDialog({
                 {t.equipmentList(detail.equipment)}
               </span>
             </div>
+
+            {/* P2 (R2.3): رسانه ثبتشده رکورد بانک — در نبود ویدئو هیچ ادعایی
+                نمایش داده نمیشود (صادقانه) */}
+            {bankMedia.some((m) => m.kind === "video") && (
+              <div className="space-y-2">
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="h-8 text-[11px] font-bold text-primary hover:border-primary/40"
+                  onClick={() => setVideoOpen(true)}
+                >
+                  <Film className="me-1 size-3.5" aria-hidden="true" />
+                  {locale === "fa" ? "مشاهده ویدئوی حرکت" : "Watch exercise video"}
+                </Button>
+              </div>
+            )}
 
             {/* عضلات */}
             <div className="flex flex-col gap-2">
@@ -637,6 +663,15 @@ function ExerciseDetailsDialog({
             </div>
           </>
         )}
+
+        {/* P2 (R2.3): پلیر ویدئوی رکورد بانک — استریم احرازنشست‌دار */}
+        <ExerciseVideoPlayerDialog
+          open={videoOpen}
+          onOpenChange={setVideoOpen}
+          title={exerciseName(card, locale)}
+          source={{ type: "ready", media: bankMedia }}
+          mediaUrlFor={(m) => bankMediaStreamUrl(card.id, m.id)}
+        />
       </DialogContent>
     </Dialog>
   );

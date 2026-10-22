@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { getServerSession } from "@/lib/session";
 import { ensureExerciseBank, getExerciseDetail } from "@/lib/exercises/bank";
+import { listBankExerciseMedia } from "@/lib/exercises/bank-media";
 
 /**
  * GET /api/exercises/[id] — جزئیات کامل یک حرکت از بانک عمومی (مرحله ۱۸).
@@ -8,8 +9,10 @@ import { ensureExerciseBank, getExerciseDetail } from "@/lib/exercises/bank";
  * - دسترسی: کاربر دارای نشست؛ مهمان 401.
  * - «نبودن» پاسخ 404 — بدون افشای هیچ اطلاعاتی.
  * - پاسخ فقط فیلدهای مجاز است؛ metadata داخلی (datasetVersion، sourceRef،
- *   importBatchId، ownerUserId، …) هرگز برنمی‌گردد. خط منبع (sourceKey)
- *   برای نمایش شفاف «محتوای آموزشی از منبع آزاد» برمی‌گردد.
+ *   importBatchId، ownerUserId، videoStatus، …) هرگز برنمی‌گردد. خط منبع
+ *   (sourceKey) برای نمایش شفاف «محتوای آموزشی از منبع آزاد» برمی‌گردد.
+ * - مرحله ۲۰/P2 (R2.3): فهرست رسانه (whitelist) هم به پاسخ پیوسته است؛
+ *   بایتها فقط از مسیر استریم احرازنشست‌دار سرو میشوند.
  */
 export async function GET(
   _request: Request,
@@ -31,7 +34,9 @@ export async function GET(
     if (!detail) {
       return NextResponse.json({ error: "NOT_FOUND" }, { status: 404 });
     }
-    return NextResponse.json({ exercise: detail });
+    // رسانههای ثبتشده رکورد (ممکن است خالی باشد — نمایش صادقانه)
+    const media = await listBankExerciseMedia(id);
+    return NextResponse.json({ exercise: { ...detail, media } });
   } catch (error) {
     console.error("[exercises:GET:id]", error instanceof Error ? error.name : "unknown");
     return NextResponse.json({ error: "INTERNAL" }, { status: 500 });

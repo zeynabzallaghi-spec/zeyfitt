@@ -8,9 +8,10 @@
  * می‌گیرند.
  */
 
+import { useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Dumbbell, Timer, Info, UtensilsCrossed } from "lucide-react";
+import { Dumbbell, Timer, Info, UtensilsCrossed, Play } from "lucide-react";
 import { useStrings } from "@/lib/i18n/use-strings";
 import { coachPlansStrings } from "@/lib/i18n/sections/coach-plans";
 import { coachDeliveriesStrings } from "@/lib/i18n/sections/coach-deliveries";
@@ -21,6 +22,7 @@ import type {
   CoachNutritionContentClient,
   CoachWorkoutContentClient,
 } from "@/lib/coaching/plans-client";
+import { ExerciseVideoPlayerDialog } from "../../shared/exercise-video-player";
 
 /* ------------------------------ محتوای تمرینی ------------------------------ */
 
@@ -36,6 +38,9 @@ export function CoachWorkoutContentView({
 }) {
   const t = useStrings(coachDeliveriesStrings);
   const locale = useLocale();
+  // P2 (R2.2): پخش ویدئوی حرکت شخصی از جزئیات برنامه — فهرست رسانه هنگام
+  // بازشدن از همان API مجاز سرور بار میشود (مجوز دانشجو سمت سرور اعمال است)
+  const [videoTargetId, setVideoTargetId] = useState<string | null>(null);
 
   return (
     <div className="space-y-4">
@@ -96,6 +101,18 @@ export function CoachWorkoutContentView({
                           {ex.note}
                         </p>
                       )}
+                      {(ex as { hasVideo?: boolean }).hasVideo === true && (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="mt-1.5 h-7 px-2 text-[10px] font-bold text-primary hover:border-primary/40"
+                          onClick={() => setVideoTargetId(ex.exerciseId)}
+                          aria-label={locale === "fa" ? "پخش ویدئوی حرکت" : "Play exercise video"}
+                        >
+                          <Play className="me-1 size-3" aria-hidden="true" />
+                          {locale === "fa" ? "مشاهده ویدئو" : "Watch video"}
+                        </Button>
+                      )}
                     </li>
                   ))}
               </ul>
@@ -114,6 +131,35 @@ export function CoachWorkoutContentView({
             </div>
           ))
       )}
+
+      <ExerciseVideoPlayerDialog
+        open={videoTargetId !== null}
+        onOpenChange={(v) => {
+          if (!v) setVideoTargetId(null);
+        }}
+        title={
+          content.days
+            .flatMap((d) => d.exercises)
+            .find((ex) => ex.exerciseId === videoTargetId)?.[locale === "fa" ? "faName" : "enName"] ?? ""
+        }
+        source={
+          videoTargetId
+            ? {
+                type: "load",
+                load: async () => {
+                  const res = await fetch(
+                    `/api/coach/exercises/${encodeURIComponent(videoTargetId)}/media`
+                  );
+                  if (!res.ok) return null;
+                  const data = (await res.json()) as {
+                    media?: { id: string; kind: string; fileName: string; mimeType: string; sizeBytes: number; createdAt: string }[];
+                  };
+                  return Array.isArray(data.media) ? data.media : [];
+                },
+              }
+            : null
+        }
+      />
     </div>
   );
 }

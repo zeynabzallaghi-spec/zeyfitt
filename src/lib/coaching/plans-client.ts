@@ -28,6 +28,12 @@ export interface CoachPlanExerciseContentClient {
    * نبودش (داده قدیمی پیش از P1) یعنی حل از بانک در مسیرهای نمایش.
    */
   primaryMuscles?: string[];
+  /**
+   * P2 (R2.2): آیا این حرکت شخصی ویدئو دارد؟ فقط یک غنیسازی خواندنی
+   * سمت سرور روی پاسخ جزئیات تحویل/پیش‌نمایش است — در snapshot ذخیره
+   * نمیشود و هرگز تغییری در محتوای ذخیره‌شده ایجاد نمیکند.
+   */
+  hasVideo?: boolean;
   sets: number;
   repsMin: number;
   repsMax: number;

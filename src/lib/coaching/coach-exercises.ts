@@ -23,16 +23,16 @@ import {
   COACH_EXERCISE_LIMITS,
 } from "@/lib/coaching/constants";
 import {
-  deleteCoachExerciseMediaFile,
-  readCoachExerciseMediaFile,
+  deleteExerciseMediaFile,
   resolveVerifiedExerciseMediaMime,
-  saveCoachExerciseMediaFile,
+  saveExerciseMediaFile,
   sniffCoachExerciseMediaMime,
 } from "./media-storage";
 import { sanitizeDisplayName } from "./attachments";
 import { saveAttachmentFile } from "./attachments";
 import { ensureExerciseBank, findExerciseRow } from "@/lib/exercises/bank";
 import { filterSessionMuscles } from "@/lib/fitness3d/types";
+import { getExerciseVideoMaxBytes } from "./constants";
 
 /* ------------------------------ سقف کتابخانه شخصی — مرحله ۲۰/P1 (R1.3) ------------------------------ */
 
@@ -480,7 +480,7 @@ export async function deleteCoachExercise(
   if (!row) return null;
   await db.coachExercise.delete({ where: { id: exerciseId } });
   for (const m of row.media) {
-    await deleteCoachExerciseMediaFile(m.storagePath);
+    await deleteExerciseMediaFile(m.storagePath);
   }
   return true;
 }
@@ -509,6 +509,10 @@ export async function addCoachExerciseMedia(
     throw new CoachingError(409, "EXERCISE_MEDIA_LIMIT");
   }
 
+  // ترتیب خطاها: خالی → نوع → حجم (پیام روشنتر برای کاربر)
+  if (file.bytes.byteLength === 0) {
+    throw new CoachingError(422, "FILE_EMPTY");
+  }
   const sniffed = sniffCoachExerciseMediaMime(file.bytes);
   const verified = resolveVerifiedExerciseMediaMime(file.declaredType, sniffed);
   if (!verified) {
@@ -516,16 +520,14 @@ export async function addCoachExerciseMedia(
   }
   const isVideo = verified.startsWith("video/");
   const maxBytes = isVideo
-    ? COACH_EXERCISE_LIMITS.VIDEO_MAX_BYTES
+    ? getExerciseVideoMaxBytes()
     : COACH_EXERCISE_LIMITS.IMAGE_MAX_BYTES;
-  if (file.bytes.byteLength === 0) {
-    throw new CoachingError(422, "FILE_EMPTY");
-  }
   if (file.bytes.byteLength > maxBytes) {
     throw new CoachingError(413, "FILE_TOO_LARGE");
   }
 
-  const { storagePath } = await saveCoachExerciseMediaFile(exerciseId, file.bytes);
+  // مرحله ۲۰/P2 (D4): ذخیره فقط از لایه storage-provider — کلید namespace دار
+  const { storagePath } = await saveExerciseMediaFile("coach-exercises", exerciseId, file.bytes);
   const kind = isVideo ? "video" : "image";
   try {
     const media = await db.coachExerciseMedia.create({
@@ -546,23 +548,38 @@ export async function addCoachExerciseMedia(
     return { media: toClient(full).media.find((m) => m.id === media.id)!, exercise: toClient(full) };
   } catch (error) {
     // رکورد ساخته نشد — فایل یتیم پاک میشود
-    await deleteCoachExerciseMediaFile(storagePath);
+    await deleteExerciseMediaFile(storagePath);
     throw error;
   }
 }
 
-/** خواندن بایت‌های رسانه — فقط مالک حرکت */
-export async function readExerciseMediaForOwner(
+/**
+ * متادیتای رسانه برای سرو استریم — مرحله ۲۰/P2: بایتها اینجا خوانده
+ * نمیشوند؛ مسیر رسانه با استریم provider پخش میکند (R2.0 — بدون بافر کامل).
+ * فقط مالک حرکت؛ «مالک دیگر» و «ناموجود» هر دو null (ضد IDOR).
+ */
+export async function getExerciseMediaForOwner(
   coachId: string,
   mediaId: string
-): Promise<{ bytes: Uint8Array; mimeType: string; fileName: string } | null> {
+): Promise<{
+  id: string;
+  mimeType: string;
+  fileName: string;
+  storagePath: string;
+  declaredSize: number;
+} | null> {
   const media = await db.coachExerciseMedia.findUnique({
     where: { id: mediaId },
     include: { exercise: { select: { coachId: true } } },
   });
   if (!media || media.exercise.coachId !== coachId) return null;
-  const bytes = await readCoachExerciseMediaFile(media.storagePath);
-  return { bytes, mimeType: media.mimeType, fileName: media.fileName };
+  return {
+    id: media.id,
+    mimeType: media.mimeType,
+    fileName: media.fileName,
+    storagePath: media.storagePath,
+    declaredSize: media.sizeBytes,
+  };
 }
 
 /** حذف رسانه — فقط مالک؛ فایل دیسک هم پاک میشود */
@@ -576,8 +593,128 @@ export async function deleteCoachExerciseMedia(
   });
   if (!media || media.exercise.coachId !== coachId) return null;
   await db.coachExerciseMedia.delete({ where: { id: mediaId } });
-  await deleteCoachExerciseMediaFile(media.storagePath);
+  await deleteExerciseMediaFile(media.storagePath);
   return true;
+}
+
+/* ------------- دسترسی دانشجوی مجاز به رسانه حرکت شخصی — R2.1 (P2) ------------- */
+
+/**
+ * آیا این حرکت شخصی مربی در یک برنامه تمرینی تحویلشدهٔ فعالِ همین مربی
+ * به این دانشجو وجود دارد؟ (R2.1 — بررسی سمت سرور از روی CoachPlanDelivery)
+ *
+ * «فعال» در این مرحله یعنی: حذف نرم نشده (studentDeletedAt = null).
+ * محتوای تحویل snapshot است و شناسهٔ حرکت شخصی در ردیفهای source=personal
+ * خام ذخیره میشود (بدون پیشوند cex-) — جستوجوی پیشرفته با contains روی
+ * شناسه داخل کوتیشن (هیچ شناسهٔ دیگری نمیتواند همین زیررشته را بسازد چون
+ * cuid و مقدار JSON دقیق مقایسه میشود) و سپس اثبات دقیق با parse JSON.
+ */
+export async function studentHasPersonalExerciseAccess(
+  studentId: string,
+  coachId: string,
+  personalExerciseId: string
+): Promise<boolean> {
+  const candidates = await db.coachPlanDelivery.findMany({
+    where: {
+      studentId,
+      coachId,
+      planKind: "workout",
+      studentDeletedAt: null,
+      contentJson: { contains: `"exerciseId":"${personalExerciseId}"` },
+    },
+    select: { contentJson: true },
+    orderBy: { sentAt: "desc" },
+    take: 20,
+  });
+  for (const row of candidates) {
+    try {
+      const parsed: unknown = JSON.parse(row.contentJson);
+      const days = (parsed as { days?: unknown }).days;
+      if (!Array.isArray(days)) continue;
+      for (const day of days) {
+        const exercises = (day as { exercises?: unknown }).exercises;
+        if (!Array.isArray(exercises)) continue;
+        for (const ex of exercises) {
+          if (
+            (ex as { exerciseId?: unknown }).exerciseId === personalExerciseId &&
+            (ex as { source?: unknown }).source === "personal"
+          ) {
+            return true;
+          }
+        }
+      }
+    } catch {
+      // JSON خراب — ردیف بعدی
+    }
+  }
+  return false;
+}
+
+/**
+ * فهرست رسانههای یک حرکت شخصی برای دانشجوی مجاز (R2.1) — فقط خروجی
+ * whitelist؛ storagePath هرگز به کلاینت نمیرسد.
+ */
+export async function listPersonalExerciseMediaForStudent(
+  studentId: string,
+  personalExerciseId: string
+): Promise<CoachExerciseMediaClient[] | null> {
+  const exercise = await db.coachExercise.findUnique({
+    where: { id: personalExerciseId },
+    select: { id: true, coachId: true },
+  });
+  if (!exercise) return null;
+  const allowed = await studentHasPersonalExerciseAccess(
+    studentId,
+    exercise.coachId,
+    personalExerciseId
+  );
+  if (!allowed) return null;
+  const rows = await db.coachExerciseMedia.findMany({
+    where: { exerciseId: personalExerciseId },
+    orderBy: { createdAt: "asc" },
+  });
+  return rows.map((m) => ({
+    id: m.id,
+    kind: m.kind,
+    fileName: m.fileName,
+    mimeType: m.mimeType,
+    sizeBytes: m.sizeBytes,
+    createdAt: m.createdAt.toISOString(),
+  }));
+}
+
+/**
+ * متادیتای رسانه برای دانشجوی مجاز — مسیر سرو استریم؛ مجوز R2.1 سمت
+ * سرور قبل از هر خواندنی از فایل اعمال میشود.
+ */
+export async function getExerciseMediaForStudent(
+  studentId: string,
+  mediaId: string
+): Promise<{
+  id: string;
+  mimeType: string;
+  fileName: string;
+  storagePath: string;
+  declaredSize: number;
+} | null> {
+  const media = await db.coachExerciseMedia.findUnique({
+    where: { id: mediaId },
+    include: { exercise: { select: { id: true, coachId: true } } },
+  });
+  if (!media) return null;
+  const allowed = await studentHasPersonalExerciseAccess(
+    studentId,
+    media.exercise.coachId,
+    media.exercise.id
+  );
+  if (!allowed) return null;
+  return {
+    id: media.id,
+    mimeType: media.mimeType,
+    fileName: media.fileName,
+    storagePath: media.storagePath,
+    declaredSize: media.sizeBytes,
+  };
 }
 
 /**
