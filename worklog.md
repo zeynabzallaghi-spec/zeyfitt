@@ -1317,3 +1317,27 @@ Stage Summary:
 - P2 در زمان تحویل (2026-10-22) کامل و ۵۸/۵۸ اثبات‌شده بود اما کامیت آن ناقص است: فایل local-provider.ts در مخزن (لوکال و ریموت) نیست → درخت فعلی برای build و مسیرهای رسانه/حرکات مربی شکسته است
 - راه‌حل مسدودکننده: بازنویسی local-provider.ts طبق interface + تأیید با p24 + کامیت — منتظر تأیید کاربر
 - P3/P4 اجرا نشده‌اند؛ این نشست صرفاً ممیزی گزارش بود
+
+---
+Task ID: 47
+Agent: Super Z (main agent)
+Task: اصلاحیه محدود Blocker P2 — بازسازی local-provider.ts (مجوز کاربر؛ بدون P3/P4، بدون push)
+
+Work Log:
+- قراردادها بدون حدس مطالعه شد: interface provider.ts، media-storage.ts، bank-media.ts، روت‌ها و کل ۵۵۰ خط p24-p2-video-test.ts (مشخصهٔ پذیرش: فایل در data/uploads/<key>، بازه‌ها بایت‌دقیق، فایل مفقود → null/404، کلید namespace دار)
+- ریشهٔ واقعی گم‌شدن فایل کشف شد: .gitignore:43 الگوی «local-*» با local-provider.ts مچ میشد → در کامیت P2 بی‌صدا ignore شده بود؛ اصلاح جراحی: یک خط استثنا «!src/lib/storage/local-provider.ts» بعد از الگو (بدون تغییر رفتار سایر قواعد؛ git check-ignore + git status تأیید)
+- src/lib/storage/local-provider.ts بازنویسی شد: put/openRange/sizeOf/delete، driver=local، durability=local-dev-disk، ریشه data/uploads (خارج از public/)، دفاع دوم ضد traversal (assertSafeStoragePath + بقای مسیر مطلق داخل ریشه)، استریم createReadStream بدون بافر کامل، فایل مفقود/خالی → null، حذف idempotent، گارد INVALID_RANGE
+- تست هدفمند جدید scripts/p2b-local-provider-smoke.ts: ۲۲/۲۲ سبز (قرارداد، برابری بایتی بازه‌ها، رد traversal در همهٔ عملیات، حذف دوباره، missing→null، صداقت durability، پاکسازی فقط مسیر تست خودش)
+- فیکسچرهای p24 با ffmpeg بازتولید شد (scratch/ در ریست پاک شده بود): sample.mp4 (ftyp معتبر) + sample.png
+- سوئیت P2: p24 ۵۸/۵۸ سبز — شامل آپلود/415/422/413، Range کامل (206/416/HEAD)، ضد-IDOR شش‌گانه، دانشجوی مجاز، حذف نرم، فایل مفقود، رسانه بانک، رگرسیون cex-/P0/P1 + پاکسازی fixture با integrity
+- رگرسیون کامل: p20a ۲۸/۲۸ | p23 ۴۳/۴۳ | p196 ۹۱/۰ | p196-media ۵/۵ (اکنون روی URL درست + provider سالم) | p196-admin-verify ۵/۵ (کاربران واقعی دست‌نخورده) | p18 ۶۸/۰ | check-i18n ۵۶/۰
+- tsc src=صفر | ESLint فایل‌های لمس‌شده پاک | build: «Compiled successfully» (قبلاً FAIL بود)
+- سلامت نهایی (scripts/p2b-final-health.ts فقط‌خواندنی): integrity=ok | fk_violations=0 | users=4 (1 ADMIN + 3 STUDENT) | exercises=905 | CoachExercise=0 | CoachExerciseMedia=0 | ExerciseMedia=0 | plans/deliveries=0 | fixture residue=0
+- فایلسیستم: پوشه‌های خالی namespace از تست امروز باقی است (بی‌ضرر)؛ یک فایل پیوست چت یتیم از p196-test امروز (۰ مرجع دیتابیسی، conversations=0) — خارج از محدوده P2، دست‌نخورده ماند و گزارش شد
+- کامیت محلی محافظتی 7e1eb47 (۴ فایل، بدون push — طبق قانون ۸ کاربر) + بررسی کامیت خودکار پلتفرم 466e0e2 (فقط worklog + گزارش p19؛ بدون فایل حساس)
+- هیچ schema/migration/داده‌ای تغییر نکرد؛ هیچ تستی حذف/تضعیف نشد؛ P3/P4 اجرا نشد
+
+Stage Summary:
+- Blocker P2 کامل رفع شد: build سالم، ۵۸/۵۸ p24، تمام رگرسیون‌ها سبز، داده سالم
+- علت ریشه‌ای (gitignore local-*) بسته شد تا فایل دوباره گم نشود؛ فایل اکنون tracked است
+- در انتظار تأیید کاربر برای هر گام بعدی (P3 اجرا نمیشود)
