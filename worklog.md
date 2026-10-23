@@ -1294,3 +1294,26 @@ Work Log:
 Stage Summary:
 - P2 کامل و اثبات‌شده: استریم امن با Range واقعی، مجوز نقش‌آگاه مربی/دانشجوی مجاز، پلیر در چهار نقطه UI، رسانه بانک عمومی فقط-ادمین core، لایه storage قابل‌تعویض با وضعیت صادقانه
 - P3 (گردش کار انتشار/صف ادمین/اعلانها) و P4 اجرا نشدهاند — منتظر تأیید کاربر
+
+---
+Task ID: 46
+Agent: Super Z (main agent)
+Task: گزارش نهایی P2 (فقط‌خواندنی — بدون تغییر کد، بدون بررسی Git/Push، بدون P3/P4)
+
+Work Log:
+- ممیزی کامل فقط‌خواندنی وضعیت فعلی برای گزارش هفت‌بندی کاربر
+- کشف بحرانی: src/lib/storage/local-provider.ts هرگز کامیت نشده (git log --all خالی)؛ در کامیت 455d29b نبوده و به‌صورت untracked فقط در working tree وجود داشت
+- ریست ششم سندباکس در 2026-10-23 08:05 کشف شد (snapshot پلتفرم backups/custom-20261023-080531.db؛ پاک شدن backups/ و scratch/ قبلی؛ db + p19-report mtime=08:05:34 توسط auto-recover ترمیم شد) → git clean فایل untracked را نابود کرد
+- اثبات شکست زمان اجرا: bun require → MODULE_NOT_FOUND؛ dev.log: "Module not found: Can't resolve './local-provider'" در provider.ts:106؛ زنجیره: coach-exercises.ts:30 → media-storage → provider → local-provider (مفقود)
+- build واقعی: FAIL (exit 1، Module not found)؛ tsc روی src: صفر خطا (require تایپ‌چک نمیشود — دلیل عبور از چک‌های استاتیک)
+- تلاش بازیابی از همه مسیرها ناموفق: dangling blobs=0، کش .next/webpack پاک شده — فایل باید بازنویسی شود (مشخصهٔ اجرایی کامل آن: interface در provider.ts + سوئیت p24 با ۵۸ چک)
+- سوئیت‌های E2E (p20a/p23) روی مسیرهای آلوده به گراف ماژول شکست خوردند (انتظار‌دار؛ ریشه همان فایل مفقود) — پاکسازی scoped آن‌ها درست کار کرد
+- سلامت داده: integrity=ok | users=4 | exercises=905 | ExerciseMedia=0 | CoachExerciseMedia=0 | باقی‌مانده fixture=0 | 46 جدول
+- hexdump: نام واقعی روت‌ها media/[mediaId] است (نمایش ediaId] در ترمینال فقط بلعیده‌شدن ANSI [m بود)
+- استخراج نیازمندی‌های استقرار از کد: EXERCISE_VIDEO_MAX_MB (1..500 پیش‌فرض 50) + STORAGE_DRIVER (local|external؛ external عمداً STORAGE_NOT_CONFIGURED) + COACH_EXERCISE_CAP؛ .env.example هنوز هیچ‌کدام را مستند نکرده
+- هیچ تغییری در کد/schema/داده انجام نشد؛ Git/Push بررسی نشد (به درخواست کاربر)
+
+Stage Summary:
+- P2 در زمان تحویل (2026-10-22) کامل و ۵۸/۵۸ اثبات‌شده بود اما کامیت آن ناقص است: فایل local-provider.ts در مخزن (لوکال و ریموت) نیست → درخت فعلی برای build و مسیرهای رسانه/حرکات مربی شکسته است
+- راه‌حل مسدودکننده: بازنویسی local-provider.ts طبق interface + تأیید با p24 + کامیت — منتظر تأیید کاربر
+- P3/P4 اجرا نشده‌اند؛ این نشست صرفاً ممیزی گزارش بود
