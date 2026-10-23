@@ -125,6 +125,9 @@ function toCard(ex: Exercise): LibraryExerciseCard | null {
     pattern: ex.pattern as MovementPatternId,
     compound: ex.compound,
     exerciseType,
+    // منشأ رکورد برای badge «مربی» — متادیتای مالک/وضعیت هرگز به کلاینت نمیرود
+    // (whitelist فاز ۱۸: ownerUserId/publishState/videoStatus فقط داخلی)
+    origin: ex.origin === "coach" ? "coach" : "core",
     has3d,
     coach3dId,
     animation3d,
@@ -154,7 +157,12 @@ function toDetail(ex: Exercise, similar: LibraryExerciseCard[]): LibraryExercise
     mistakes: parseJsonArray(ex.mistakesJson),
     safety: parseJsonArray(ex.safetyJson),
     enContent,
-    sourceKey: ex.sourceKey === "editorial" ? "editorial" : "free-exercise-db",
+    sourceKey:
+      ex.origin === "coach"
+        ? "coach"
+        : ex.sourceKey === "editorial"
+          ? "editorial"
+          : "free-exercise-db",
     similar,
   };
 }
@@ -186,13 +194,21 @@ function defaultSort(a: LibraryExerciseCard, b: LibraryExerciseCard): number {
 }
 
 async function loadIntoState(): Promise<void> {
-  let rows = await db.exercise.findMany({ where: { status: "active" } });
+  // قاعده دید بانک عمومی — مرحله ۲۰/P3 (بدون رگرسیون):
+  // رکورد visible اگر status=active و (origin=core یا publishState=published).
+  // رکوردهای core فعلی (publishState=none) دقیقاً مثل قبل دیده میشوند؛
+  // پیش‌نویس/در انتظار بررسی/فراخوانی‌شده مربی هرگز وارد بانک نمیشود.
+  const visibleWhere = {
+    status: "active",
+    OR: [{ origin: "core" }, { publishState: "published" }],
+  };
+  let rows = await db.exercise.findMany({ where: visibleWhere });
   // ترمیم خودکار (مرحله ۱۹.۵) — بانک خالی یعنی وضعیت خراب واقعی (مثلاً
   // ریست سندباکس)؛ import رسمی idempotent یک‌بار اجرا و دوباره خوانده می‌شود.
   if (rows.length === 0) {
     const healed = await maybeSelfHealExerciseBank();
     if (healed) {
-      rows = await db.exercise.findMany({ where: { status: "active" } });
+      rows = await db.exercise.findMany({ where: visibleWhere });
     }
   }
   const cards: LibraryExerciseCard[] = [];

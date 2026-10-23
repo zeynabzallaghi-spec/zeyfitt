@@ -17,6 +17,7 @@ import { RealBadge } from "../../shared/badges";
 import { OverviewTab, UsersTab } from "./users-tab";
 import { ApplicationsTab, PremiumRequestsTab, TicketsTab } from "./requests-tabs";
 import { BankMediaTab } from "./bank-media-tab";
+import { ExerciseReviewsTab } from "./exercise-reviews-tab";
 
 export function AdminView() {
   const t = useStrings(adminStrings);
@@ -50,6 +51,7 @@ export function AdminView() {
           <TabsTrigger value="premium" className="text-[11px]">{t.premiumRequestsTab}</TabsTrigger>
           <TabsTrigger value="tickets" className="text-[11px]">{t.ticketsTab}</TabsTrigger>
           <TabsTrigger value="bank-media" className="text-[11px]">{t.bankMediaTab}</TabsTrigger>
+          <TabsTrigger value="exercise-reviews" className="text-[11px]">{t.exerciseReviewsTab}</TabsTrigger>
         </TabsList>
         <TabsContent value="overview">
           <OverviewTab t={t} />
@@ -68,6 +70,9 @@ export function AdminView() {
         </TabsContent>
         <TabsContent value="bank-media">
           <BankMediaTab t={t} />
+        </TabsContent>
+        <TabsContent value="exercise-reviews">
+          <ExerciseReviewsTab t={t} />
         </TabsContent>
       </Tabs>
     </div>

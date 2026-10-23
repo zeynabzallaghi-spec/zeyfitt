@@ -121,6 +121,10 @@ function NotificationBell() {
         if (payload.status === "DECLINED") return t.notifPaymentDeclined;
         return t.notifPaymentCancelled;
       }
+      // مرحله ۲۰/P3 — گردش کار انتشار حرکات
+      case "EXERCISE_REVIEW_SUBMITTED": return t.notifExerciseReviewSubmitted;
+      case "EXERCISE_REVIEW_DECIDED":
+        return payload.decision === "approved" ? t.notifExerciseReviewApproved : t.notifExerciseReviewRejected;
       default: return t.notifUnknownType;
     }
   };
@@ -141,6 +145,10 @@ function NotificationBell() {
       case "SUPPORT_REPLY":
       case "SUPPORT_TICKET_NEW":
         return "profile";
+      // مرحله ۲۰/P3 — حرکات منتشرشده/ارسالی به پنل مربی (تب بانک شخصی)
+      case "EXERCISE_REVIEW_SUBMITTED":
+      case "EXERCISE_REVIEW_DECIDED":
+        return "coachPanel";
       default:
         return "dashboard";
     }

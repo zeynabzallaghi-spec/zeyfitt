@@ -116,10 +116,15 @@ const musclesAllowed = [
   "neck",
 ] as const;
 
+export const COACH_EXERCISE_DIFFICULTIES = ["beginner", "intermediate", "advanced"] as const;
+
 export const coachExerciseSchema = z.object({
   faName: z.string().trim().min(2, "نام فارسی حداقل ۲ کاراکتر است").max(COACH_EXERCISE_LIMITS.NAME_MAX),
   enName: z.string().trim().min(2, "نام انگلیسی حداقل ۲ کاراکتر است").max(COACH_EXERCISE_LIMITS.NAME_MAX),
   category: z.enum(EXERCISE_CATEGORIES_ALLOWED, { message: "دسته حرکت معتبر نیست" }),
+  // سطح دشواری — واژگان بانک؛ پیش‌فرض intermediate (P3: برای نمایش دقیق
+  // رکورد منتشرشده؛ مقدار معتبر شرط نمایش کارت بانک است)
+  difficulty: z.enum(COACH_EXERCISE_DIFFICULTIES, { message: "سطح دشواری معتبر نیست" }).default("intermediate"),
   equipment: z
     .array(z.string().trim().min(1).max(40))
     .max(COACH_EXERCISE_LIMITS.EQUIPMENT_MAX, "حداکثر ۶ تجهیز مجاز است")
@@ -152,6 +157,7 @@ export interface CoachExerciseClient {
   faName: string;
   enName: string;
   category: string;
+  difficulty: string;
   equipment: string[];
   primaryMuscles: string[];
   secondaryMuscles: string[];
@@ -161,6 +167,10 @@ export interface CoachExerciseClient {
   /** پوشه دستهبندی اختیاری — مرحله ۲۰ */
   folderId: string | null;
   folderName: string | null;
+  /** گردش کار انتشار — مرحله ۲۰/P3 (فقط مالک این را میبیند) */
+  publishState: string;
+  submittedAt: string | null;
+  reviewNote: string | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -190,11 +200,15 @@ function toClient(row: {
   faName: string;
   enName: string;
   category: string;
+  difficulty: string;
   equipmentJson: string;
   primaryMusclesJson: string;
   secondaryMusclesJson: string;
   description: string;
   tips: string;
+  publishState: string;
+  submittedAt: Date | null;
+  reviewNote: string | null;
   createdAt: Date;
   updatedAt: Date;
   folderId?: string | null;
@@ -221,6 +235,7 @@ function toClient(row: {
     faName: row.faName,
     enName: row.enName,
     category: row.category,
+    difficulty: row.difficulty,
     equipment: arr(row.equipmentJson),
     primaryMuscles: arr(row.primaryMusclesJson),
     secondaryMuscles: arr(row.secondaryMusclesJson),
@@ -236,6 +251,9 @@ function toClient(row: {
     })),
     folderId: row.folderId ?? null,
     folderName: row.folder?.name ?? null,
+    publishState: row.publishState,
+    submittedAt: row.submittedAt ? row.submittedAt.toISOString() : null,
+    reviewNote: row.reviewNote,
     createdAt: row.createdAt.toISOString(),
     updatedAt: row.updatedAt.toISOString(),
   };
@@ -370,6 +388,7 @@ export async function createCoachExercise(
         faName: parsed.faName,
         enName: parsed.enName,
         category: parsed.category,
+        difficulty: parsed.difficulty,
         equipmentJson: JSON.stringify(parsed.equipment),
         primaryMusclesJson: JSON.stringify(parsed.primaryMuscles),
         secondaryMusclesJson: JSON.stringify(parsed.secondaryMuscles),
@@ -420,7 +439,8 @@ export async function savePublicExerciseToLibrary(
         coachId,
         faName: source.faName && source.faName.trim().length >= 2 ? source.faName : source.enName,
         enName: source.enName,
-        category: source.category,
+        category: source.category === "core" ? "abs" : source.category,
+        difficulty: "intermediate",
         equipmentJson: source.equipmentJson,
         primaryMusclesJson: source.primaryMusclesJson,
         secondaryMusclesJson: source.secondaryMusclesJson,
@@ -451,6 +471,7 @@ export async function updateCoachExercise(
       faName: parsed.faName,
       enName: parsed.enName,
       category: parsed.category,
+      difficulty: parsed.difficulty,
       equipmentJson: JSON.stringify(parsed.equipment),
       primaryMusclesJson: JSON.stringify(parsed.primaryMuscles),
       secondaryMusclesJson: JSON.stringify(parsed.secondaryMuscles),

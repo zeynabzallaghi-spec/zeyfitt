@@ -322,6 +322,12 @@ export interface LibraryExerciseCard {
   animation3d?: Animation3dMapping;
   /** زبان محتوای آموزشی رکورد (fa = ویرایشی، en = متن منبع) */
   contentLocale: "fa" | "en";
+  /**
+   * منشأ رکورد — مرحله ۲۰/P3: «coach» یعنی مشارکت منتشرشده مربی (badge
+   * نمایشی؛ هیچ متادیتای مالک/وضعیت منتشر نمیشود). نبود فیلد در رکوردهای
+   * استاتیک قدیمی همان core است.
+   */
+  origin?: "core" | "coach";
   summary: string;
   /** خلاصه انگلیسی نمایشی — فقط رکوردهای ویرایشی فارسی (enContent) */
   summaryEn: string | null;
@@ -343,8 +349,8 @@ export interface LibraryExerciseDetail extends LibraryExerciseCard {
     mistakes: string[];
     safety: string[];
   };
-  /** خط منبع برای نمایش شفاف — «editorial» یعنی محتوای ویرایشی خود پروژه */
-  sourceKey: "editorial" | "free-exercise-db";
+  /** خط منبع برای نمایش شفاف — «editorial» ویرایشی خود پروژه، «coach» مشارکت مربی */
+  sourceKey: "editorial" | "free-exercise-db" | "coach";
   /** حرکات مشابه بر اساس ارتباط واقعی عضلات/تجهیزات/دسته */
   similar: LibraryExerciseCard[];
   /**

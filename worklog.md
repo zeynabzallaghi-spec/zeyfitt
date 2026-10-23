@@ -1363,3 +1363,33 @@ Stage Summary:
 - بکاپ معتبر و قابل‌دانلود آماده است: /home/z/my-project/download/pre-p3-backup-2026-10-23T19-14-37.db (+ .sha256 و .manifest.txt)
 - داده کاملاً سالم و پایه تمیز برای P3: ۴ کاربر، ۹۰۵ حرکت بانک، صفر رسانه/برنامه/تحویل
 - در انتظار دانلود بکاپ و تأیید کاربر برای شروع P3
+
+---
+Task ID: 49
+Agent: Super Z (main agent)
+Task: Stage 20 — پیاده‌سازی کامل P3 گردش کار انتشار حرکات مربی (مجوز کاربر؛ فقط P3، بدون P4، بدون Git/Push)
+
+Work Log:
+- گام ۱ (بررسی بدون حدس): سند phase20-execution-plan.md کامل خوانده شد (محور ۳ تأییدشده با تصمیم‌های D1/D2/D6/D8/D9 و A3.1-A3.7)؛ schema (واژگان رزروشده فاز ۱۸)، coach-exercises.ts، bank.ts، bank-media.ts، notifications، admin service (الگوی logAdminAction + decide)، روت‌ها، UI (exercises-tab، admin tabs، library-view)، هوک‌ها و قرارداد تست‌های p18/p20a/p23/p24 مطالعه شد
+- Schema افزایشی (db push بدون data-loss): CoachExercise + publishState("none")/submittedAt/reviewNote/difficulty("intermediate")؛ Exercise.ownerUserId → FK واقعی user با SetNull (تکمیل سیم‌کشی رزروشده فاز ۱۸، تصمیم Q9) + relation "ExerciseOwner". قبل/بعد: users=4، exercises=905، media=0 ثابت؛ integrity=ok، fk=0
+- تصمیم مستند: فیلد difficulty به CoachExercise افزوده شد چون کارت بانک بدون آن به‌طور خاموش حذف میشود (DIFFICULTY_FA[ex.difficulty] → null) — تنها شکاف معماری سند که بدون آن A3.2 غیرممکن بود؛ افزایشی و با پیش‌فرض
+- سرویس publishing.ts: ماشین حالت با CAS اتمی (updateMany روی publishState)، دروازه ارسال (نام FA/EN+دسته+≥۱ عضله+توضیح)، سقف ۵ در انتظار، withdraw/recall؛ approve در یک تراکنش (CAS + upsert با unique(sourceKey,sourceRef) + کپی کامل رسانه R2.4 + videoStatus داخلی) + AdminActionLog + اعلان؛ reject با دلیل الزامی و «بازگشت به وضعیت قبلی» مشتق‌شده از رکورد عمومی (D2: published پایدار میماند، recalled میماند، نبود → none)
+- نگاشت انتشار صادقانه: category abs→core (تنها تفاوت واژگان)، summary=description، steps/breathing/mistakes/safety خالی (هیچ ساختگی)، enContent=null، pattern=other، contentLocale=fa، sourceKey=coach-<id>، id پایدار cexpub-<id>؛ tips در رکورد عمومی کپی نمیشود (جای واژگانی صادقانه ندارد — ادمین در صف میبیند؛ گزارش شد)
+- قاعده دید بانک (بدون رگرسیون): visible = active و (origin=core یا publishState=published) در loadIntoState + گارد استریم رسانه بانک؛ حذف رسانه ادمین روی origin=coach → 422 (مالکیت رسانه مشارکت با گردش کار است)
+- رفع حفره نهفته P2: regex storage ^[a-z0-9]+$ خط تیره را رد میکرد — آپلود رسانه بانک روی شناسههای fbd-push-up (و کپی R2.4 روی cexpub-*) 500 میداد؛ به ^[a-z0-9-]+$ relaxed شد (هیچ نویسه مسیری مجاز نشد؛ assertSafeStoragePath دفاع دوم)
+- ۶ روت جدید: submit/withdraw/recall مربی (requireCoach+مالکیت) + GET صف ادمین + POST decide (requireAdmin، reject بدون دلیل=422) + GET پیش‌نمایش استریم رسانه فقط برای رکورد در انتظار
+- اعلان‌ها: EXERCISE_REVIEW_SUBMITTED (به همه ادمین، dedupeKey رویدادمحور) + EXERCISE_REVIEW_DECIDED (به مربی با بازخورد)؛ برچسب‌ها در header.tsx + ناوبری به coachPanel
+- UI مربی: badge وضعیت پنج‌حالته (ردشده = none+reviewNote)، بنر دلیل رد/وضعیت، دکمه‌های گذار با AlertDialog، فیلتر وضعیت انتشار، Select سطح دشواری در فرم، هشدار در حذف حرکت منتشرشده
+- UI ادمین: تب ششم «بازبینی حرکات» (صف با پیش‌نمایش کامل محتوا+رسانه+نام مربی، تأیید با Confirm، رد با Textarea دلیل الزامی، پلیر استریم پیش‌نمایش)؛ UI بانک: badge «مربی» کارت+جزئیات + خط منشأ (بدون افشای مالک)
+- i18n: phase196 +۴۳ کلید، admin +۲۲، library +۲، server-messages +۵ کد (SUBMIT_GATE_INCOMPLETE، PENDING_REVIEW_CAP_REACHED، INVALID_PUBLISH_TRANSITION، REVIEW_FEEDBACK_REQUIRED، REVIEW_ALREADY_DECIDED) — check-i18n 56/0
+- تست p20c-publish-test.ts (۱۲ بخش، ۹۸ چک): دروازه 422، ضد-IDOR کامل (401/403/404)، گذار نامعتبر/تکراری 409، اعلان ضدتکرار، PUT با publishState جعلی بی‌اثر، رد/ارسال مجدد/لغو، approve کامل (رکورد core-نگاشت+FK+رسانه کپی+لاگ+اعلان)، whitelist متادیتا، استریم 206/404 recalled، D2 پایداری نسخه (V1 پایدار تا تأیید V2، به‌روزرسانی اتمی با همان id، رد V3 → بازگشت published)، recall/resubmit، سقف ۵ مستقل per-coach، ۹۰۵ core دست‌نخورده، پاکسازی کامل fixture+فایلها+اعلانها+لاگ‌ها → ۹۸/۹۸
+- رگرسیون کامل سبز: p18 68/0 | p20a 28/28 | p23 43/43 | p196 91/0 | p196-media 5/5 | p196-admin-verify 5/5 | p24 58/58 (فیکسچرهای ffmpeg بازتولید شد) | check-i18n 56/0 | tsc src=0 | ESLint فایلهای لمس‌شده پاک | build ✓ Compiled successfully
+- مرورگر واقعی (فیکسچر اختصاصی + اسکریپت p3-browser-pass.sh، 390px): مربی FA — badge «در انتظار بررسی»/«منتشر شده» + دکمه‌های گذار + فیلتر وضعیت؛ ادمین EN — تب Exercise reviews با صف (Browser Press A، Pending review، سطح، مربی، توضیح، رسانه، Approve & publish/Reject، شمارنده صف)؛ کتابخانه FA — جست‌وجوی رکورد منتشرشده با badge «مربی»؛ اسکرول افقی صفر (390=390) در هر سه نقطه؛ ۳ اسکرین‌شات در download/؛ بدون خطای مرورگر
+- درس فنی ثبت‌شده: تب‌های Radix با click ساده فعال نمیشوند (نیازمند pointerdown) — در اسکریپت مرورگر با dispatch کامل حل شد؛ سرور بین فرمان‌ها reap میشود → کل پاس مرورگر در یک invocation
+- سلامت نهایی: users=4 (1 ADMIN+3 STUDENT) | exercises=905 (همه core) | coachExercises=0 | هر دو media=0 | deliveries=0 | notifications=0 | لاگ انتشار=0 | integrity=ok | fk=0
+
+Stage Summary:
+- P3 کامل و اثبات‌شده: ماشین حالت انتشار با دروازه ادمین (گزینه B سند)، صف بازبینی، اعلان‌ها، FK مالکیت SetNull، کپی رسانه R2.4، حذف حفره storage regex — همه معیارهای پذیرش A3.1 تا A3.7 با تست و مرورگر اثبات شد
+- D2 با مشتق‌سازی وضعیت قبلی در reject پوشش داده شد (نسخه عمومی هرگز بدون تصمیم ادمین تغییر/پنهان نمیشود)
+- محدودیت‌های صادقانه: tips مربی در رکورد عمومی نمایش داده نمیشود (فقط در صف بازبینی)؛ آرشیو ادمینی رکورد یتیم (Q9) خارج از APIهای سند P3 ماند؛ کپی رسانه یکفایل‌درلحظه (سقف ۵۰MB بافر گذرا)
+- P4 اجرا نشده است — در انتظار تأیید صریح کاربر

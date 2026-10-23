@@ -219,7 +219,9 @@ export async function saveExerciseMediaFile(
   exerciseId: string,
   bytes: Uint8Array
 ): Promise<{ storagePath: string }> {
-  if (!/^[a-z0-9]+$/i.test(exerciseId)) {
+  // خط تیره مجاز است (شناسههای رکورد بانک مثل fbd-push-up و cexpub-*)؛
+  // نویسههای مسیر (`/` و `.`) همچنان مسدودند — traversal ناممکن میماند.
+  if (!/^[a-z0-9-]+$/i.test(exerciseId)) {
     throw new Error("UNSAFE_ATTACHMENT_PATH");
   }
   // نام دیسک هرگز از ورودی کاربر نمیآید: الگوی داخلی ثابت + uuid تصادفی

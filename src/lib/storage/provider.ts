@@ -139,7 +139,9 @@ export function buildMediaStorageKey(
   ownerEntityId: string,
   fileStem: string
 ): string {
-  if (!/^[a-z0-9]+$/i.test(ownerEntityId) || !/^[a-z0-9-]+$/i.test(fileStem)) {
+  // خط تیره در شناسه موجودیت مجاز است (fbd-push-up، cexpub-*) — نویسههای
+  // مسیر (`/` و `.`) مسدودند و assertSafeStoragePath دفاع دوم است.
+  if (!/^[a-z0-9-]+$/i.test(ownerEntityId) || !/^[a-z0-9-]+$/i.test(fileStem)) {
     throw new CoachingError(500, "UNSAFE_STORAGE_PATH");
   }
   const key = path.posix.join(namespace, ownerEntityId, fileStem);

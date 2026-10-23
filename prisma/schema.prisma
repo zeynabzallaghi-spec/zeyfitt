@@ -83,6 +83,9 @@ model user {
   dmThreadsInitiated         DirectThread[]         @relation("DirectThreadA")
   dmThreadsReceived          DirectThread[]         @relation("DirectThreadB")
   directMessagesSent         DirectMessage[]        @relation("DirectMessageSender")
+  // مرحله ۲۰/P3 — رکوردهای بانک منتشرشده از مشارکت مربی (FK واقعی با SetNull؛
+  // حذف حساب مربی رکورد منتشرشده را نگه میدارد و مالک ته میشود — تصمیم Q9)
+  publishedCoachExercises    Exercise[]             @relation("ExerciseOwner")
 }
 
 model account {
@@ -1094,8 +1097,10 @@ model Exercise {
   videoStatus          String   @default("none") // none | missing | uploaded | processing
   // منشأ رکورد: core (کتابخانه پایه) | coach (مشارکت مربی — مرحله ۲۰)
   origin               String   @default("core")
-  // مالک مربی — فقط برای origin=coach (بدون FK در این مرحله؛ سیمانage مالکیت در مرحله ۲۰)
+  // مالک مربی — فقط برای origin=coach. مرحله ۲۰/P3: FK واقعی با SetNull —
+  // تکمیل سیم‌کشی رزروشده فاز ۱۸؛ حذف حساب مربی رکورد منتشرشده را نگه میدارد (Q9)
   ownerUserId          String?
+  owner                user?    @relation("ExerciseOwner", fields: [ownerUserId], references: [id], onDelete: SetNull)
   // وضعیت انتشار مشارکتی — none | pending_review | published | recalled
   publishState         String   @default("none")
   importBatchId        String?
@@ -1277,6 +1282,17 @@ model CoachExercise {
   secondaryMusclesJson  String   @default("[]")
   description           String   @default("")
   tips                  String   @default("")
+  // سطح دشواری — واژگان بانک (beginner | intermediate | advanced). کارت بانک
+  // برای نمایش به مقدار معتبر نیاز دارد؛ P3 این فیلد افزایشی را افزود تا
+  // رکورد منتشرشده دقیق نمایش داده شود (بدون حدس سمت سرور).
+  difficulty            String   @default("intermediate")
+  // گردش کار انتشار — مرحله ۲۰/P3 (محور ۳، همان واژگان رزروشده فاز ۱۸):
+  // none | pending_review | published | recalled — فقط با گذارهای سمت سرور
+  publishState          String   @default("none")
+  // زمان آخرین ارسال برای بازبینی — فقط تا لحظه تصمیم معنا دارد
+  submittedAt           DateTime?
+  // بازخورد آخرین رد ادمین — برای مربی نمایش داده میشود؛ با ارسال جدید پاک میشود
+  reviewNote            String?
   createdAt             DateTime @default(now())
   updatedAt             DateTime @updatedAt
   coach                 user     @relation(fields: [coachId], references: [id], onDelete: Cascade)

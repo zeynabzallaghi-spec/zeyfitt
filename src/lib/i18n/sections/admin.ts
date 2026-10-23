@@ -37,6 +37,30 @@ export interface AdminStrings {
   bankMediaDeleted: string;
   bankMediaError: string;
 
+  // P3 — تب بازبینی حرکات (گردش کار انتشار)
+  exerciseReviewsTab: string;
+  exerciseReviewsIntro: string;
+  exerciseReviewsEmpty: string;
+  exerciseReviewsQueueCount: (n: number) => string;
+  exerciseReviewCoachLabel: string;
+  exerciseReviewSubmittedAtLabel: string;
+  exerciseReviewDifficultyLabel: string;
+  exerciseReviewMediaLabel: string;
+  exerciseReviewMediaNone: string;
+  exerciseReviewMediaPlay: string;
+  exerciseReviewApprove: string;
+  exerciseReviewReject: string;
+  exerciseReviewFeedbackLabel: string;
+  exerciseReviewFeedbackPlaceholder: string;
+  exerciseReviewFeedbackRequiredNote: string;
+  exerciseReviewApproveConfirmTitle: string;
+  exerciseReviewApproveConfirmDesc: string;
+  exerciseReviewRejectConfirmTitle: string;
+  exerciseReviewDecidedToast: string;
+  exerciseReviewError: string;
+  exerciseReviewRefresh: string;
+  exerciseReviewNoEditNote: string;
+
   // نمای کلی
   overviewIntro: string;
   countUsers: string;
@@ -181,6 +205,29 @@ const ADMIN_STRINGS: Record<Locale, AdminStrings> = {
     bankMediaUploaded: "رسانه آپلود شد",
     bankMediaDeleted: "رسانه حذف شد",
     bankMediaError: "عملیات رسانه ناموفق بود",
+    // P3 — تب بازبینی حرکات
+    exerciseReviewsTab: "بازبینی حرکات",
+    exerciseReviewsIntro: "صف ارسال‌های حرکات اختصاصی مربیان برای انتشار در بانک عمومی. تأیید، رکورد origin=coach را برای همه کاربران منتشر میکند؛ رد، ثبت دلیل الزامی دارد. ادمین محتوا را ویرایش نمیکند (تصمیم D8).",
+    exerciseReviewsEmpty: "صف بازبینی خالی است؛ هیچ ارسال در انتظاری وجود ندارد.",
+    exerciseReviewsQueueCount: (n) => `${localeNumber(n, "fa")} ارسال در انتظار بررسی`,
+    exerciseReviewCoachLabel: "مربی",
+    exerciseReviewSubmittedAtLabel: "زمان ارسال",
+    exerciseReviewDifficultyLabel: "سطح",
+    exerciseReviewMediaLabel: "رسانههای پیوست",
+    exerciseReviewMediaNone: "رسانهای پیوست نشده (اختیاری)",
+    exerciseReviewMediaPlay: "پخش",
+    exerciseReviewApprove: "تأیید و انتشار",
+    exerciseReviewReject: "رد",
+    exerciseReviewFeedbackLabel: "دلیل رد (الزامی)",
+    exerciseReviewFeedbackPlaceholder: "دلیل رد برای مربی نوشته میشود…",
+    exerciseReviewFeedbackRequiredNote: "بدون ثبت دلیل، رد امکان‌پذیر نیست.",
+    exerciseReviewApproveConfirmTitle: "تأیید و انتشار حرکت؟",
+    exerciseReviewApproveConfirmDesc: "رکورد با منشأ مربی در بانک عمومی منتشر میشود و همه کاربران در کتابخانه و برنامه‌ساز آن را میبینند؛ به مربی اعلان داده میشود.",
+    exerciseReviewRejectConfirmTitle: "رد ارسال حرکت؟",
+    exerciseReviewDecidedToast: "تصمیم ثبت و به مربی اطلاع داده شد",
+    exerciseReviewError: "ثبت تصمیم ناموفق بود",
+    exerciseReviewRefresh: "به‌روزرسانی صف",
+    exerciseReviewNoEditNote: "اصلاح محتوا بر عهده مربی است؛ ادمین فقط تأیید/رد میکند.",
 
     overviewIntro: "شمارش زنده از دیتابیس — بدون هیچ آمار ساختگی.",
     countUsers: "کل کاربران",
@@ -318,6 +365,29 @@ const ADMIN_STRINGS: Record<Locale, AdminStrings> = {
     bankMediaUploaded: "Media uploaded",
     bankMediaDeleted: "Media deleted",
     bankMediaError: "Media operation failed",
+    // P3 — exercise review tab
+    exerciseReviewsTab: "Exercise reviews",
+    exerciseReviewsIntro: "Queue of coach-submitted exercises awaiting publication in the public bank. Approving publishes an origin=coach record for all users; rejecting requires a written reason. Admins never edit content (decision D8).",
+    exerciseReviewsEmpty: "The review queue is empty; no pending submissions.",
+    exerciseReviewsQueueCount: (n) => `${localeNumber(n, "en")} submissions pending review`,
+    exerciseReviewCoachLabel: "Coach",
+    exerciseReviewSubmittedAtLabel: "Submitted at",
+    exerciseReviewDifficultyLabel: "Level",
+    exerciseReviewMediaLabel: "Attached media",
+    exerciseReviewMediaNone: "No media attached (optional)",
+    exerciseReviewMediaPlay: "Play",
+    exerciseReviewApprove: "Approve & publish",
+    exerciseReviewReject: "Reject",
+    exerciseReviewFeedbackLabel: "Rejection reason (required)",
+    exerciseReviewFeedbackPlaceholder: "The rejection reason is shown to the coach…",
+    exerciseReviewFeedbackRequiredNote: "Rejection is not possible without a written reason.",
+    exerciseReviewApproveConfirmTitle: "Approve and publish this exercise?",
+    exerciseReviewApproveConfirmDesc: "An origin=coach record will be published in the public bank and visible to every user in the library and plan builder; the coach is notified.",
+    exerciseReviewRejectConfirmTitle: "Reject this submission?",
+    exerciseReviewDecidedToast: "Decision recorded; the coach has been notified",
+    exerciseReviewError: "Recording the decision failed",
+    exerciseReviewRefresh: "Refresh queue",
+    exerciseReviewNoEditNote: "Content fixes belong to the coach; the admin only approves or rejects.",
 
     overviewIntro: "Live counts straight from the database — no made-up statistics.",
     countUsers: "Total users",

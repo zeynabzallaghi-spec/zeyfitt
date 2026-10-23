@@ -148,6 +148,8 @@ export async function addBankExerciseMedia(
 /**
  * حذف رسانه رکورد بانک — فقط ادمین؛ فایل storage هم پاک میشود.
  * پس از حذف آخرین ویدئو، videoStatus به none برمیگردد.
+ * رسانه رکوردهای origin=coach با این مسیر حذف نمیشود — مالکیت رسانهٔ
+ * مشارکت مربی با گردش کار انتشار است (کپی دوباره در تأیید بعدی؛ P3).
  */
 export async function deleteBankExerciseMedia(
   role: string,
@@ -156,9 +158,18 @@ export async function deleteBankExerciseMedia(
   if (role !== "ADMIN") throw new CoachingError(403, "ROLE_NOT_ALLOWED");
   const media = await db.exerciseMedia.findUnique({
     where: { id: mediaId },
-    select: { id: true, exerciseId: true, kind: true, storagePath: true },
+    select: {
+      id: true,
+      exerciseId: true,
+      kind: true,
+      storagePath: true,
+      exercise: { select: { origin: true } },
+    },
   });
   if (!media) return null;
+  if (media.exercise.origin !== "core") {
+    throw new CoachingError(422, "BANK_MEDIA_ORIGIN_NOT_ALLOWED");
+  }
   await db.exerciseMedia.delete({ where: { id: mediaId } });
   await deleteExerciseMediaFile(media.storagePath);
   if (media.kind === "video") {
@@ -175,7 +186,12 @@ export async function deleteBankExerciseMedia(
   return true;
 }
 
-/** متادیتای رسانه برای سرو استریم — با قاعده دید بانک (رکورد فعال) */
+/**
+ * متادیتای رسانه برای سرو استریم — با قاعده دید بانک (P3):
+ * رکورد باید status=active و (origin=core یا publishState=published) باشد؛
+ * رسانه هرگز راهی برای دورزدن وضعیت انتشار فراهم نمیکند — رکورد
+ * فراخوانی‌شده (recalled) یا نامرئی → null (پاسخ امن 404).
+ */
 export async function getBankExerciseMediaForStream(
   mediaId: string
 ): Promise<{
@@ -189,10 +205,13 @@ export async function getBankExerciseMediaForStream(
       mimeType: true,
       fileName: true,
       storagePath: true,
-      exercise: { select: { status: true } },
+      exercise: { select: { status: true, origin: true, publishState: true } },
     },
   });
   if (!media || media.exercise.status !== "active") return null;
+  if (media.exercise.origin !== "core" && media.exercise.publishState !== "published") {
+    return null;
+  }
   return {
     mimeType: media.mimeType,
     fileName: media.fileName,

@@ -227,6 +227,12 @@ function ExerciseCard({
           {categoryMonogram(exercise.category)}
         </span>
         <div className="flex flex-wrap items-center justify-end gap-1.5">
+          {/* badge منشأ مشارکت مربی — مرحله ۲۰/P3 (فقط منشأ؛ هیچ متادیتای مالک) */}
+          {exercise.origin === "coach" && (
+            <span className="inline-flex items-center gap-1 rounded-md border border-sky-500/40 bg-sky-500/10 px-2 py-0.5 text-[10px] font-bold text-sky-600 dark:text-sky-400">
+              {t.coachOriginBadge}
+            </span>
+          )}
           {exercise.has3d ? (
             <span className="inline-flex items-center gap-1 rounded-md border border-primary/30 bg-primary/10 px-2 py-0.5 text-[10px] font-bold text-primary">
               <Box className="size-3" aria-hidden="true" />
@@ -403,6 +409,11 @@ function ExerciseDetailsDialog({
               {t.categoryLabel(card.category)}
             </span>
             <DifficultyBadge level={card.difficulty} />
+            {card.origin === "coach" && (
+              <span className="inline-flex items-center rounded-md border border-sky-500/40 bg-sky-500/10 px-2 py-0.5 text-[10px] font-bold text-sky-600 dark:text-sky-400">
+                {t.coachOriginBadge}
+              </span>
+            )}
           </div>
           <DialogDescription
             dir={locale === "fa" ? "ltr" : "rtl"}
@@ -449,7 +460,9 @@ function ExerciseDetailsDialog({
                 {t.contentLanguageNotice}
               </p>
             )}
-            {detail.sourceKey !== "editorial" && (
+            {detail.sourceKey === "coach" ? (
+              <p className="text-[10px] leading-5 text-muted-foreground/70">{t.coachOriginSourceLine}</p>
+            ) : detail.sourceKey !== "editorial" && (
               <p className="text-[10px] leading-5 text-muted-foreground/70">
                 {t.sourceLine(t.sourceDisplayName, t.sourceLicenseName)}
               </p>

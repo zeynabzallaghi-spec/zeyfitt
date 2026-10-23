@@ -107,6 +107,9 @@ export interface LibraryStrings {
   /** خط منبع برای رکوردهای منبع آزاد */
   sourceLine: (sourceName: string, license: string) => string;
   sourceDisplayName: string;
+  /** مرحله ۲۰/P3 — badge منشأ مشارکت مربی (بدون افشای مالک) */
+  coachOriginBadge: string;
+  coachOriginSourceLine: string;
   sourceLicenseName: string;
   /** بارگذاری جزئیات */
   detailLoadingLabel: string;
@@ -229,6 +232,8 @@ const FA: LibraryStrings = {
     "محتوای آموزشی این حرکت فعلاً به زبان انگلیسی است (برگرفته از منبع آزاد)؛ ترجمه ویرایشی آن در به‌روزرسانی‌های بعدی تکمیل می‌شود.",
   sourceLine: (sourceName, license) => `منبع داده آموزشی: ${sourceName} — مجوز ${license}`,
   sourceDisplayName: "Free Exercise DB",
+  coachOriginBadge: "مربی",
+  coachOriginSourceLine: "منشأ: مشارکت تأییدشدهٔ یک مربی — محتوای فارسی، بدون ترجمهٔ انگلیسی",
   sourceLicenseName: "Unlicense (مالکیت عمومی)",
   detailLoadingLabel: "در حال بارگذاری جزئیات حرکت…",
   detailLoadError: "بارگذاری جزئیات حرکت ناموفق بود.",
@@ -312,6 +317,8 @@ const EN: LibraryStrings = {
     "The instructional content for this exercise is currently in English (sourced from the open dataset); its editorial translation will be completed in future updates.",
   sourceLine: (sourceName, license) => `Instructional data source: ${sourceName} — license: ${license}`,
   sourceDisplayName: "Free Exercise DB",
+  coachOriginBadge: "Coach",
+  coachOriginSourceLine: "Origin: an approved coach contribution — Persian content, without English translation",
   sourceLicenseName: "Unlicense (public domain)",
   detailLoadingLabel: "Loading exercise details…",
   detailLoadError: "Loading exercise details failed.",

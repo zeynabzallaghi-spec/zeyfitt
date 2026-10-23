@@ -171,6 +171,45 @@ export interface Phase196Strings {
   planFormSavingState: string;
   planFormAssignNote: string;
   planFormNoWeightFieldNote: string;
+  // مرحله ۲۰/P3 — گردش کار انتشار حرکات شخصی
+  publishBadgeDraft: string;
+  publishBadgePending: string;
+  publishBadgePublished: string;
+  publishBadgeRejected: string;
+  publishBadgeRecalled: string;
+  publishSubmit: string;
+  publishSubmitUpdate: string;
+  publishWithdraw: string;
+  publishRecall: string;
+  publishSubmitConfirmTitle: string;
+  publishSubmitConfirmDesc: string;
+  publishUpdateConfirmDesc: string;
+  publishWithdrawConfirmTitle: string;
+  publishWithdrawConfirmDesc: string;
+  publishRecallConfirmTitle: string;
+  publishRecallConfirmDesc: string;
+  publishSubmittedToast: string;
+  publishWithdrawnToast: string;
+  publishRecalledToast: string;
+  publishRejectedNoteTitle: string;
+  publishPendingNote: string;
+  publishPublishedNote: string;
+  publishRecalledNote: string;
+  publishFilterLabel: string;
+  publishFilterAll: string;
+  publishFilterDraft: string;
+  publishFilterPending: string;
+  publishFilterPublished: string;
+  publishFilterRejected: string;
+  publishFilterRecalled: string;
+  deletePublishedWarning: string;
+  difficultyLabel: string;
+  difficultyBeginner: string;
+  difficultyIntermediate: string;
+  difficultyAdvanced: string;
+  notifExerciseReviewSubmitted: string;
+  notifExerciseReviewApproved: string;
+  notifExerciseReviewRejected: string;
 }
 
 const fa: Phase196Strings = {
@@ -196,6 +235,45 @@ const fa: Phase196Strings = {
   notifPaymentDeclined: "دانشجو درخواست پرداخت را رد کرد",
   notifPaymentCancelled: "درخواست پرداخت لغو شد",
   notifUnknownType: "رویداد حساب",
+  // مرحله ۲۰/P3 — گردش کار انتشار حرکات شخصی
+  publishBadgeDraft: "پیش‌نویس",
+  publishBadgePending: "در انتظار بررسی",
+  publishBadgePublished: "منتشر شده",
+  publishBadgeRejected: "رد شده",
+  publishBadgeRecalled: "فراخوانی‌شده",
+  publishSubmit: "ارسال برای انتشار",
+  publishSubmitUpdate: "ارسال به‌روزرسانی",
+  publishWithdraw: "لغو ارسال",
+  publishRecall: "فراخوانی از بانک",
+  publishSubmitConfirmTitle: "ارسال برای بازبینی؟",
+  publishSubmitConfirmDesc: "حرکت شما برای بررسی ادمین ارسال میشود؛ پس از تأیید در بانک عمومی همه کاربران آن را میبینند.",
+  publishUpdateConfirmDesc: "نسخه منتشرشده تا تأیید به‌روزرسانی جدید پایدار میماند؛ پس از ارسال، ادمین تغییرات را بازبینی میکند.",
+  publishWithdrawConfirmTitle: "لغو ارسال؟",
+  publishWithdrawConfirmDesc: "حرکت از صف بازبینی ادمین خارج میشود و به پیش‌نویس برمی‌گردد.",
+  publishRecallConfirmTitle: "فراخوانی از بانک عمومی؟",
+  publishRecallConfirmDesc: "حرکت از بانک عمومی و برنامه‌ساز پنهان میشود؛ برنامه‌ها و نسخه‌های ارسال‌شده قبلی دست‌نخورده میمانند. بعداً میتوانید دوباره ارسال کنید.",
+  publishSubmittedToast: "حرکت برای بازبینی ارسال شد",
+  publishWithdrawnToast: "ارسال لغو شد؛ حرکت به پیش‌نویس برگشت",
+  publishRecalledToast: "حرکت از بانک عمومی فراخوانی شد",
+  publishRejectedNoteTitle: "دلیل رد توسط ادمین",
+  publishPendingNote: "در صف بازبینی ادمین است؛ پس از تصمیم اطلاع‌رسانی میشود.",
+  publishPublishedNote: "نسخه عمومی این حرکت منتشر است؛ ویرایش جدید تا تأیید مجدد اعمال نمیشود.",
+  publishRecalledNote: "از بانک عمومی پنهان است؛ میتوانید پس از اصلاح دوباره ارسال کنید.",
+  publishFilterLabel: "وضعیت انتشار",
+  publishFilterAll: "همه",
+  publishFilterDraft: "پیش‌نویس",
+  publishFilterPending: "در انتظار",
+  publishFilterPublished: "منتشر شده",
+  publishFilterRejected: "رد شده",
+  publishFilterRecalled: "فراخوانی‌شده",
+  deletePublishedWarning: "این حرکت منتشر شده است؛ حذف نسخه شخصی، نسخه منتشرشده عمومی را حذف نمیکند.",
+  difficultyLabel: "سطح دشواری",
+  difficultyBeginner: "مبتدی",
+  difficultyIntermediate: "متوسط",
+  difficultyAdvanced: "پیشرفته",
+  notifExerciseReviewSubmitted: "حرکتی برای بازبینی ارسال شد",
+  notifExerciseReviewApproved: "حرکت شما تأیید و در بانک عمومی منتشر شد",
+  notifExerciseReviewRejected: "حرکت ارسالی شما رد شد",
   bankingSectionTitle: "اطلاعات بانکی",
   bankingSectionNote: "اطلاعات پرداختی خود را برای استفاده در فرایندهای پرداخت وارد کنید.",
   bankingPrivacyNote: "این اطلاعات کاملاً خصوصی است و فقط خودتان میبینید؛ در هیچ پروفایل عمومی یا پنل دیگری نمایش داده نمیشود.",
@@ -351,6 +429,45 @@ const en: Phase196Strings = {
   notifPaymentDeclined: "The student declined the payment request",
   notifPaymentCancelled: "The payment request was cancelled",
   notifUnknownType: "Account event",
+  // مرحله ۲۰/P3 — گردش کار انتشار حرکات شخصی
+  publishBadgeDraft: "Draft",
+  publishBadgePending: "Pending review",
+  publishBadgePublished: "Published",
+  publishBadgeRejected: "Rejected",
+  publishBadgeRecalled: "Recalled",
+  publishSubmit: "Submit for publishing",
+  publishSubmitUpdate: "Submit update",
+  publishWithdraw: "Withdraw",
+  publishRecall: "Recall from bank",
+  publishSubmitConfirmTitle: "Submit for review?",
+  publishSubmitConfirmDesc: "Your exercise will be sent for admin review; once approved, every user will see it in the public bank.",
+  publishUpdateConfirmDesc: "The published version stays stable until the update is approved; after submitting, an admin will review your changes.",
+  publishWithdrawConfirmTitle: "Withdraw submission?",
+  publishWithdrawConfirmDesc: "The exercise leaves the admin review queue and returns to draft.",
+  publishRecallConfirmTitle: "Recall from the public bank?",
+  publishRecallConfirmDesc: "The exercise is hidden from the public bank and plan builder; existing plans and delivered copies stay untouched. You can resubmit later.",
+  publishSubmittedToast: "Exercise submitted for review",
+  publishWithdrawnToast: "Submission withdrawn; exercise returned to draft",
+  publishRecalledToast: "Exercise recalled from the public bank",
+  publishRejectedNoteTitle: "Admin rejection reason",
+  publishPendingNote: "Waiting in the admin review queue; you will be notified after the decision.",
+  publishPublishedNote: "The public version of this exercise is live; further edits apply only after re-approval.",
+  publishRecalledNote: "Hidden from the public bank; you can resubmit after fixing it.",
+  publishFilterLabel: "Publish state",
+  publishFilterAll: "All",
+  publishFilterDraft: "Draft",
+  publishFilterPending: "Pending",
+  publishFilterPublished: "Published",
+  publishFilterRejected: "Rejected",
+  publishFilterRecalled: "Recalled",
+  deletePublishedWarning: "This exercise is published; deleting your personal copy does not remove the published public record.",
+  difficultyLabel: "Difficulty",
+  difficultyBeginner: "Beginner",
+  difficultyIntermediate: "Intermediate",
+  difficultyAdvanced: "Advanced",
+  notifExerciseReviewSubmitted: "An exercise was submitted for review",
+  notifExerciseReviewApproved: "Your exercise was approved and published in the public bank",
+  notifExerciseReviewRejected: "Your submitted exercise was rejected",
   bankingSectionTitle: "Banking information",
   bankingSectionNote: "Enter your payment details to use in payment workflows.",
   bankingPrivacyNote: "This information is fully private and visible only to you; it never appears in any public profile or other panel.",

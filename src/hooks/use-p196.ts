@@ -378,6 +378,7 @@ export interface CoachExerciseClient {
   faName: string;
   enName: string;
   category: string;
+  difficulty: string;
   equipment: string[];
   primaryMuscles: string[];
   secondaryMuscles: string[];
@@ -386,6 +387,10 @@ export interface CoachExerciseClient {
   media: CoachExerciseMediaClient[];
   folderId: string | null;
   folderName: string | null;
+  /** گردش کار انتشار — مرحله ۲۰/P3 (فقط مالک این را میبیند) */
+  publishState: string;
+  submittedAt: string | null;
+  reviewNote: string | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -535,6 +540,46 @@ export function useCoachExercises(enabled: boolean) {
     [load]
   );
 
+  /**
+   * مرحله ۲۰/P3 — گذارهای گردش کار انتشار (فقط مالک؛ publishState هرگز
+   * مستقیم از کلاینت نوشته نمیشود — هر گذار یک اکشن صریح سروری است).
+   */
+  const submitForReview = useCallback(
+    async (id: string): Promise<Result<{ publishState: string; submittedAt: string }>> => {
+      const result = await jsonFetch<{ publishState: string; submittedAt: string }>(
+        `/api/coach/exercises/${encodeURIComponent(id)}/submit`,
+        { method: "POST" }
+      );
+      if (result.ok) void load();
+      return result;
+    },
+    [load]
+  );
+
+  const withdrawSubmission = useCallback(
+    async (id: string): Promise<Result<{ publishState: string }>> => {
+      const result = await jsonFetch<{ publishState: string }>(
+        `/api/coach/exercises/${encodeURIComponent(id)}/withdraw`,
+        { method: "POST" }
+      );
+      if (result.ok) void load();
+      return result;
+    },
+    [load]
+  );
+
+  const recallExercise = useCallback(
+    async (id: string): Promise<Result<{ publishState: string }>> => {
+      const result = await jsonFetch<{ publishState: string }>(
+        `/api/coach/exercises/${encodeURIComponent(id)}/recall`,
+        { method: "POST" }
+      );
+      if (result.ok) void load();
+      return result;
+    },
+    [load]
+  );
+
   return {
     exercises,
     cap,
@@ -547,6 +592,9 @@ export function useCoachExercises(enabled: boolean) {
     deleteMedia,
     move,
     saveFromPublic,
+    submitForReview,
+    withdrawSubmission,
+    recallExercise,
     reload: load,
   };
 }
@@ -614,6 +662,96 @@ export function useCoachExerciseFolders(enabled: boolean) {
   );
 
   return { folders, loading, error, createFolder, deleteFolder, reload: load };
+}
+
+/* ---------------- صف بازبینی حرکات ادمین — مرحله ۲۰/P3 ---------------- */
+
+export interface ExerciseReviewQueueItem {
+  id: string;
+  faName: string;
+  enName: string;
+  category: string;
+  difficulty: string;
+  equipment: string[];
+  primaryMuscles: string[];
+  secondaryMuscles: string[];
+  description: string;
+  tips: string;
+  submittedAt: string;
+  coach: { userId: string; displayName: string };
+  media: {
+    id: string;
+    kind: string;
+    fileName: string;
+    mimeType: string;
+    sizeBytes: number;
+    createdAt: string;
+  }[];
+}
+
+export function useExerciseReviews(enabled: boolean) {
+  const [items, setItems] = useState<ExerciseReviewQueueItem[] | null>(null);
+  const [loading, setLoading] = useState(enabled);
+  const [error, setError] = useState<string | null>(null);
+  const [acting, setActing] = useState<string | null>(null);
+
+  const load = useCallback(async () => {
+    if (!enabled) return;
+    try {
+      const result = await jsonFetch<{ items: ExerciseReviewQueueItem[]; count: number }>(
+        "/api/admin/exercise-reviews"
+      );
+      if (!mountedRef.current) return;
+      if (result.ok) {
+        setItems(result.data.items);
+        setError(null);
+      } else {
+        setError(result.message);
+      }
+    } finally {
+      if (mountedRef.current) setLoading(false);
+    }
+  }, [enabled]);
+
+  const mountedRef = useRef(true);
+  useEffect(() => {
+    mountedRef.current = true;
+    if (enabled) void load();
+    return () => {
+      mountedRef.current = false;
+    };
+  }, [enabled, load]);
+
+  const decide = useCallback(
+    async (
+      exerciseId: string,
+      decision: "approve" | "reject",
+      feedback?: string
+    ): Promise<Result<{ decision: string; coachPublishState: string; publicExerciseId: string | null }>> => {
+      setActing(exerciseId);
+      try {
+        const result = await jsonFetch<{
+          decision: string;
+          coachPublishState: string;
+          publicExerciseId: string | null;
+        }>(
+          `/api/admin/exercise-reviews/${encodeURIComponent(exerciseId)}/decide`,
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ decision, feedback: feedback ?? null }),
+          }
+        );
+        if (result.ok) void load();
+        return result;
+      } finally {
+        if (mountedRef.current) setActing(null);
+      }
+    },
+    [load]
+  );
+
+  return { items, loading, error, acting, decide, reload: load };
 }
 
 /* ------------------------------ اطلاعات تکمیلی دانشجو ------------------------------ */

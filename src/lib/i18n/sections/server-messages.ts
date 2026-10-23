@@ -239,6 +239,29 @@ export const API_ERROR_LABELS: Record<string, Bi> = {
     en: "Notification not found, or does not belong to you.",
   },
 
+  /* ------------------ مرحله ۲۰/P3 — گردش کار انتشار حرکات ------------------ */
+
+  SUBMIT_GATE_INCOMPLETE: {
+    fa: "برای ارسال، حرکت باید حداقل نام فارسی/انگلیسی، دسته، یک عضله اصلی و توضیح غیرخالی داشته باشد.",
+    en: "To submit, the exercise needs valid FA/EN names, a category, at least one primary muscle, and a non-empty description.",
+  },
+  PENDING_REVIEW_CAP_REACHED: {
+    fa: "سقف ارسال‌های در انتظار بررسی شما پر است (۵ مورد)؛ تا تصمیم ادمین صبر کنید.",
+    en: "Your pending-review limit is reached (5); wait for an admin decision first.",
+  },
+  INVALID_PUBLISH_TRANSITION: {
+    fa: "این تغییر وضعیت برای حرکت در وضعیت فعلی مجاز نیست؛ صفحه را تازه‌سازی کنید.",
+    en: "This state change is not allowed for the exercise in its current state; refresh the page.",
+  },
+  REVIEW_FEEDBACK_REQUIRED: {
+    fa: "ثبت دلیل رد الزامی است؛ دلیل را برای مربی بنویسید.",
+    en: "A rejection reason is required; write it for the coach.",
+  },
+  REVIEW_ALREADY_DECIDED: {
+    fa: "این ارسال قبلاً تصمیم‌گیری شده است؛ صف را به‌روزرسانی کنید.",
+    en: "This submission was already decided; refresh the queue.",
+  },
+
   /* ------------------ مرحله ۱۶ — برنامه‌های اختصاصی مربی ------------------ */
 
   COACH_NOT_VERIFIED: {

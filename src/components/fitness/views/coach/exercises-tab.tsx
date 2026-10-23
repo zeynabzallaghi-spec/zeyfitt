@@ -70,10 +70,18 @@ const CATEGORIES = [
   { value: "fullbody", fa: "تمام بدن", en: "Full body" },
 ] as const;
 
+// واژگان سطح دشواری — مرحله ۲۰/P3 (همان بانک عمومی؛ نمایش دوبل‌زبانه)
+const DIFFICULTIES = [
+  { value: "beginner", key: "difficultyBeginner" },
+  { value: "intermediate", key: "difficultyIntermediate" },
+  { value: "advanced", key: "difficultyAdvanced" },
+] as const;
+
 interface ExerciseForm {
   faName: string;
   enName: string;
   category: string;
+  difficulty: string;
   equipment: string;
   /** کلیدهای استاندارد عضله (همان واژه‌نامه بانک) — سقف ۶ سمت سرور */
   primaryMuscles: string[];
@@ -87,6 +95,7 @@ function emptyForm(): ExerciseForm {
     faName: "",
     enName: "",
     category: "chest",
+    difficulty: "intermediate",
     equipment: "",
     primaryMuscles: [],
     secondaryMuscles: [],
@@ -100,6 +109,7 @@ function formFromExercise(ex: CoachExerciseClient): ExerciseForm {
     faName: ex.faName,
     enName: ex.enName,
     category: ex.category,
+    difficulty: ex.difficulty,
     equipment: ex.equipment.join(", "),
     primaryMuscles: [...ex.primaryMuscles],
     secondaryMuscles: [...ex.secondaryMuscles],
@@ -107,6 +117,21 @@ function formFromExercise(ex: CoachExerciseClient): ExerciseForm {
     tips: ex.tips,
   };
 }
+
+/**
+ * وضعیت نمایشی گردش کار انتشار — مرحله ۲۰/P3.
+ * «رد شده» = none + reviewNote (بازخورد ادمین ثبت شده)؛ برچسب هرگز مبهم نمیشود.
+ */
+type PublishView = "draft" | "pending" | "published" | "rejected" | "recalled";
+
+function publishViewOf(ex: CoachExerciseClient): PublishView {
+  if (ex.publishState === "pending_review") return "pending";
+  if (ex.publishState === "published") return "published";
+  if (ex.publishState === "recalled") return "recalled";
+  return ex.reviewNote ? "rejected" : "draft";
+}
+
+const PUBLISH_VIEW_FILTERS = ["all", "draft", "pending", "published", "rejected", "recalled"] as const;
 
 export function CoachExercisesTab() {
   const t = useStrings(phase196Strings);
@@ -116,7 +141,7 @@ export function CoachExercisesTab() {
   const locale = useLocale();
   const dir = useDir();
   const { toast } = useToast();
-  const { exercises, cap, loading, create, update, remove, uploadMedia, deleteMedia, move, reload } =
+  const { exercises, cap, loading, create, update, remove, uploadMedia, deleteMedia, move, submitForReview, withdrawSubmission, recallExercise, reload } =
     useCoachExercises(true);
   const {
     folders,
@@ -139,6 +164,12 @@ export function CoachExercisesTab() {
   const [searchQuery, setSearchQuery] = useState("");
   const [categoryFilter, setCategoryFilter] = useState<string>("all");
   const [muscleFilter, setMuscleFilter] = useState<string>("all");
+  // گردش کار انتشار — مرحله ۲۰/P3
+  const [publishFilter, setPublishFilter] = useState<string>("all");
+  const [confirmAction, setConfirmAction] = useState<
+    { kind: "submit"; id: string; name: string } | { kind: "withdraw"; id: string; name: string } | { kind: "recall"; id: string; name: string } | null
+  >(null);
+  const [publishBusy, setPublishBusy] = useState(false);
   // پلیر ویدئوی حرکت — مرحله ۲۰/P2 (R2.2)
   const [videoTarget, setVideoTarget] = useState<{ title: string; media: ExerciseMediaItem[] } | null>(null);
 
@@ -153,6 +184,8 @@ export function CoachExercisesTab() {
     ) {
       return false;
     }
+    // فیلتر وضعیت انتشار — مرحله ۲۰/P3
+    if (publishFilter !== "all" && publishViewOf(ex) !== publishFilter) return false;
     if (q.length > 0) {
       const fa = normalizeSearchText(ex.faName);
       const en = normalizeSearchText(ex.enName);
@@ -231,6 +264,7 @@ export function CoachExercisesTab() {
       faName: form.faName.trim(),
       enName: form.enName.trim(),
       category: form.category,
+      difficulty: form.difficulty,
       equipment: splitList(form.equipment),
       primaryMuscles: form.primaryMuscles.slice(0, 6),
       secondaryMuscles: form.secondaryMuscles.slice(0, 6),
@@ -267,6 +301,29 @@ export function CoachExercisesTab() {
       toast({ title: plansT.loadError, description: result.message, variant: "destructive" });
     } else {
       toast({ title: t.exerciseSaved });
+    }
+  };
+
+  // گردش کار انتشار — مرحله ۲۰/P3: گذارها فقط با اکشن صریح سرور
+  const doPublishAction = async () => {
+    if (!confirmAction || publishBusy) return;
+    setPublishBusy(true);
+    const { kind, id } = confirmAction;
+    const result =
+      kind === "submit"
+        ? await submitForReview(id)
+        : kind === "withdraw"
+          ? await withdrawSubmission(id)
+          : await recallExercise(id);
+    setPublishBusy(false);
+    setConfirmAction(null);
+    if (result.ok) {
+      toast({
+        title:
+          kind === "submit" ? t.publishSubmittedToast : kind === "withdraw" ? t.publishWithdrawnToast : t.publishRecalledToast,
+      });
+    } else {
+      toast({ title: plansT.loadError, description: result.message, variant: "destructive" });
     }
   };
 
@@ -365,6 +422,29 @@ export function CoachExercisesTab() {
               ))}
             </SelectContent>
           </Select>
+          <span className="text-[10px] font-bold text-muted-foreground">{t.publishFilterLabel}</span>
+          <Select value={publishFilter} onValueChange={setPublishFilter}>
+            <SelectTrigger className="h-8 w-32 text-[10px]" aria-label={t.publishFilterLabel}>
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {PUBLISH_VIEW_FILTERS.map((v) => (
+                <SelectItem key={v} value={v} className="text-[10px]">
+                  {v === "all"
+                    ? t.publishFilterAll
+                    : v === "draft"
+                      ? t.publishFilterDraft
+                      : v === "pending"
+                        ? t.publishFilterPending
+                        : v === "published"
+                          ? t.publishFilterPublished
+                          : v === "rejected"
+                            ? t.publishFilterRejected
+                            : t.publishFilterRecalled}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
       </div>
 
@@ -447,7 +527,29 @@ export function CoachExercisesTab() {
         </div>
       ) : (
         <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
-          {filteredExercises.map((ex) => (
+          {filteredExercises.map((ex) => {
+            const publishView = publishViewOf(ex);
+            const publishBadgeClass =
+              publishView === "pending"
+                ? "border-amber-500/40 bg-amber-500/10 text-amber-500"
+                : publishView === "published"
+                  ? "border-emerald-500/40 bg-emerald-500/10 text-emerald-500"
+                  : publishView === "rejected"
+                    ? "border-rose-500/40 bg-rose-500/10 text-rose-400"
+                    : publishView === "recalled"
+                      ? "border-sky-500/40 bg-sky-500/10 text-sky-400"
+                      : "border-border/60 bg-secondary/30 text-muted-foreground";
+            const publishBadgeText =
+              publishView === "pending"
+                ? t.publishBadgePending
+                : publishView === "published"
+                  ? t.publishBadgePublished
+                  : publishView === "rejected"
+                    ? t.publishBadgeRejected
+                    : publishView === "recalled"
+                      ? t.publishBadgeRecalled
+                      : t.publishBadgeDraft;
+            return (
             <Card key={ex.id} className="border-border/60 bg-card/70">
               <CardContent className="space-y-2.5 p-4">
                 <div className="flex items-start justify-between gap-2">
@@ -457,20 +559,53 @@ export function CoachExercisesTab() {
                     </p>
                     <p dir="ltr" className="truncate text-[10px] text-muted-foreground">{ex.enName}</p>
                   </div>
-                  <Badge variant="outline" className="shrink-0 border-primary/30 bg-primary/10 text-[10px] font-bold text-primary">
-                    {t.exercisePersonalBadge}
-                  </Badge>
+                  <div className="flex shrink-0 flex-col items-end gap-1">
+                    <Badge variant="outline" className="border-primary/30 bg-primary/10 text-[10px] font-bold text-primary">
+                      {t.exercisePersonalBadge}
+                    </Badge>
+                    <Badge variant="outline" className={`text-[10px] font-bold ${publishBadgeClass}`}>
+                      {publishBadgeText}
+                    </Badge>
+                  </div>
                 </div>
 
                 <div className="flex flex-wrap gap-x-3 gap-y-1 text-[10px] text-muted-foreground">
                   <span>
                     {t.exerciseCategory}: {CATEGORIES.find((c) => c.value === ex.category)?.[locale === "fa" ? "fa" : "en"] ?? ex.category}
                   </span>
+                  <span>
+                    {t.difficultyLabel}: {DIFFICULTIES.find((d) => d.value === ex.difficulty)?.key
+                      ? (t[DIFFICULTIES.find((d) => d.value === ex.difficulty)!.key] as string)
+                      : ex.difficulty}
+                  </span>
                   {ex.equipment.length > 0 && <span>{ex.equipment.join("، ")}</span>}
                 </div>
 
                 {ex.description && (
                   <p className="line-clamp-2 text-[11px] leading-5 text-muted-foreground">{ex.description}</p>
+                )}
+
+                {/* وضعیت گردش کار انتشار — پیام صادقانه برای هر وضعیت (P3) */}
+                {publishView === "pending" && (
+                  <p className="rounded-lg border border-amber-500/30 bg-amber-500/5 px-2.5 py-1.5 text-[10px] leading-5 text-amber-600 dark:text-amber-400">
+                    {t.publishPendingNote}
+                  </p>
+                )}
+                {publishView === "published" && (
+                  <p className="rounded-lg border border-emerald-500/30 bg-emerald-500/5 px-2.5 py-1.5 text-[10px] leading-5 text-emerald-600 dark:text-emerald-400">
+                    {t.publishPublishedNote}
+                  </p>
+                )}
+                {publishView === "recalled" && (
+                  <p className="rounded-lg border border-sky-500/30 bg-sky-500/5 px-2.5 py-1.5 text-[10px] leading-5 text-sky-600 dark:text-sky-400">
+                    {t.publishRecalledNote}
+                  </p>
+                )}
+                {publishView === "rejected" && ex.reviewNote && (
+                  <p className="rounded-lg border border-rose-500/30 bg-rose-500/5 px-2.5 py-1.5 text-[10px] leading-5 text-rose-600 dark:text-rose-400">
+                    <span className="font-bold">{t.publishRejectedNoteTitle}: </span>
+                    {ex.reviewNote}
+                  </p>
                 )}
 
                 {/* رسانه‌ها */}
@@ -551,6 +686,53 @@ export function CoachExercisesTab() {
                   <Button variant="outline" size="sm" onClick={() => openEdit(ex)}>
                     {t.exerciseEdit}
                   </Button>
+                  {/* گردش کار انتشار — دکمه گذار متناسب با وضعیت (P3) */}
+                  {(publishView === "draft" || publishView === "rejected" || publishView === "recalled") && (
+                    <Button
+                      size="sm"
+                      className="border-emerald-500/40 bg-emerald-500/10 text-emerald-600 hover:bg-emerald-500/20 dark:text-emerald-400"
+                      variant="outline"
+                      onClick={() =>
+                        setConfirmAction({ kind: "submit", id: ex.id, name: locale === "fa" ? ex.faName : ex.enName })
+                      }
+                    >
+                      {t.publishSubmit}
+                    </Button>
+                  )}
+                  {publishView === "pending" && (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() =>
+                        setConfirmAction({ kind: "withdraw", id: ex.id, name: locale === "fa" ? ex.faName : ex.enName })
+                      }
+                    >
+                      {t.publishWithdraw}
+                    </Button>
+                  )}
+                  {publishView === "published" && (
+                    <>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() =>
+                          setConfirmAction({ kind: "submit", id: ex.id, name: locale === "fa" ? ex.faName : ex.enName })
+                        }
+                      >
+                        {t.publishSubmitUpdate}
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="border-sky-500/40 text-sky-600 hover:bg-sky-500/10 dark:text-sky-400"
+                        onClick={() =>
+                          setConfirmAction({ kind: "recall", id: ex.id, name: locale === "fa" ? ex.faName : ex.enName })
+                        }
+                      >
+                        {t.publishRecall}
+                      </Button>
+                    </>
+                  )}
                   <Button
                     variant="ghost"
                     size="sm"
@@ -585,7 +767,8 @@ export function CoachExercisesTab() {
                 </div>
               </CardContent>
             </Card>
-          ))}
+            );
+          })}
         </div>
       )}
 
@@ -631,6 +814,22 @@ export function CoachExercisesTab() {
                   {CATEGORIES.map((c) => (
                     <SelectItem key={c.value} value={c.value} className="text-xs">
                       {locale === "fa" ? c.fa : c.en}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            {/* سطح دشواری — مرحله ۲۰/P3 (برای نمایش دقیق رکورد منتشرشده در بانک) */}
+            <div className="space-y-1.5">
+              <Label className="text-[11px] font-bold text-foreground">{t.difficultyLabel}</Label>
+              <Select value={form.difficulty} onValueChange={(v) => setForm((f) => ({ ...f, difficulty: v }))}>
+                <SelectTrigger className="w-full text-xs" aria-label={t.difficultyLabel}>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {DIFFICULTIES.map((d) => (
+                    <SelectItem key={d.value} value={d.value} className="text-xs">
+                      {t[d.key] as string}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -756,12 +955,56 @@ export function CoachExercisesTab() {
         <AlertDialogContent dir={dir}>
           <AlertDialogHeader>
             <AlertDialogTitle>{t.exerciseDelete}</AlertDialogTitle>
-            <AlertDialogDescription>{t.exerciseDeleteConfirm}</AlertDialogDescription>
+            <AlertDialogDescription>
+              {t.exerciseDeleteConfirm}
+              {deleteTarget !== null &&
+                (exercises ?? []).find((x) => x.id === deleteTarget)?.publishState === "published" &&
+                ` ${t.deletePublishedWarning}`}
+            </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>{coachesT.keepIt}</AlertDialogCancel>
             <AlertDialogAction className="bg-rose-500/90 text-white hover:bg-rose-500" onClick={() => void doDelete()}>
               {t.exerciseDelete}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* دیالوگ تأیید گذارهای انتشار — مرحله ۲۰/P3 */}
+      <AlertDialog
+        open={confirmAction !== null}
+        onOpenChange={(open) => !open && setConfirmAction(null)}
+      >
+        <AlertDialogContent dir={dir}>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              {confirmAction?.kind === "submit"
+                ? t.publishSubmitConfirmTitle
+                : confirmAction?.kind === "withdraw"
+                  ? t.publishWithdrawConfirmTitle
+                  : t.publishRecallConfirmTitle}
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              {confirmAction?.kind === "submit"
+                ? (exercises ?? []).find((x) => x.id === confirmAction.id)?.publishState === "published"
+                  ? t.publishUpdateConfirmDesc
+                  : t.publishSubmitConfirmDesc
+                : confirmAction?.kind === "withdraw"
+                  ? t.publishWithdrawConfirmDesc
+                  : t.publishRecallConfirmDesc}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>{coachesT.keepIt}</AlertDialogCancel>
+            <AlertDialogAction onClick={() => void doPublishAction()} disabled={publishBusy}>
+              {confirmAction?.kind === "submit"
+                ? (exercises ?? []).find((x) => x.id === confirmAction.id)?.publishState === "published"
+                  ? t.publishSubmitUpdate
+                  : t.publishSubmit
+                : confirmAction?.kind === "withdraw"
+                  ? t.publishWithdraw
+                  : t.publishRecall}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
