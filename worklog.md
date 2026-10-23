@@ -1341,3 +1341,25 @@ Stage Summary:
 - Blocker P2 کامل رفع شد: build سالم، ۵۸/۵۸ p24، تمام رگرسیون‌ها سبز، داده سالم
 - علت ریشه‌ای (gitignore local-*) بسته شد تا فایل دوباره گم نشود؛ فایل اکنون tracked است
 - در انتظار تأیید کاربر برای هر گام بعدی (P3 اجرا نمیشود)
+
+---
+Task ID: 48
+Agent: Super Z (main agent)
+Task: مرحله آماده‌سازی پیش از P3 — بکاپ مستقل + بررسی سلامت (بدون هیچ تغییر در کد/schema/داده؛ بدون Git/Push)
+
+Work Log:
+- دیتابیس مبدأ (db/custom.db، ۲,۴۹۴,۴۶۴ بایت) با اتصال فقط‌خواندنی باز شد؛ quick_check قبل از بکاپ: ok
+- بکاپ مستقل با SQLite VACUUM INTO (موتور 3.53.0) روی همان اتصال readonly ساخته شد — خروجی فشرده، مستقل و خودکفا؛ مسیر: download/pre-p3-backup-2026-10-23T19-14-37.db (۲,۳۵۵,۲۰۰ بایت)
+- روی فایل بکاپ: quick_check=ok | integrity_check=ok | foreign_key_check=۰ تخلف
+- شمارش‌ها در سه نقطه (مبدأ قبل / بکاپ / مبدأ بعد) ۱۶/۱۶ یکسان: users=4 (1 ADMIN + 3 STUDENT) | sessions=5 | Exercise=905 (همه origin=core) | CoachExercise=0 | CoachExerciseFolder=0 | ExerciseMedia=0 | CoachExerciseMedia=0 | CoachWorkoutPlan=0 | CoachNutritionPlan=0 | CoachPlanDelivery=0 | WorkoutPlan=0 | NutritionPlan=0 | CoachStudentConnection=0 | Notification=0
+- اشیای schema (۴۶ جدول + ۱۲۵ ایندکس) در هر سه نقطه یکسان — هیچ تغییر ساختاری
+- SHA-256 بکاپ: de3b981fc3eb4c0f354400632a26b503c01c41b841b29973e7c78057d6599c9e — فایل .sha256 با فرمت سازگار sha256sum
+- تأیید مستقل: sha256sum -c → OK | file → «SQLite 3.x database» | بازگشایی مستقل readonly بکاپ: quick/integrity=ok، tables=46، users=4، exercises=905
+- اثبات دست‌نخوردگی مبدأ: اندازه و mtime دقیقاً ثابت ماند (۲,۴۹۴,۴۶۴ بایت، mtime=2026-10-23 13:17:03 UTC) و هیچ فایل -wal/-shm/journal باقی نماند
+- اسکریپت این کار: scripts/p2c-pre-p3-backup.ts (فقط فایل جدید؛ هدف موجودی هرگز بازنویسی/حذف نشد — نام خروجی با پسوند -N از برخورد اجتناب میکند) + manifest.txt کنار بکاپ
+- هیچ تغییر در کد/schema/UI/تنظیمات؛ هیچ Reset یا پاکسازی؛ P3/P4 شروع نشد؛ Git/Push لمس نشد
+
+Stage Summary:
+- بکاپ معتبر و قابل‌دانلود آماده است: /home/z/my-project/download/pre-p3-backup-2026-10-23T19-14-37.db (+ .sha256 و .manifest.txt)
+- داده کاملاً سالم و پایه تمیز برای P3: ۴ کاربر، ۹۰۵ حرکت بانک، صفر رسانه/برنامه/تحویل
+- در انتظار دانلود بکاپ و تأیید کاربر برای شروع P3

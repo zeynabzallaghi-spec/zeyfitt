@@ -1,0 +1,55 @@
+ZEYFITT PRE-P3 BACKUP MANIFEST
+============================================================
+task: Task 48 (pre-P3 preparation — backup + health check only)
+generatedAtTehran: 2026-10-23T19-14-37
+generatedAtUtc: 2026-10-23T15:44:37.809Z
+method: SQLite VACUUM INTO (standalone, compacted copy)
+sqliteEngineVersion: 3.53.0
+vacuumMode: read-only connection
+
+sourceDb: /home/z/my-project/db/custom.db
+sourceSizeBytes: 2494464
+
+backupFile: /home/z/my-project/download/pre-p3-backup-2026-10-23T19-14-37.db
+backupSizeBytes: 2355200
+backupSha256: de3b981fc3eb4c0f354400632a26b503c01c41b841b29973e7c78057d6599c9e
+sha256File: /home/z/my-project/download/pre-p3-backup-2026-10-23T19-14-37.db.sha256
+
+HEALTH CHECKS
+sourceQuickCheckBefore: ok
+sourceQuickCheckAfter: ok
+backupQuickCheck: ok
+backupIntegrityCheck: ok
+backupForeignKeyCheck: ok (0 violations)
+
+ROW COUNTS (sourceBefore / backup / sourceAfter)
+  users                       4 / 4 / 4  [match]
+  auth_sessions               5 / 5 / 5  [match]
+  bank_exercises_total        905 / 905 / 905  [match]
+  bank_exercises_origin_core  905 / 905 / 905  [match]
+  bank_exercises_origin_other 0 / 0 / 0  [match]
+  coach_exercises             0 / 0 / 0  [match]
+  coach_exercise_folders      0 / 0 / 0  [match]
+  exercise_media_bank         0 / 0 / 0  [match]
+  coach_exercise_media        0 / 0 / 0  [match]
+  coach_workout_plans         0 / 0 / 0  [match]
+  coach_nutrition_plans       0 / 0 / 0  [match]
+  plan_deliveries             0 / 0 / 0  [match]
+  student_workout_plans       0 / 0 / 0  [match]
+  student_nutrition_plans     0 / 0 / 0  [match]
+  coach_student_connections   0 / 0 / 0  [match]
+  notifications               0 / 0 / 0  [match]
+
+exerciseOriginBreakdown: [{"origin":"core","count":905}]
+userRoleBreakdown: [{"role":"ADMIN","count":1},{"role":"STUDENT","count":3}]
+schemaObjects: {"index":125,"table":46} (identical in backup & after)
+
+allCountsMatch: true
+overallPass: true
+
+GUARANTEES
+- No data was modified or deleted; no reset performed on any DB or folder.
+- Only NEW files were created under /home/z/my-project/download/.
+- No code, schema, UI, or settings changes were made.
+- Source DB was opened read-only throughout (VACUUM INTO ran on a read-only connection).
+- Git/Push: out of scope per user instruction (not touched).
