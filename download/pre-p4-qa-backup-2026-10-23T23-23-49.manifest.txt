@@ -1,0 +1,46 @@
+ZEYFITT PRE-P4-QA BACKUP MANIFEST
+============================================================
+task: Stage 20 / P4 final QA — pre-test protection backup (read-only)
+generatedAtTehran: 2026-10-23T23-23-49
+generatedAtUtc: 2026-10-23T19:53:49.185Z
+sourceDb: /home/z/my-project/db/custom.db
+sourceSizeBytes: 2412544
+sqliteEngine: 3.53.0 (VACUUM INTO on read-only connection)
+backupPath: /home/z/my-project/download/pre-p4-qa-backup-2026-10-23T23-23-49.db
+backupSizeBytes: 2359296
+sha256: eea5a85136e73116344340e3a53c4f680abec0b5b0b1d6c99317a54bcb25dee7
+quick_check(source before/after): ok / ok
+integrity_check(backup): ok
+foreign_key_check violations: 0
+allCountsMatch(three-way): true
+schemaObjectsMatch: true
+verdict: PASS
+
+BASELINE COUNTS (source before tests):
+  users = 4
+  auth_sessions = 5
+  bank_exercises_total = 905
+  bank_exercises_origin_core = 905
+  bank_exercises_published = 0
+  coach_exercises = 0
+  coach_exercise_folders = 0
+  exercise_media_bank = 0
+  coach_exercise_media = 0
+  coach_workout_plans = 0
+  coach_nutrition_plans = 0
+  plan_deliveries = 0
+  student_workout_plans = 0
+  student_nutrition_plans = 0
+  coach_student_connections = 0
+  notifications = 0
+  admin_action_logs = 1
+  direct_messages = 0
+  coach_messages = 0
+  coach_message_attachments = 0
+  assistant_messages = 8
+  chat_blocks = 0
+
+UPLOADS SNAPSHOT BEFORE TESTS: 0 files, 0 bytes
+
+NOTE: earlier backup download/pre-p3-backup-2026-10-23T19-14-37.db (sha256 de3b981f...) belongs to
+Task 48 and is intentionally NOT replaced by this file.
