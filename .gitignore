@@ -41,6 +41,8 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 local-*
+# استثنا: provider محلی storage کد محصول است (اصلاحیه Blocker P2) — نباید با الگوی local-* نادیده گرفته شود
+!src/lib/storage/local-provider.ts
 .claude
 .z-ai-config
 *.log
