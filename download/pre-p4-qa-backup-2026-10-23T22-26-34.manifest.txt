@@ -1,0 +1,63 @@
+ZEYFITT PRE-P4-QA BACKUP MANIFEST
+============================================================
+task: Stage 20 / P4 final QA — pre-test protection backup (read-only)
+generatedAtTehran: 2026-10-23T22-26-34
+generatedAtUtc: 2026-10-23T18:56:34.642Z
+sourceDb: /home/z/my-project/db/custom.db
+sourceSizeBytes: 3887104
+sqliteEngine: 3.53.0 (VACUUM INTO on read-only connection)
+backupPath: /home/z/my-project/download/pre-p4-qa-backup-2026-10-23T22-26-34.db
+backupSizeBytes: 2367488
+sha256: eeef7122d692389f0dc98303ffd56fe12a74aa1150ee23743e82b9e9448f845d
+quick_check(source before/after): ok / ok
+integrity_check(backup): ok
+foreign_key_check violations: 0
+allCountsMatch(three-way): true
+schemaObjectsMatch: true
+verdict: PASS
+
+BASELINE COUNTS (source before tests):
+  users = 4
+  auth_sessions = 5
+  bank_exercises_total = 905
+  bank_exercises_origin_core = 905
+  bank_exercises_published = 0
+  coach_exercises = 0
+  coach_exercise_folders = 0
+  exercise_media_bank = 0
+  coach_exercise_media = 0
+  coach_workout_plans = 0
+  coach_nutrition_plans = 0
+  plan_deliveries = 0
+  student_workout_plans = 0
+  student_nutrition_plans = 0
+  coach_student_connections = 0
+  notifications = 0
+  admin_action_logs = 1
+  direct_messages = 0
+  coach_messages = 0
+  coach_message_attachments = 0
+  assistant_messages = 8
+  chat_blocks = 0
+
+UPLOADS SNAPSHOT BEFORE TESTS: 17 files, 1160 bytes
+  data/uploads/bank-exercises/cexpub-cmvl9s5dl0005qa160d0uq3so/mvl9s7ow-350f86e3-5459-4e2d-814b-678427b4d4ed
+  data/uploads/chat/cmvl9k5bv000dqavl822ko9y0/mvl9k6bv-35c37a46-3836-4d44-81ee-45c2bc6859eb
+  data/uploads/chat/cmvlaylu4001lqazj726196sq/mvlaymvp-d6ba1691-419d-45a1-92ea-d51d7a16e6cb
+  data/uploads/chat/cmvlbmldt002cqazjj7zxfaez/mvlbmlrz-69b4453e-d697-4dfd-8c91-13e1e604ffd6
+  data/uploads/chat/cmvlbo8u5004dqazjoqcjauym/mvlbo96x-04fd6264-6a71-4fec-9e64-ce3359947879
+  data/uploads/coach-exercises/cmvl99sva0001qafc249f0vk6/mvl99trv-118b7861-1341-4e53-9d60-d63eb072bdad
+  data/uploads/coach-exercises/cmvl99sva0001qafc249f0vk6/mvl99tu0-4a2d51d0-53c4-4ff4-9c3e-637f0598bd4c
+  data/uploads/coach-exercises/cmvl9c2890001qavecrp4mf2c/mvl9c369-674ebaa6-f771-4e57-9d8e-bb9337babe7c
+  data/uploads/coach-exercises/cmvl9c2890001qavecrp4mf2c/mvl9c38k-d3bed0c1-a617-4a3f-ad58-df21d6d736d7
+  data/uploads/coach-exercises/cmvl9dsnt0001qafusnf2qz3e/mvl9dtkr-d3c83b84-816c-4908-ac9c-36740575ddf8
+  data/uploads/coach-exercises/cmvl9dsnt0001qafusnf2qz3e/mvl9dtmj-bf631e5d-1cef-4a6b-8757-9ac6ddf7862b
+  data/uploads/coach-exercises/cmvl9f42o0001qayuk43cysvw/mvl9f50a-0e084b8f-5feb-46bf-8f54-2cda27ce8e47
+  data/uploads/coach-exercises/cmvl9f42o0001qayuk43cysvw/mvl9f529-ce429d94-88c5-4b4c-8d23-e6ba9de43deb
+  data/uploads/coach-exercises/cmvl9s48q0001qa16byoruusl/mvl9s5ct-17a87ac3-fed3-4b1a-aec1-828d712a57a9
+  data/uploads/coach-exercises/cmvl9s5dl0005qa160d0uq3so/mvl9s5fl-d43067dd-d266-4136-a737-38076c93f8c9
+  data/uploads/coach-exercises/cmvlbxcu6007iqazj4j9wdccq/mvlbxcwd-3d92cc5a-f008-457f-8151-dcc3dffd258c
+  data/uploads/coach-exercises/cmvlbxcu6007iqazj4j9wdccq/mvlbxcxj-91b45100-8b1f-4374-8403-d74d142bb77c
+
+NOTE: earlier backup download/pre-p3-backup-2026-10-23T19-14-37.db (sha256 de3b981f...) belongs to
+Task 48 and is intentionally NOT replaced by this file.
